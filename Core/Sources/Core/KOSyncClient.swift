@@ -34,6 +34,22 @@ public struct ProgressDownload: Codable, Sendable, Equatable {
     public let deviceID: String
     public let timestamp: TimeInterval?
 
+    public init(
+        document: String,
+        progress: String,
+        percentage: Double,
+        device: String,
+        deviceID: String,
+        timestamp: TimeInterval?
+    ) {
+        self.document = document
+        self.progress = progress
+        self.percentage = percentage
+        self.device = device
+        self.deviceID = deviceID
+        self.timestamp = timestamp
+    }
+
     enum CodingKeys: String, CodingKey {
         case document, progress, percentage, device, timestamp
         case deviceID = "device_id"
