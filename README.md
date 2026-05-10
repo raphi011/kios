@@ -108,6 +108,9 @@ walkthrough. In short:
 
 ## Known follow-ups
 
+- No "Sign out" UI yet; if the AuthStore is ever cleared programmatically,
+  downloaded books remain on disk and the user gets bounced to Settings.
+  A proper Sign Out should offer to wipe downloads.
 - PDF / CBZ reading via `ReadiumAdapterGCDWebServer`.
 - Real chapter index in `pushLocator` (currently hard-coded to 0; we rely on
   `percentage` as the lingua franca cross-reader).

@@ -89,6 +89,20 @@ struct BookDetailView: View {
         }
         book.fileURL = nil
         book.partialMD5 = nil
+
+        let id = book.id
+        // Drop the Download row (frees the unique key slot for re-download).
+        if let download = try? context.fetch(
+            FetchDescriptor<Download>(predicate: #Predicate { $0.bookID == id })
+        ).first {
+            context.delete(download)
+        }
+        // Drop the ReadingProgress row (so re-download starts fresh from the server).
+        if let progress = try? context.fetch(
+            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
+        ).first {
+            context.delete(progress)
+        }
         try? context.save()
     }
 }

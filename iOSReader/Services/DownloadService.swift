@@ -35,6 +35,10 @@ final class DownloadService: NSObject {
 
     /// Maps URLSession task identifier → book UUID for routing delegate
     /// callbacks back to the right Download row / continuation.
+    ///
+    /// `Int` is URLSessionTask.taskIdentifier; reused per-process after a task
+    /// completes. Safe here because we remove on finish/error before the next
+    /// download could collide. Single-flight per book is enforced by caller.
     private var bookByTask: [Int: UUID] = [:]
     private var continuations: [UUID: CheckedContinuation<URL, Swift.Error>] = [:]
 
@@ -114,7 +118,10 @@ final class DownloadService: NSObject {
         let cont = continuations.removeValue(forKey: bookID)
         switch moveResult {
         case .success(let dest):
-            let hash = (try? DocumentHasher.partialMD5(of: dest)) ?? ""
+            // nil hash means the file is present but kosync sync will be skipped
+            // (SyncService.onOpen guards on partialMD5 != nil). Better than ""
+            // which is non-nil but invalid as a kosync document identifier.
+            let hash = try? DocumentHasher.partialMD5(of: dest)
             let descriptor = FetchDescriptor<Book>(
                 predicate: #Predicate { $0.id == bookID }
             )

@@ -27,6 +27,7 @@ struct SettingsView: View {
                     .autocorrectionDisabled()
                 SecureField("Password", text: $password)
             }
+            .disabled(status == .testing)
             Section {
                 Button("Test & Save") { Task { await testAndSave() } }
                     .disabled(serverURL.isEmpty || username.isEmpty || password.isEmpty
