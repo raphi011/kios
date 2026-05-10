@@ -11,6 +11,9 @@ import Core
 @Observable
 final class AppEnvironment {
     let modelContainer: ModelContainer
+    /// Services and views share the same context so writes propagate
+    /// synchronously to view fetches without crossing context boundaries.
+    let modelContext: ModelContext
     let authStore: AuthStore
 
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
@@ -26,6 +29,7 @@ final class AppEnvironment {
             for: Book.self, LibraryServer.self,
             ReadingProgress.self, Download.self
         )
+        self.modelContext = ModelContext(self.modelContainer)
         self.authStore = AuthStore()
 
         let appSupport = try FileManager.default.url(
@@ -66,13 +70,12 @@ final class AppEnvironment {
             baseURL: creds.serverURL.appendingPathComponent("kosync"),
             http: http
         )
-        let context = ModelContext(modelContainer)
 
         self.library = LibraryService(
-            opds: opds, context: context, rootURL: creds.serverURL
+            opds: opds, context: modelContext, rootURL: creds.serverURL
         )
         self.sync = SyncService(
-            kosync: kosync, context: context,
+            kosync: kosync, context: modelContext,
             deviceID: deviceID, deviceName: UIDevice.current.name
         )
 
@@ -83,7 +86,7 @@ final class AppEnvironment {
             existing.update(credentials: creds.basic)
         } else {
             self.downloads = DownloadService(
-                context: context, booksDirectory: booksDirectory,
+                context: modelContext, booksDirectory: booksDirectory,
                 credentials: creds.basic
             )
         }

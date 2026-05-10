@@ -18,6 +18,7 @@ struct iOSReaderApp: App {
             RootView()
                 .environment(environment)
                 .modelContainer(environment.modelContainer)
+                .environment(\.modelContext, environment.modelContext)
         }
     }
 }
