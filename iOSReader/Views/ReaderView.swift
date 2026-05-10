@@ -21,7 +21,7 @@ struct ReaderView: View {
     @State private var pendingPrompt: PromptInfo?
 
     struct PromptInfo: Identifiable {
-        let id = UUID()
+        let id = "continue-prompt"
         let local: Double
         let server: ProgressDownload
     }
@@ -145,8 +145,9 @@ struct ReaderView: View {
         ).first else { return }
         let intra = locator.locations.progression ?? 0
         let total = locator.locations.totalProgression ?? 0
-        // Locator uses its own JSON coding (not Encodable); jsonString returns nil on failure.
-        let json = locator.jsonString ?? "{}"
+        // Locator uses its own JSON coding (not Encodable); skip push if serialisation fails
+        // rather than sending an empty/invalid JSON stub to the server.
+        guard let json = locator.jsonString else { return }
         // Chapter index is 0 in v1 (best-effort); ProgressMapper handles this.
         await env.sync?.push(
             book: book, locatorJSON: json,
