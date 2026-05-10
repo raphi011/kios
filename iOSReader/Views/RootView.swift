@@ -22,8 +22,3 @@ struct RootView: View {
         }
     }
 }
-
-/// Stub — replaced by Task 5.3.
-struct LibraryView: View {
-    var body: some View { Text("Library (stub)") }
-}
