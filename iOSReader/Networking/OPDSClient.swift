@@ -34,7 +34,7 @@ struct OPDSClient: OPDSClientProtocol, Sendable {
 
         let nextURL: URL? = feed.links
             .firstWithRel(.next)
-            .flatMap { URL(string: $0.href) }
+            .flatMap { URL(string: $0.href, relativeTo: sourceURL)?.absoluteURL }
 
         return OPDSCatalog(
             title: feed.metadata.title,
@@ -43,10 +43,20 @@ struct OPDSClient: OPDSClientProtocol, Sendable {
         )
     }
 
+    // OPDS acquisition rels: https://specs.opds.io/opds-1.2#25-acquisition-relations
+    private static let acquisitionRels: Set<String> = [
+        "http://opds-spec.org/acquisition",
+        "http://opds-spec.org/acquisition/open-access",
+        "http://opds-spec.org/acquisition/buy",
+        "http://opds-spec.org/acquisition/borrow",
+        "http://opds-spec.org/acquisition/sample",
+        "http://opds-spec.org/acquisition/subscribe",
+    ]
+
     private static func makeEntry(from pub: Publication, sourceURL: URL) -> OPDSEntry? {
         // Find the first acquisition link (exact or sub-rel).
         guard let acqLink = pub.links.first(where: { link in
-            link.rels.contains(where: { $0.string.contains("acquisition") })
+            link.rels.contains { acquisitionRels.contains($0.string) }
         }) else {
             return nil
         }
@@ -83,7 +93,14 @@ struct OPDSClient: OPDSClientProtocol, Sendable {
 }
 
 /// Errors thrown by ``OPDSClient``.
-enum OPDSClientError: Error {
+enum OPDSClientError: Error, LocalizedError {
     /// The OPDS resource parsed as a publication entry, not a feed.
     case notAFeed
+
+    var errorDescription: String? {
+        switch self {
+        case .notAFeed:
+            return "Server returned something other than an OPDS feed."
+        }
+    }
 }
