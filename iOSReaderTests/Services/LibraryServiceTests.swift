@@ -24,7 +24,7 @@ struct LibraryServiceTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try ModelContainer(
-            for: Book.self, LibraryServer.self, ReadingProgress.self, Download.self,
+            for: Book.self, ReadingProgress.self, Download.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return ModelContext(container)

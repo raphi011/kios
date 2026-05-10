@@ -8,7 +8,7 @@ struct ModelsTests {
 
     @Test func roundTripsBook() throws {
         let container = try ModelContainer(
-            for: Book.self, LibraryServer.self, ReadingProgress.self, Download.self,
+            for: Book.self, ReadingProgress.self, Download.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)

@@ -10,7 +10,7 @@ struct DownloadServiceTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try ModelContainer(
-            for: Book.self, Download.self, ReadingProgress.self, LibraryServer.self,
+            for: Book.self, Download.self, ReadingProgress.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return ModelContext(container)

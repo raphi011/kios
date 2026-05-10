@@ -26,8 +26,7 @@ final class AppEnvironment {
 
     init() throws {
         self.modelContainer = try ModelContainer(
-            for: Book.self, LibraryServer.self,
-            ReadingProgress.self, Download.self
+            for: Book.self, ReadingProgress.self, Download.self
         )
         self.modelContext = ModelContext(self.modelContainer)
         self.authStore = AuthStore()

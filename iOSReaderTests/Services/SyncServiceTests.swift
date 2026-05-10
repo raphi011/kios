@@ -88,7 +88,7 @@ struct SyncServiceTests {
             bookHasHash: Bool = true
         ) throws -> Env {
             let container = try ModelContainer(
-                for: Book.self, ReadingProgress.self, Download.self, LibraryServer.self,
+                for: Book.self, ReadingProgress.self, Download.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
             let context = ModelContext(container)
