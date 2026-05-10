@@ -63,7 +63,7 @@ struct DocumentHasherTests {
 
     @Test func nonexistentFileThrows() {
         let url = URL(fileURLWithPath: "/tmp/does-not-exist-\(UUID().uuidString)")
-        #expect(throws: (any Error).self) {
+        #expect(throws: CocoaError.self) {
             _ = try DocumentHasher.partialMD5(of: url)
         }
     }
