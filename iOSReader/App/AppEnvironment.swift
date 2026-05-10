@@ -37,13 +37,19 @@ final class AppEnvironment {
         )
         self.booksDirectory = appSupport.appendingPathComponent("ios-reader/books")
 
-        // Stable per-install device ID, persisted to UserDefaults.
-        let key = "iOSReader.deviceID"
-        if let existing = UserDefaults.standard.string(forKey: key) {
+        // Stable per-install device ID, persisted to the Keychain.
+        // Keychain items survive app reinstall on the same device (unlike
+        // UserDefaults, which is wiped on reinstall). This matters for kosync:
+        // progress records are keyed by deviceID, and keeping it stable across
+        // reinstalls prevents the "is this server progress from us?" check from
+        // wrongly treating our own previous progress as foreign.
+        let deviceIDKeychain = KeychainStore(service: "me.iosreader.deviceID")
+        let deviceIDAccount = "device"
+        if let existing = try? deviceIDKeychain.get(account: deviceIDAccount) {
             self.deviceID = existing
         } else {
             let generated = UUID().uuidString
-            UserDefaults.standard.set(generated, forKey: key)
+            try deviceIDKeychain.set(generated, account: deviceIDAccount)
             self.deviceID = generated
         }
 
