@@ -29,11 +29,12 @@ struct ReaderView: View {
     var body: some View {
         Group {
             if let book, let publication {
+                let id = book.id
                 ReaderHost(
                     publication: publication,
                     initialLocator: initialLocator,
-                    onLocatorChange: { locator in
-                        Task { await pushLocator(book: book, locator: locator) }
+                    onLocatorChange: { @Sendable locator in
+                        Task { @MainActor in await pushLocator(bookID: id, locator: locator) }
                     }
                 )
                 .ignoresSafeArea()
@@ -137,7 +138,11 @@ struct ReaderView: View {
         }
     }
 
-    private func pushLocator(book: Book, locator: Locator) async {
+    private func pushLocator(bookID: UUID, locator: Locator) async {
+        let id = bookID
+        guard let book = try? context.fetch(
+            FetchDescriptor<Book>(predicate: #Predicate { $0.id == id })
+        ).first else { return }
         let intra = locator.locations.progression ?? 0
         let total = locator.locations.totalProgression ?? 0
         // Locator uses its own JSON coding (not Encodable); jsonString returns nil on failure.
@@ -158,7 +163,7 @@ struct ReaderView: View {
 struct ReaderHost: UIViewControllerRepresentable {
     let publication: Publication
     let initialLocator: Locator?
-    var onLocatorChange: (Locator) -> Void
+    var onLocatorChange: @Sendable (Locator) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onChange: onLocatorChange)
@@ -187,19 +192,16 @@ struct ReaderHost: UIViewControllerRepresentable {
 
     // MARK: Coordinator
 
-    final class Coordinator: NSObject, EPUBNavigatorDelegate {
-        // nonisolated(unsafe): the closure is always written before the navigator
-        // fires its first delegate call, and is never mutated afterwards.
-        nonisolated(unsafe) let onChange: (Locator) -> Void
+    final class Coordinator: NSObject, EPUBNavigatorDelegate, @unchecked Sendable {
+        let onChange: @Sendable (Locator) -> Void
 
-        init(onChange: @escaping (Locator) -> Void) {
+        init(onChange: @escaping @Sendable (Locator) -> Void) {
             self.onChange = onChange
         }
 
         // NavigatorDelegate — fires on every location change including page turns.
         nonisolated func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
-            let closure = onChange
-            Task { @MainActor in closure(locator) }
+            onChange(locator)
         }
 
         nonisolated func navigator(_ navigator: Navigator, presentError error: NavigatorError) {}
