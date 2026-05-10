@@ -31,8 +31,16 @@ struct KeychainStoreTests {
 
     @Test func deleteRemovesValue() throws {
         let store = KeychainStore(service: "test.\(UUID().uuidString)")
+        defer { try? store.delete(account: "user") }
         try store.set("x", account: "user")
         try store.delete(account: "user")
         #expect(try store.get(account: "user") == nil)
+    }
+
+    @Test func deletingMissingAccountIsNoOp() throws {
+        let store = KeychainStore(service: "test.\(UUID().uuidString)")
+        // No `set` call — account doesn't exist.
+        // Expectation: no throw.
+        try store.delete(account: "ghost")
     }
 }
