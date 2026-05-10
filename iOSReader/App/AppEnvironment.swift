@@ -53,7 +53,10 @@ final class AppEnvironment {
         guard let creds = try authStore.load() else {
             self.library = nil
             self.sync = nil
-            self.downloads = nil
+            // Note: we do NOT nil out `downloads`. Once created, it persists
+            // for the life of the process so its background URLSession isn't
+            // recreated. If credentials are cleared, the session simply has
+            // no in-flight work; on next save we update the credentials.
             return
         }
 
@@ -65,18 +68,24 @@ final class AppEnvironment {
         )
         let context = ModelContext(modelContainer)
 
-        let deviceName = UIDevice.current.name
-
         self.library = LibraryService(
             opds: opds, context: context, rootURL: creds.serverURL
         )
         self.sync = SyncService(
             kosync: kosync, context: context,
-            deviceID: deviceID, deviceName: deviceName
+            deviceID: deviceID, deviceName: UIDevice.current.name
         )
-        self.downloads = DownloadService(
-            context: context, booksDirectory: booksDirectory,
-            credentials: creds.basic
-        )
+
+        if let existing = self.downloads {
+            // Reuse the existing DownloadService so we don't re-create its
+            // background URLSession — Apple throws NSGenericException if a
+            // background session with the same identifier already exists.
+            existing.update(credentials: creds.basic)
+        } else {
+            self.downloads = DownloadService(
+                context: context, booksDirectory: booksDirectory,
+                credentials: creds.basic
+            )
+        }
     }
 }

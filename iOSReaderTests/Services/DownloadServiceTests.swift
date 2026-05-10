@@ -48,4 +48,20 @@ struct DownloadServiceTests {
             credentials: .init(username: "u", password: "p")
         )
     }
+
+    @Test func updatesCredentials() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let service = DownloadService(
+            context: try makeContext(),
+            booksDirectory: dir,
+            credentials: .init(username: "u1", password: "p1")
+        )
+        // Just exercise the method — this is a smoke test guarding against
+        // future signature changes. The actual auth-header round-trip is
+        // covered by HTTPClient tests.
+        service.update(credentials: .init(username: "u2", password: "p2"))
+    }
 }

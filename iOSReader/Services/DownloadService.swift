@@ -9,11 +9,11 @@ import Core
 final class DownloadService: NSObject {
     private let context: ModelContext
 
-    // `nonisolated let` — both are immutable Sendable values, so delegate
-    // methods (which run on the session's delegate queue, not @MainActor)
-    // can read them directly without a Task bounce.
+    // `booksDirectory` is an immutable Sendable value, so delegate methods
+    // (which run on the session's delegate queue, not @MainActor) can read
+    // it directly without a Task bounce.
     nonisolated let booksDirectory: URL
-    nonisolated let credentials: BasicCredentials
+    private var credentials: BasicCredentials
 
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.background(
@@ -54,6 +54,13 @@ final class DownloadService: NSObject {
             upsertDownload(bookID: bookID, state: .running)
             task.resume()
         }
+    }
+
+    /// Updates the auth header used for subsequent download tasks. Existing
+    /// in-flight tasks keep their original header (URLSession copies headers
+    /// at task creation).
+    func update(credentials new: BasicCredentials) {
+        self.credentials = new
     }
 
     // MARK: - Private @MainActor helpers
