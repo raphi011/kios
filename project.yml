@@ -20,6 +20,8 @@ packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
     from: "3.0.0"
+  Core:
+    path: Core
 
 targets:
   iOSReader:
@@ -42,6 +44,8 @@ targets:
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         SUPPORTS_MACCATALYST: NO
     dependencies:
+      - package: Core
+        product: Core
       - package: Readium
         product: ReadiumShared
       - package: Readium
