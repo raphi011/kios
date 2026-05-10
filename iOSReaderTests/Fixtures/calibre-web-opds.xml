@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:opds="http://opds-spec.org/2010/catalog">
+  <id>urn:cwa:opds:root</id>
+  <title>iOS Reader Test Library</title>
+  <updated>2026-05-10T00:00:00Z</updated>
+  <entry>
+    <id>urn:cwa:book:1</id>
+    <title>Dune</title>
+    <author><name>Frank Herbert</name></author>
+    <updated>2026-05-09T00:00:00Z</updated>
+    <link rel="self"
+          href="https://example/opds/book/1"
+          type="application/atom+xml;type=entry;profile=opds-catalog"/>
+    <link rel="http://opds-spec.org/acquisition"
+          href="https://example/dl/dune.epub"
+          type="application/epub+zip"/>
+  </entry>
+</feed>

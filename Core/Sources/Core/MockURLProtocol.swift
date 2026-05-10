@@ -2,13 +2,13 @@ import Foundation
 
 /// URLProtocol that returns canned responses; install on a URLSessionConfiguration
 /// in tests to avoid real network calls.
-final class MockURLProtocol: URLProtocol {
-    static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+public final class MockURLProtocol: URLProtocol {
+    public static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    public override class func canInit(with request: URLRequest) -> Bool { true }
+    public override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
-    override func startLoading() {
+    public override func startLoading() {
         guard let handler = MockURLProtocol.handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
@@ -23,9 +23,9 @@ final class MockURLProtocol: URLProtocol {
         }
     }
 
-    override func stopLoading() {}
+    public override func stopLoading() {}
 
-    static func session() -> URLSession {
+    public static func session() -> URLSession {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockURLProtocol.self]
         return URLSession(configuration: config)
