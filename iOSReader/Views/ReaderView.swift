@@ -16,6 +16,7 @@ struct ReaderView: View {
 
     @State private var book: Book?
     @State private var publication: Publication?
+    @State private var initialLocator: Locator?
     @State private var loadError: String?
     @State private var pendingPrompt: PromptInfo?
 
@@ -30,7 +31,7 @@ struct ReaderView: View {
             if let book, let publication {
                 ReaderHost(
                     publication: publication,
-                    initialLocator: nil,
+                    initialLocator: initialLocator,
                     onLocatorChange: { locator in
                         Task { await pushLocator(book: book, locator: locator) }
                     }
@@ -77,6 +78,13 @@ struct ReaderView: View {
         guard let fileURL = fetched.fileURL else {
             loadError = "Book not downloaded"
             return
+        }
+
+        // Restore reading position from local progress (graceful: nil on any failure).
+        if let progress = try? context.fetch(
+            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
+        ).first {
+            initialLocator = try? Locator(jsonString: progress.locatorJSON)
         }
 
         do {
