@@ -92,12 +92,3 @@ struct BookDetailView: View {
         try? context.save()
     }
 }
-
-/// Stub — replaced by Task 5.5.
-struct ReaderView: View {
-    let bookID: UUID
-    var body: some View {
-        Text("Reader (stub) for \(bookID)")
-            .navigationTitle("Reader")
-    }
-}
