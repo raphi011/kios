@@ -2,7 +2,6 @@ import SwiftUI
 
 struct LibraryView: View {
     @Environment(AppEnvironment.self) private var env
-    @State private var items: [BookListItem] = []
     @State private var refreshing = false
     @State private var refreshError: String?
 
@@ -13,7 +12,7 @@ struct LibraryView: View {
                     Text(refreshError).foregroundStyle(.orange)
                 }
             }
-            ForEach(items) { item in
+            ForEach(env.library?.items ?? []) { item in
                 NavigationLink {
                     BookDetailView(bookID: item.id)
                 } label: {
@@ -23,13 +22,7 @@ struct LibraryView: View {
         }
         .navigationTitle("Library")
         .refreshable { await refresh() }
-        .task {
-            // First load.
-            await refresh()
-            // Live subscribe — re-renders when LibraryService yields.
-            guard let stream = env.library?.observableItems else { return }
-            for await new in stream { items = new }
-        }
+        .task { await refresh() }
     }
 
     private func refresh() async {
@@ -38,7 +31,6 @@ struct LibraryView: View {
         defer { refreshing = false }
         do {
             try await library.refresh()
-            items = library.items
             refreshError = nil
         } catch {
             refreshError = error.localizedDescription

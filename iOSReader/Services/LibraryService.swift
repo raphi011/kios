@@ -20,9 +20,9 @@ struct BookListItem: Identifiable, Equatable, Sendable {
 protocol LibraryServiceProtocol: AnyObject {
     func refresh() async throws
     var items: [BookListItem] { get }
-    var observableItems: AsyncStream<[BookListItem]> { get }
 }
 
+@Observable
 @MainActor
 final class LibraryService: LibraryServiceProtocol {
     private let opds: OPDSClientProtocol
@@ -30,16 +30,11 @@ final class LibraryService: LibraryServiceProtocol {
     private let rootURL: URL
 
     private(set) var items: [BookListItem] = []
-    private var continuation: AsyncStream<[BookListItem]>.Continuation?
-    let observableItems: AsyncStream<[BookListItem]>
 
     init(opds: OPDSClientProtocol, context: ModelContext, rootURL: URL) {
         self.opds = opds
         self.context = context
         self.rootURL = rootURL
-        var c: AsyncStream<[BookListItem]>.Continuation!
-        self.observableItems = AsyncStream { c = $0 }
-        self.continuation = c
         rebuildItems()
     }
 
@@ -112,6 +107,5 @@ final class LibraryService: LibraryServiceProtocol {
                 state: state
             )
         }
-        continuation?.yield(items)
     }
 }
