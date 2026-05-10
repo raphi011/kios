@@ -101,6 +101,11 @@ walkthrough. In short:
    `partialMD5`; reopen in the app and confirm the "Continue from another
    device?" prompt appears.
 
+## Known limitations
+
+- Background-relaunched downloads may use stale credentials if the user
+  changed their CWA password mid-session. Foreground retry recovers.
+
 ## Known follow-ups
 
 - PDF / CBZ reading via `ReadiumAdapterGCDWebServer`.

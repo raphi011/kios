@@ -20,6 +20,16 @@ final class DownloadService: NSObject {
             withIdentifier: "me.iosreader.downloads"
         )
         config.sessionSendsLaunchEvents = true
+        // Belt-and-braces: set auth in httpAdditionalHeaders so that downloads
+        // completed during a background-relaunch (where the system re-creates
+        // the session and replays events) carry the correct credential.
+        // httpAdditionalHeaders is frozen at session-construction time, so this
+        // captures the credentials that exist at the time of the first
+        // download(book:) call. Per-task headers (set in download(book:)) also
+        // remain in place for all foreground-initiated downloads.
+        config.httpAdditionalHeaders = [
+            "Authorization": credentials.authorizationHeader
+        ]
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }()
 
@@ -56,9 +66,14 @@ final class DownloadService: NSObject {
         }
     }
 
-    /// Updates the auth header used for subsequent download tasks. Existing
-    /// in-flight tasks keep their original header (URLSession copies headers
-    /// at task creation).
+    /// Updates the auth header used for download tasks created AFTER this call.
+    ///
+    /// In-flight tasks keep their original `Authorization` header. Background
+    /// downloads completed during an app-relaunch use whatever credentials
+    /// were in `httpAdditionalHeaders` when the session was first constructed
+    /// (i.e., the credentials at the time of the first `download(book:)` call
+    /// in this process). If the user changes credentials mid-flight, any
+    /// already-running downloads continue with the old creds.
     func update(credentials new: BasicCredentials) {
         self.credentials = new
     }
