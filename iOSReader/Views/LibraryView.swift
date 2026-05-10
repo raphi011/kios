@@ -83,8 +83,3 @@ private struct BookRow: View {
     }
 }
 
-/// Stub — replaced by Task 5.4.
-struct BookDetailView: View {
-    let bookID: UUID
-    var body: some View { Text("Book detail (stub) for \(bookID)") }
-}
