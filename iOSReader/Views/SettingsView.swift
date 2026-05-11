@@ -34,6 +34,11 @@ struct SettingsView: View {
                               || status == .testing)
                 statusView
             }
+            Section {
+                Button("Sign Out", role: .destructive) {
+                    Task { await env.signOut() }
+                }
+            }
         }
         .navigationTitle("Settings")
         .task { await loadExisting() }

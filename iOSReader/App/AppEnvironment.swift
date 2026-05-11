@@ -94,4 +94,29 @@ final class AppEnvironment {
             )
         }
     }
+
+    /// Sign out: wipe credentials, all session caches, and catalog-only Book rows.
+    /// Downloaded files + their Book rows are left on disk (re-auth re-links via serverID).
+    func signOut() async {
+        try? authStore.clear()
+        await opds?.invalidateAll()
+        Self.performSignOut(context: modelContext)
+        try? bootIfCredentialsPresent()   // re-run guard, clears sync/opds
+    }
+
+    /// Synchronous half of sign-out, broken out for unit-testability. Wipes
+    /// the image + URL caches and deletes catalog-only Book rows. The async
+    /// `signOut()` wraps this with the keychain + OPDS-cache invalidations.
+    static func performSignOut(context: ModelContext) {
+        ImageMemoryCache.shared.removeAll()
+        URLCache.shared.removeAllCachedResponses()
+
+        // Delete catalog-only Book rows (no local file).
+        if let books = try? context.fetch(FetchDescriptor<Book>()) {
+            for book in books where book.fileURL == nil {
+                context.delete(book)
+            }
+        }
+        try? context.save()
+    }
 }
