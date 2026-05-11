@@ -22,6 +22,12 @@ struct BrowseRootView: View {
                 FeedView(feedURL: route.url)
                     .navigationTitle("Results: \(route.query)")
             }
+            .navigationDestination(for: OpenReaderRoute.self) { route in
+                ReaderView(bookID: route.bookID)
+            }
+            .environment(\.openBook, { book in
+                path.append(OpenReaderRoute(bookID: book.id))
+            })
         }
         .modifier(ConditionalSearchable(
             shouldShow: rootLoader?.searchDescriptorURL != nil,
@@ -64,6 +70,23 @@ struct BrowseRootView: View {
 struct SearchRoute: Hashable {
     let url: URL
     let query: String
+}
+
+struct OpenReaderRoute: Hashable {
+    let bookID: UUID
+}
+
+// MARK: - openBook environment value
+
+struct OpenBookActionKey: EnvironmentKey {
+    static let defaultValue: (Book) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var openBook: (Book) -> Void {
+        get { self[OpenBookActionKey.self] }
+        set { self[OpenBookActionKey.self] = newValue }
+    }
 }
 
 /// Conditionally attach `.searchable` only when the root feed has advertised

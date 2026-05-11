@@ -3,114 +3,47 @@ import SwiftData
 import Core
 
 struct BookDetailView: View {
-    /// Source kind. Browse passes an entry; Downloaded passes a SwiftData book.
-    enum Source: Equatable {
-        case entry(AcquisitionEntry)
-        case book(Book)
-    }
-
-    let source: Source
+    let book: Book
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var context
 
-    @State private var selectedFormat: BookFormat?
-    @State private var downloading = false
     @State private var downloadError: String?
 
-    init(entry: AcquisitionEntry) {
-        self.source = .entry(entry)
-    }
-
     init(book: Book) {
-        self.source = .book(book)
+        self.book = book
     }
 
     var body: some View {
         Form {
-            Section("Title") { Text(title) }
-            if !authors.isEmpty {
+            Section("Title") { Text(book.title) }
+            if !book.authors.isEmpty {
                 Section("Authors") {
-                    ForEach(authors, id: \.self) { Text($0) }
+                    ForEach(book.authors, id: \.self) { Text($0) }
                 }
             }
-            formatSection(acquisitions: acquisitions)
-            actionSection(resolvedBook: localBook, sourceAcquisitions: acquisitions)
+            Section("Format") {
+                Text(book.format.rawValue.uppercased())
+            }
+            actionSection
         }
-        .navigationTitle(title)
+        .navigationTitle(book.title)
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    // MARK: - Derived
-
-    private var localBook: Book? {
-        switch source {
-        case .book(let b): return b
-        case .entry(let e): return Self.findBook(serverID: e.serverID, context: context)
-        }
-    }
-
-    private var title: String {
-        switch source {
-        case .book(let b): return b.title
-        case .entry(let e): return e.title
-        }
-    }
-
-    private var authors: [String] {
-        switch source {
-        case .book(let b): return b.authors
-        case .entry(let e): return e.authors
-        }
-    }
-
-    private var acquisitions: [Acquisition] {
-        switch source {
-        case .entry(let e): return e.acquisitions
-        case .book(let b):
-            return [Acquisition(href: b.acquisitionURL, mimeType: "", format: b.format)]
-        }
     }
 
     // MARK: - Sections
 
     @ViewBuilder
-    private func formatSection(acquisitions: [Acquisition]) -> some View {
-        if acquisitions.count > 1 {
-            Section("Format") {
-                Picker("Format", selection: Binding(
-                    get: { selectedFormat ?? acquisitions[0].format },
-                    set: { selectedFormat = $0 }
-                )) {
-                    ForEach(acquisitions) { acq in
-                        Text(acq.format.rawValue.uppercased()).tag(acq.format)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
-        } else if let only = acquisitions.first {
-            Section("Format") {
-                Text(only.format.rawValue.uppercased())
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func actionSection(resolvedBook: Book?,
-                               sourceAcquisitions: [Acquisition]) -> some View {
+    private var actionSection: some View {
         Section {
-            if let book = resolvedBook, book.fileURL != nil {
+            if book.fileURL != nil {
                 NavigationLink("Open") { ReaderView(bookID: book.id) }
                 Button("Remove download", role: .destructive) {
                     remove(book)
                 }
             } else {
-                Button {
-                    Task { await download(sourceAcquisitions: sourceAcquisitions) }
-                } label: {
-                    if downloading { ProgressView() } else { Text("Download") }
-                }
-                .disabled(downloading || sourceAcquisitions.isEmpty)
+                Text("Not downloaded")
+                    .foregroundStyle(.secondary)
             }
             if let downloadError {
                 Text(downloadError).foregroundStyle(.orange)
@@ -119,22 +52,6 @@ struct BookDetailView: View {
     }
 
     // MARK: - Actions
-
-    private func download(sourceAcquisitions: [Acquisition]) async {
-        guard case .entry(let entry) = source else { return }
-        let chosen = sourceAcquisitions.first {
-            $0.format == (selectedFormat ?? sourceAcquisitions[0].format)
-        } ?? sourceAcquisitions[0]
-        let book = Self.upsertBook(entry: entry, chosen: chosen, context: context)
-        downloading = true
-        defer { downloading = false }
-        do {
-            _ = try await env.downloads?.download(book: book)
-            downloadError = nil
-        } catch {
-            downloadError = error.localizedDescription
-        }
-    }
 
     private func remove(_ book: Book) {
         if let url = book.fileURL {
@@ -155,38 +72,5 @@ struct BookDetailView: View {
             context.delete(progress)
         }
         try? context.save()
-    }
-
-    // MARK: - Helpers (static for testability)
-
-    static func findBook(serverID: String, context: ModelContext) -> Book? {
-        let id = serverID
-        let descriptor = FetchDescriptor<Book>(
-            predicate: #Predicate { $0.serverID == id }
-        )
-        return try? context.fetch(descriptor).first
-    }
-
-    static func upsertBook(entry: AcquisitionEntry, chosen: Acquisition,
-                           context: ModelContext) -> Book {
-        if let existing = findBook(serverID: entry.serverID, context: context) {
-            existing.title = entry.title
-            existing.authors = entry.authors
-            existing.acquisitionURL = chosen.href
-            existing.opdsHref = chosen.href
-            existing.format = chosen.format
-            return existing
-        }
-        let book = Book(
-            serverID: entry.serverID,
-            title: entry.title,
-            authors: entry.authors,
-            opdsHref: chosen.href,
-            acquisitionURL: chosen.href,
-            format: chosen.format
-        )
-        context.insert(book)
-        try? context.save()
-        return book
     }
 }
