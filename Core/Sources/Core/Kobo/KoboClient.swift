@@ -97,3 +97,34 @@ public extension KoboClient {
     /// requests; anything past this is a server bug or a hostile response.
     static var maxSyncPages: Int { 100 }
 }
+
+public extension KoboClient {
+    /// `GET /v1/library/<uuid>/state` — returns the current reading state for
+    /// a single book, or `nil` if the server responds 404 (book unknown / no
+    /// state recorded yet).
+    func fetchState(bookUUID: String) async throws -> KoboReadingState? {
+        let url = baseURL.appendingPathComponent("v1/library/\(bookUUID)/state")
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        do {
+            let (data, _) = try await http.data(for: req)
+            let states = try KoboDecoder.decode([KoboReadingState].self, from: data)
+            return states.first
+        } catch HTTPError.notFound {
+            return nil
+        }
+    }
+
+    /// `PUT /v1/library/<uuid>/state` — pushes one or more reading-state
+    /// updates (bookmark, status, statistics) for a book. The server's
+    /// `UpdateResults` envelope is currently ignored; surface failures via
+    /// the underlying HTTPError status.
+    func pushState(bookUUID: String, update: KoboStateUpdate) async throws {
+        let url = baseURL.appendingPathComponent("v1/library/\(bookUUID)/state")
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(update)
+        _ = try await http.data(for: req)
+    }
+}

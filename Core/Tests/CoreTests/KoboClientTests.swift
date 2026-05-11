@@ -83,6 +83,78 @@ struct KoboClientTests {
         #expect(result.nextSyncToken == "T2")
     }
 
+    @Test func fetchStateReturnsSingleEntry() async throws {
+        var capturedPath: String?
+        var capturedMethod: String?
+        MockURLProtocol.handler = { req in
+            capturedPath = req.url?.path
+            capturedMethod = req.httpMethod
+            let body = #"""
+            [{
+              "EntitlementId":"uuid-1","Created":"x","LastModified":"x","PriorityTimestamp":"x",
+              "StatusInfo":{"LastModified":"x","Status":"Reading","TimesStartedReading":1},
+              "Statistics":{"LastModified":"x"},
+              "CurrentBookmark":{"LastModified":"x","ProgressPercent":42.0}
+            }]
+            """#
+            return (
+                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                body.data(using: .utf8)!
+            )
+        }
+        let client = makeClient()
+        let state = try await client.fetchState(bookUUID: "uuid-1")
+        #expect(capturedPath == "/kobo/TOKEN/v1/library/uuid-1/state")
+        #expect(capturedMethod == "GET")
+        #expect(state?.currentBookmark?.progressPercent == 42.0)
+    }
+
+    @Test func fetchStateReturnsNilOn404() async throws {
+        MockURLProtocol.handler = { req in
+            (HTTPURLResponse(url: req.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        let client = makeClient()
+        let state = try await client.fetchState(bookUUID: "missing")
+        #expect(state == nil)
+    }
+
+    @Test func pushStateSucceeds() async throws {
+        var capturedPath: String?
+        var capturedMethod: String?
+        var capturedContentType: String?
+        var bodyJSON: [String: Any]?
+
+        MockURLProtocol.handler = { req in
+            capturedPath = req.url?.path
+            capturedMethod = req.httpMethod
+            capturedContentType = req.value(forHTTPHeaderField: "Content-Type")
+            let bodyData = req.readBodyStream()
+            bodyJSON = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+            let resp = #"{ "RequestResult": "Success", "UpdateResults": [] }"#
+            return (
+                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                resp.data(using: .utf8)!
+            )
+        }
+        let client = makeClient()
+        let update = KoboStateUpdate(readingStates: [
+            .init(
+                currentBookmark: .init(progressPercent: 42, contentSourceProgressPercent: 16, location: nil),
+                statusInfo: .init(status: .reading),
+                statistics: nil
+            )
+        ])
+        try await client.pushState(bookUUID: "uuid-1", update: update)
+
+        #expect(capturedMethod == "PUT")
+        #expect(capturedPath == "/kobo/TOKEN/v1/library/uuid-1/state")
+        #expect(capturedContentType == "application/json")
+        let states = bodyJSON?["ReadingStates"] as? [[String: Any]]
+        #expect(states?.count == 1)
+        let bookmark = states?.first?["CurrentBookmark"] as? [String: Any]
+        #expect((bookmark?["ProgressPercent"] as? Double) == 42)
+    }
+
     // MARK: helpers
     private func makeClient() -> KoboClient {
         let http = HTTPClient(session: MockURLProtocol.session())

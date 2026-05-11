@@ -31,3 +31,23 @@ public final class MockURLProtocol: URLProtocol {
         return URLSession(configuration: config)
     }
 }
+
+public extension URLRequest {
+    /// Drains `httpBodyStream` into `Data`. URLProtocol delivers PUT/POST
+    /// bodies via the stream (never `httpBody`), so tests that need to
+    /// inspect the request body must call this from inside the handler.
+    func readBodyStream() -> Data {
+        guard let stream = httpBodyStream else { return Data() }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        let bufferSize = 4096
+        var buffer = [UInt8](repeating: 0, count: bufferSize)
+        while stream.hasBytesAvailable {
+            let n = stream.read(&buffer, maxLength: bufferSize)
+            if n <= 0 { break }
+            data.append(buffer, count: n)
+        }
+        return data
+    }
+}
