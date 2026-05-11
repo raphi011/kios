@@ -47,12 +47,14 @@ struct ReaderView: View {
 
     var body: some View {
         ZStack {
-            content
+            // EPUB content stretches edge-to-edge for immersive reading;
+            // chrome and HUD respect the safe area so they don't draw
+            // behind the Dynamic Island / status bar / home indicator.
+            content.ignoresSafeArea()
             chromeOverlay
             hudOverlay
         }
-        .ignoresSafeArea()
-        .background(Color.black.ignoresSafeArea())
+        .background(Color(.systemBackground).ignoresSafeArea())
         .simultaneousGesture(swipeDownDismissGesture())
         .task(id: book?.fileURL) { await loadPublicationIfReady() }
         .onChange(of: scenePhase) { _, newPhase in

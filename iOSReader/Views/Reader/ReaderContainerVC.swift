@@ -40,16 +40,10 @@ final class ReaderContainerVC: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         installNavigator()
+        installInputObservers()
         installInputHandlers()
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        // First-responder is required for `UIKeyCommand`s to fire.
-        becomeFirstResponder()
-    }
-
-    override var canBecomeFirstResponder: Bool { true }
     override var prefersStatusBarHidden: Bool { statusBarHidden }
     override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { .fade }
 
@@ -106,15 +100,39 @@ final class ReaderContainerVC: UIViewController {
         ])
     }
 
-    // MARK: - Input handlers
+    // MARK: - Input observers (taps, arrow keys)
+
+    /// Wires Readium's canonical input layer:
+    /// - `DirectionalNavigationAdapter` handles edge-tap page turns AND
+    ///   arrow-key navigation. Bound *first* so its observers see events
+    ///   before ours.
+    /// - `.activate` observer handles center taps (chrome toggle). Fires
+    ///   only when the adapter returned `false` (tap wasn't on an edge).
+    /// - `.key(.escape)` dismisses the reader.
+    private func installInputObservers() {
+        guard let nav = navigator else { return }
+
+        DirectionalNavigationAdapter(
+            pointerPolicy: .init(types: [.mouse, .touch])
+        ).bind(to: nav)
+
+        nav.addObserver(.activate { [weak self] _ in
+            self?.onCenterTap?()
+            return true
+        })
+
+        nav.addObserver(.key(.escape) { [weak self] in
+            self?.onDismissRequested?()
+            return true
+        })
+    }
+
+    // MARK: - Pinch (font size)
 
     private func installInputHandlers() {
         let handlers = ReaderInputHandlers(currentFontSizePct: { [weak self] in
             self?.fontSizePct ?? 100
         })
-        handlers.onLeftTap = { [weak self] in self?.turnBackward() }
-        handlers.onRightTap = { [weak self] in self?.turnForward() }
-        handlers.onCenterTap = { [weak self] in self?.onCenterTap?() }
         handlers.onPinchUpdate = { [weak self] pct in self?.onPinchUpdate?(pct) }
         handlers.onPinchCommit = { [weak self] pct in
             // The container is the only place that owns the navigator handle.
@@ -133,18 +151,6 @@ final class ReaderContainerVC: UIViewController {
     /// Bridges pinch commit out to SwiftUI so it can persist via @AppStorage.
     var onPinchCommitToSwiftUI: ((Int) -> Void)?
 
-    // MARK: - Page turns
-
-    private func turnForward() {
-        guard let nav = navigator else { return }
-        Task { _ = await nav.goForward(options: NavigatorGoOptions(animated: false)) }
-    }
-
-    private func turnBackward() {
-        guard let nav = navigator else { return }
-        Task { _ = await nav.goBackward(options: NavigatorGoOptions(animated: false)) }
-    }
-
     // MARK: - Font size
 
     private func applyFontSize() {
@@ -152,35 +158,6 @@ final class ReaderContainerVC: UIViewController {
         let prefs = EPUBPreferences(fontSize: Double(fontSizePct) / 100.0)
         nav.submitPreferences(prefs)
     }
-
-    // MARK: - Hardware keys
-
-    override var keyCommands: [UIKeyCommand]? {
-        [
-            UIKeyCommand(
-                title: "Next Page",
-                action: #selector(keyForward),
-                input: UIKeyCommand.inputRightArrow,
-                discoverabilityTitle: "Next Page"
-            ),
-            UIKeyCommand(
-                title: "Previous Page",
-                action: #selector(keyBackward),
-                input: UIKeyCommand.inputLeftArrow,
-                discoverabilityTitle: "Previous Page"
-            ),
-            UIKeyCommand(
-                title: "Close",
-                action: #selector(keyDismiss),
-                input: UIKeyCommand.inputEscape,
-                discoverabilityTitle: "Close Reader"
-            ),
-        ]
-    }
-
-    @objc private func keyForward() { turnForward() }
-    @objc private func keyBackward() { turnBackward() }
-    @objc private func keyDismiss() { onDismissRequested?() }
 }
 
 // MARK: - EPUBNavigatorDelegate

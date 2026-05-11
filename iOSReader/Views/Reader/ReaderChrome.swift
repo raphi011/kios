@@ -19,7 +19,7 @@ struct ReaderTopBar: View {
             Text(title)
                 .font(.headline)
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(.tail)
             Spacer(minLength: 0)
             // Right-side spacer keeps the title visually centered against the
             // close button's 44pt hit target.
