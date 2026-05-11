@@ -170,6 +170,26 @@ struct KoboTypesTests {
             Issue.record("expected deletedTag second")
         }
     }
+
+    @Test func stateUpdateEncodesCorrectly() throws {
+        let update = KoboStateUpdate(readingStates: [
+            .init(
+                currentBookmark: .init(
+                    progressPercent: 45.0,
+                    contentSourceProgressPercent: 16.0,
+                    location: .init(value: "kobo.10.1", type: "KoboSpan", source: "f_0035.xhtml")
+                ),
+                statusInfo: .init(status: .reading),
+                statistics: nil
+            )
+        ])
+        let data = try JSONEncoder().encode(update)
+        let s = String(data: data, encoding: .utf8)!
+        #expect(s.contains("\"ReadingStates\":["))
+        #expect(s.contains("\"ProgressPercent\":45"))
+        #expect(s.contains("\"Value\":\"kobo.10.1\""))
+        #expect(s.contains("\"Status\":\"Reading\""))
+    }
 }
 
 private struct KoboContributorBag: Decodable {

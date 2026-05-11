@@ -234,3 +234,66 @@ private struct SyncEntryKey: CodingKey {
     var intValue: Int? { nil }
     init?(intValue: Int) { return nil }
 }
+
+public struct KoboStateUpdate: Encodable, Sendable {
+    public let readingStates: [State]
+
+    public struct State: Encodable, Sendable {
+        public let currentBookmark: Bookmark?
+        public let statusInfo: StatusInfo?
+        public let statistics: Statistics?
+
+        public struct Bookmark: Encodable, Sendable {
+            public let progressPercent: Double
+            public let contentSourceProgressPercent: Double
+            public let location: KoboLocation?
+
+            enum CodingKeys: String, CodingKey {
+                case progressPercent = "ProgressPercent"
+                case contentSourceProgressPercent = "ContentSourceProgressPercent"
+                case location = "Location"
+            }
+
+            public init(progressPercent: Double, contentSourceProgressPercent: Double, location: KoboLocation?) {
+                self.progressPercent = progressPercent
+                self.contentSourceProgressPercent = contentSourceProgressPercent
+                self.location = location
+            }
+        }
+
+        public struct StatusInfo: Encodable, Sendable {
+            public let status: KoboReadingStatus
+            enum CodingKeys: String, CodingKey { case status = "Status" }
+            public init(status: KoboReadingStatus) { self.status = status }
+        }
+
+        public struct Statistics: Encodable, Sendable {
+            public let spentReadingMinutes: Int
+            public let remainingTimeMinutes: Int
+            enum CodingKeys: String, CodingKey {
+                case spentReadingMinutes = "SpentReadingMinutes"
+                case remainingTimeMinutes = "RemainingTimeMinutes"
+            }
+            public init(spentReadingMinutes: Int, remainingTimeMinutes: Int) {
+                self.spentReadingMinutes = spentReadingMinutes
+                self.remainingTimeMinutes = remainingTimeMinutes
+            }
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case currentBookmark = "CurrentBookmark"
+            case statusInfo = "StatusInfo"
+            case statistics = "Statistics"
+        }
+
+        public init(currentBookmark: Bookmark?, statusInfo: StatusInfo?, statistics: Statistics?) {
+            self.currentBookmark = currentBookmark
+            self.statusInfo = statusInfo
+            self.statistics = statistics
+        }
+    }
+
+    public init(readingStates: [State]) { self.readingStates = readingStates }
+
+    enum CodingKeys: String, CodingKey { case readingStates = "ReadingStates" }
+}
