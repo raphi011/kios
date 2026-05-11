@@ -57,8 +57,10 @@ public struct KoboBackend: SyncBackend {
     }
 
     public func pushProgress(_ p: CanonicalProgress, for id: BookIdentity) async throws {
-        // Implemented in Task 5.3
-        fatalError("not implemented")
+        // Real body lands in Task 5.3. Throw rather than fatalError so the
+        // type honors the SyncBackend.throws contract: an accidental caller
+        // gets an actionable error, not a process crash.
+        throw BackendError.serverShapeUnexpected(detail: "KoboBackend.pushProgress not yet implemented")
     }
 }
 
