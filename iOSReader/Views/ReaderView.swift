@@ -248,6 +248,27 @@ private struct DownloadingView: View {
                 }
             }
 
+            // Diagnostic strip — temporary while we debug the "stuck on Preparing"
+            // path. Shows the download row's actual state + the book row's fileURL
+            // so we can tell whether the download genuinely hasn't started, has
+            // finished but SwiftData isn't propagating fileURL, or never created
+            // a Download row at all.
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Debug").font(.caption2.weight(.bold)).foregroundStyle(.secondary)
+                Text("download.state: \(download?.state.rawValue ?? "<no download row>")")
+                Text("bytes: \(download?.bytesReceived ?? 0) / \(download?.totalBytes ?? 0)")
+                Text("book.fileURL: \(book.fileURL?.absoluteString ?? "nil")")
+                Text("book.id: \(book.id.uuidString.prefix(8))")
+            }
+            .font(.caption2.monospaced())
+            .foregroundStyle(.secondary)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.secondary.opacity(0.1))
+            )
+            .padding(.horizontal, 24)
+
             Spacer()
         }
     }
