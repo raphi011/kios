@@ -35,3 +35,18 @@ enum FontSizeStep {
         return Int(bounded)
     }
 }
+
+/// Decides whether a drag-down gesture should dismiss the reader.
+enum SwipeDismissPolicy {
+    static let minDistance: CGFloat = 120
+    static let dominanceRatio: CGFloat = 1.5
+
+    static func shouldDismiss(translation: CGSize, velocity: CGSize) -> Bool {
+        // Must be a downward drag past the threshold.
+        guard translation.height > minDistance else { return false }
+        // Must end with downward velocity (excludes hesitations and reversals).
+        guard velocity.height > 0 else { return false }
+        // Must be vertically dominant (excludes diagonal scrolls).
+        return abs(translation.height) > dominanceRatio * abs(translation.width)
+    }
+}
