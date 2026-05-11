@@ -2,24 +2,32 @@
 
 Native SwiftUI reader for iPhone and iPad that browses, downloads, and reads
 EPUB books from a self-hosted Calibre-Web-Automated (CWA) server, syncing
-reading progress via the KOReader sync ("kosync") protocol.
+reading progress via the KOReader sync ("kosync") protocol or
+the Kobo sync protocol — pick one in Settings.
 
 iOS 17+ / iPadOS 17+. macOS deferred. Built with Swift 5.10, Xcode 26+.
 
 ## Status
 
-v1 in development on `feat/v1`. Phases 0–5 implemented and unit-tested
-end-to-end. Manual smoke test against a live CWA pending.
+v1 in development on `feat/v1`. Phases 0–9 implemented and unit-tested
+end-to-end (86 Core tests + 82 iOS tests, all passing). Manual smoke
+test against a live CWA pending.
 
 ## Server requirements
 
-- **Calibre-Web-Automated (CWA)** — the only supported backend in v1.
-  Upstream `janeczku/calibre-web` is **not** supported because it does not
-  ship a `/kosync` endpoint (Kobo sync only).
-- HTTPS strongly recommended. Plain HTTP requires an `NSAppTransportSecurity`
-  exception in `Info.plist` for the specific host.
-- A CWA user account; the same credential is used for both `/opds/` (catalog
-  + downloads) and `/kosync` (progress sync).
+The app supports two sync protocols; pick one per server config in Settings.
+
+- **KOReader Sync (kosync)** — requires Calibre-Web-Automated (CWA).
+  Upstream janeczku/calibre-web does NOT ship a `/kosync` endpoint.
+  The same credentials are used for `/opds/` (catalog + downloads) and
+  `/kosync` (progress sync).
+- **Kobo Sync** — works on either CWA or vanilla calibre-web; both ship
+  a Kobo sync endpoint at `/kobo/{token}/`. The sync URL is generated
+  via the server's admin panel and pasted into the app's Settings —
+  the token in the URL path is the only credential.
+
+HTTPS strongly recommended either way. Plain HTTP requires an
+`NSAppTransportSecurity` exception in `Info.plist` for the specific host.
 
 ## Build & run
 
@@ -60,6 +68,58 @@ The split keeps pure-Foundation code (~70% of testable logic) on a fast
 `swift test` loop. Anything touching SwiftData, UIKit, or Readium lives in
 the iOS app target.
 
+## Sync protocols
+
+The app talks to its server through one of two interchangeable protocols.
+Both translate the same canonical progress (percentage + Readium locator
+JSON + timestamp + device tag) to and from the protocol's wire format.
+
+| | KOReader Sync (`kosync`) | Kobo Sync |
+|---|---|---|
+| Wire format | `chapter\|intra` progress string | XPath / CSS-selector bookmark + percentage |
+| Identity key | partial MD5 of the EPUB file | Kobo entitlement UUID (from server) |
+| Catalog source | OPDS feed (`/opds/`) | Kobo library sync (`/v1/library/sync`) |
+| Locator precision | ~2% (percentage-based) | within 1 sentence (KEPUB) |
+| Multi-device | KOReader + ko-reader + this app | Real Kobo + this app |
+| Auth | Basic credentials | URL-path token |
+| Server requirement | CWA (kosync sidecar) | CWA or vanilla calibre-web |
+
+### Picking a protocol
+
+- **If you also use a real Kobo e-reader**: pick Kobo. Reading progress
+  syncs both ways with the physical device through the same CWA/calibre-web.
+- **If you use KOReader on other devices** (Linux, Android, KOReader's
+  Kindle build): pick kosync. Cross-app sync works between this app
+  and any KOReader instance pointed at the same CWA.
+- **If you use neither**: either works; kosync is fractionally simpler
+  to set up (just URL + username + password), Kobo gives finer-grained
+  position recovery.
+
+### Switching protocols
+
+Settings → Sync protocol picker → enter the new protocol's credentials →
+Test & Save. The app shows a confirmation dialog before persisting,
+warning that the library will be refreshed against the new server.
+Books not present on the new server become **archived** (hidden from the
+main shelf but kept on disk with reading progress intact); books that
+re-appear in a later refresh come back automatically.
+
+Sync writes already buffered under the previous protocol still flush to
+the OLD protocol's backend — the protocol is pinned at buffer time
+(see `SyncService.bufferLocator` → `pendingProtocol` in `ReadingProgress`).
+This prevents a mid-buffer protocol switch from misrouting writes.
+
+### Known v1 limitations
+
+- A real Kobo's KEPUB file format isn't openable in the app's reader
+  today (PDF/CBZ limitation applies to KEPUB too). Sync works — you can
+  open the same book as EPUB locally and the Kobo location maps in.
+- Cross-protocol identity merge happens by **normalized title + authors**
+  (lowercase, alphanumeric-only) when neither a `koboBookUUID` nor a
+  `partialMD5` is shared. Edge cases (typo'd titles, missing authors)
+  may produce a duplicate row that the user can manually merge by
+  re-running Refresh after the metadata is corrected on the server.
+
 ## Formats supported in v1
 
 - **EPUB** — full Readium navigator (pagination, themes, font sizing).
@@ -85,21 +145,27 @@ the iOS app target.
 - Multiple library servers.
 - Audiobooks.
 - LCP DRM.
-- iCloud sync of app state — **kosync is the cross-device sync**, no parallel
-  mechanism by design.
+- iCloud sync of app state — the selected sync protocol IS the cross-device
+  sync, no parallel mechanism by design.
 
 ## Manual smoke test
 
 Required before tagging a release. See
-`docs/superpowers/plans/2026-05-10-ios-reader-v1.md` Task 6.1 for the
-walkthrough. In short:
+`docs/superpowers/plans/2026-05-11-multi-protocol-sync.md` Task 10.2 for
+the full per-protocol walkthrough. In short:
 
-1. Run a reachable CWA instance with HTTPS and at least one EPUB.
-2. Launch the app in the simulator; enter URL + credentials in Settings.
+1. Run a reachable CWA instance with HTTPS and at least one EPUB. The
+   cluster at `https://cwa.example.com` is suitable.
+2. Launch the app in the simulator. In Settings, pick a protocol:
+   - **kosync**: enter URL + username + password.
+   - **kobo**: paste the sync URL from CWA admin → enable Kobo sync.
 3. Verify the library populates, download a book, page through it.
-4. Use `curl` (or KOReader itself) to push new progress for the same
-   `partialMD5`; reopen in the app and confirm the "Continue from another
-   device?" prompt appears.
+4. For kosync, verify cross-device pull by pushing new progress via curl
+   to `/kosync/{document_md5}`. For Kobo, verify cross-device pull from
+   a real Kobo against the same server. Reopen the book in the app,
+   confirm the "Continue from another device?" prompt appears.
+5. Switch protocols in Settings, confirm the library refreshes and books
+   only on the previous server become archived (hidden, not deleted).
 
 ## Known limitations
 
@@ -108,9 +174,6 @@ walkthrough. In short:
 
 ## Known follow-ups
 
-- No "Sign out" UI yet; if the AuthStore is ever cleared programmatically,
-  downloaded books remain on disk and the user gets bounced to Settings.
-  A proper Sign Out should offer to wipe downloads.
 - PDF / CBZ reading via `ReadiumAdapterGCDWebServer`.
 - Real chapter index in `pushLocator` (currently hard-coded to 0; we rely on
   `percentage` as the lingua franca cross-reader).
