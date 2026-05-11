@@ -115,18 +115,18 @@ struct FeedView: View {
         if let existing = BookActions.findBook(serverID: entry.serverID,
                                                format: format, context: modelContext),
            existing.filename != nil {
-            path.append(OpenReaderRoute(bookID: existing.id))
+            env.openReader(existing.id)
             return
         }
         guard let chosen = entry.acquisitions.first(where: { $0.format == format })
         else { return }
         let book = BookActions.upsertBook(entry: entry, chosen: chosen,
                                           context: modelContext)
-        // Kick off the download in the background and push the reader
+        // Kick off the download in the background and open the reader
         // immediately. ReaderView shows a downloading-state UI until the
         // file lands, then transitions to the actual EPUB navigator.
         Task { _ = try? await env.downloads?.download(book: book) }
-        path.append(OpenReaderRoute(bookID: book.id))
+        env.openReader(book.id)
     }
 
     private func buttonLabel(entry: AcquisitionEntry, acq: Acquisition) -> String {
