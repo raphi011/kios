@@ -12,13 +12,17 @@ import Foundation
 /// blueprint doesn't tell us — so we tag fetched progress with a sentinel
 /// `deviceID = "kobo-peer"`. LWW reconciliation only cares that this is
 /// *not* our own deviceID; the human-facing label stays generic ("Kobo").
-public final class KoboBackend: SyncBackend, CatalogBackend, @unchecked Sendable {
-    public let client: KoboClient
-    public let deviceID: String
-    public let deviceName: String
+///
+/// Implemented as an `actor` (rather than a `class` + `@unchecked Sendable`)
+/// because `listLibrary`/`authenticate` mutate cached state across suspension
+/// points. The type system enforces serial access; callers can pass instances
+/// freely across task boundaries.
+public actor KoboBackend: SyncBackend, CatalogBackend {
+    public nonisolated let client: KoboClient
+    public nonisolated let deviceID: String
+    public nonisolated let deviceName: String
 
     private var imageURLTemplate: String?
-    private var syncToken: String?
 
     public init(client: KoboClient, deviceID: String, deviceName: String) {
         self.client = client
@@ -119,8 +123,12 @@ public final class KoboBackend: SyncBackend, CatalogBackend, @unchecked Sendable
         if imageURLTemplate == nil {
             try await authenticate()
         }
+        // v1: full-sync each call. Incremental sync (passing the previous
+        // nextSyncToken back) lands when persistence of the token across app
+        // launches is wired up; storing it only in memory would mean a
+        // restart silently degrades a "should-be-incremental" sync into a
+        // full one with no diagnostic.
         let result = try await client.librarySync(syncToken: nil)
-        self.syncToken = result.nextSyncToken
 
         var entries: [CatalogEntry] = []
         for entry in result.entries {

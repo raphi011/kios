@@ -136,6 +136,9 @@ struct KoboBackendTests {
         )
         try await backend.authenticate()       // populates image template
         let entries = try await backend.listLibrary()
+        // Initialization + library sync = 2 requests on the wire. Locks in
+        // the auto-authenticate behavior when the template cache is warm.
+        #expect(callCount == 2)
         #expect(entries.count == 1)
         #expect(entries[0].title == "Test")
         #expect(entries[0].authors == ["Author One"])
