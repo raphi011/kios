@@ -72,7 +72,7 @@ final class SyncService {
         upsertLocal(
             bookID: book.id,
             locatorJSON: locatorJSON,
-            progressString: progressString,
+            koSyncProgressString: progressString,
             percentage: percentage,
             pendingUpload: true
         )
@@ -84,16 +84,18 @@ final class SyncService {
     func flushPendingProgress(for book: Book) async {
         guard let hash = book.partialMD5,
               let row = currentLocalProgress(for: book.id),
-              row.pendingUpload else { return }
+              row.pendingUpload,
+              let progressString = row.koSyncProgressString else { return }
         do {
             try await kosync.putProgress(.init(
                 document: hash,
-                progress: row.progressString,
+                progress: progressString,
                 percentage: row.percentage,
                 device: deviceName,
                 deviceID: deviceID
             ))
             row.pendingUpload = false
+            row.pendingProtocol = nil
             try? context.save()
         } catch {
             // Leave pendingUpload = true; next trigger retries.
@@ -129,26 +131,34 @@ final class SyncService {
     private func upsertLocal(
         bookID: UUID,
         locatorJSON: String,
-        progressString: String,
+        koSyncProgressString: String,
         percentage: Double,
         pendingUpload: Bool
     ) {
+        // Pin the protocol at buffer time so a mid-flush protocol switch still
+        // flushes the buffered write via the originally-targeted backend
+        // (Phase 7.4 reads this).
+        let pendingProtocol: String? = pendingUpload ? "kosync" : nil
         if let existing = currentLocalProgress(for: bookID) {
             existing.locatorJSON = locatorJSON
-            existing.progressString = progressString
+            existing.koSyncProgressString = koSyncProgressString
             existing.percentage = percentage
             existing.updatedAt = .now
             existing.deviceID = deviceID
             existing.pendingUpload = pendingUpload
+            existing.pendingProtocol = pendingProtocol
         } else {
             context.insert(ReadingProgress(
                 bookID: bookID,
                 locatorJSON: locatorJSON,
-                progressString: progressString,
+                koSyncProgressString: koSyncProgressString,
+                koboLocationSource: nil,
+                koboLocationValue: nil,
                 percentage: percentage,
                 updatedAt: .now,
                 deviceID: deviceID,
-                pendingUpload: pendingUpload
+                pendingUpload: pendingUpload,
+                pendingProtocol: pendingProtocol
             ))
         }
         try? context.save()

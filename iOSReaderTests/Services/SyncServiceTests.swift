@@ -137,10 +137,16 @@ struct SyncServiceTests {
             context.insert(book)
             if let p = localPercentage {
                 context.insert(ReadingProgress(
-                    bookID: book.id, locatorJSON: "{}",
-                    progressString: "0|0.0",
-                    percentage: p, updatedAt: .now,
-                    deviceID: deviceID, pendingUpload: false
+                    bookID: book.id,
+                    locatorJSON: "{}",
+                    koSyncProgressString: "0|0.0",
+                    koboLocationSource: nil,
+                    koboLocationValue: nil,
+                    percentage: p,
+                    updatedAt: .now,
+                    deviceID: deviceID,
+                    pendingUpload: false,
+                    pendingProtocol: nil
                 ))
             }
             try context.save()
@@ -341,16 +347,28 @@ struct SyncServiceBufferFlushTests {
         context.insert(book2)
 
         context.insert(ReadingProgress(
-            bookID: book1.id, locatorJSON: "{}",
-            progressString: "0|0.3",
-            percentage: 0.3, updatedAt: .now,
-            deviceID: "us", pendingUpload: true
+            bookID: book1.id,
+            locatorJSON: "{}",
+            koSyncProgressString: "0|0.3",
+            koboLocationSource: nil,
+            koboLocationValue: nil,
+            percentage: 0.3,
+            updatedAt: .now,
+            deviceID: "us",
+            pendingUpload: true,
+            pendingProtocol: "kosync"
         ))
         context.insert(ReadingProgress(
-            bookID: book2.id, locatorJSON: "{}",
-            progressString: "0|0.6",
-            percentage: 0.6, updatedAt: .now,
-            deviceID: "us", pendingUpload: true
+            bookID: book2.id,
+            locatorJSON: "{}",
+            koSyncProgressString: "0|0.6",
+            koboLocationSource: nil,
+            koboLocationValue: nil,
+            percentage: 0.6,
+            updatedAt: .now,
+            deviceID: "us",
+            pendingUpload: true,
+            pendingProtocol: "kosync"
         ))
         try context.save()
 
