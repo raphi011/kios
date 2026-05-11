@@ -79,6 +79,12 @@ struct KoboTypesTests {
         let bag = try KoboDecoder.decode(KoboContributorBag.self, from: json)
         #expect(bag.contributors == [])
     }
+
+    @Test func contributorsNull() throws {
+        let json = #"{"Contributors": null}"#.data(using: .utf8)!
+        let bag = try KoboDecoder.decode(KoboContributorBag.self, from: json)
+        #expect(bag.contributors == [])
+    }
 }
 
 private struct KoboContributorBag: Decodable {
