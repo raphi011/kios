@@ -96,12 +96,58 @@ struct FeedLoaderTests {
         #expect(loader.entries.count == 1) // preserved
         if case .failed = loader.phase {} else { Issue.record("expected .failed") }
     }
+
+    @Test func refreshDuringLoadingMoreDiscardsStaleAppend() async {
+        // Pull-to-refresh while infinite-scroll has a slow next-page fetch
+        // in flight: the slow next-page completion must NOT append onto the
+        // freshly-refreshed entries.
+        let url1 = URL(string: "https://example/opds/?offset=0")!
+        let url2 = URL(string: "https://example/opds/?offset=60")!
+        let pub: (String) -> OPDSFeed.Entry = { id in
+            .acquisition(.init(serverID: id, title: id, authors: [],
+                               summary: nil, publishedAt: nil,
+                               acquisitions: [.init(href: URL(string: "https://e/\(id).epub")!,
+                                                    mimeType: "application/epub+zip",
+                                                    format: .epub)],
+                               thumbnailURL: nil, coverURL: nil))
+        }
+        let opds = FakeOPDSClient(responses: [
+            url1: .success(.init(title: "Stale", entries: [pub("page1")],
+                                 nextURL: url2, searchDescriptorURL: nil)),
+            url2: .delayedSuccess(.init(title: "x", entries: [pub("stale-page2")],
+                                        nextURL: nil, searchDescriptorURL: nil),
+                                  delayNanoseconds: 200_000_000),
+        ])
+        let loader = FeedLoader(opds: opds, initialURL: url1)
+        await loader.loadFirstPage()
+        // Start a slow next-page fetch.
+        async let inFlightNext: () = loader.loadNextPage()
+        // Yield briefly so loadNextPage enters its await.
+        try? await Task.sleep(nanoseconds: 30_000_000)
+        // Refresh swaps url1's response. The slow next-page completion will
+        // arrive AFTER refresh has reset entries; the generation guard must
+        // drop its append.
+        opds.responses[url1] = .success(.init(title: "Fresh",
+                                              entries: [pub("fresh")],
+                                              nextURL: nil, searchDescriptorURL: nil))
+        await loader.refresh()
+        // Let the stale next-page fetch finish (it should be discarded).
+        await inFlightNext
+
+        #expect(loader.entries.map(\.id) == ["fresh"])
+        #expect(loader.title == "Fresh")
+        // Phase should be the refresh's terminal state (.loaded), not whatever
+        // the stale loadNextPage tried to set last.
+        if case .loaded = loader.phase {} else {
+            Issue.record("expected .loaded, got \(loader.phase)")
+        }
+    }
 }
 
 // MARK: - Fakes
 
 @MainActor
-final class FakeOPDSClient: OPDSClientProtocol, @unchecked Sendable {
+final class FakeOPDSClient: OPDSClientProtocol {
     enum Response {
         case success(OPDSFeed)
         case failure(Error)
