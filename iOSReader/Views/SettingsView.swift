@@ -1,9 +1,16 @@
 import SwiftUI
+import UIKit
 import Core
 
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var activeProtocol: SyncProtocol = .kosync
+    /// Snapshot of the persisted protocol at view-appear time. The "Test &
+    /// Save" path compares against this to decide whether the action would
+    /// switch protocols (and therefore require user confirmation + a library
+    /// refresh).
+    @State private var originalProtocol: SyncProtocol = .kosync
+    @State private var pendingConfirm: Bool = false
     @State private var kosyncServerURL: String = ""
     @State private var kosyncUsername: String = ""
     @State private var kosyncPassword: String = ""
@@ -49,7 +56,7 @@ struct SettingsView: View {
             }
             .disabled(status == .testing)
             Section {
-                Button("Test & Save") { Task { await testAndSave() } }
+                Button("Test & Save") { handleTestAndSaveTap() }
                     .disabled(!canTestAndSave || status == .testing)
                 statusView
             }
@@ -61,6 +68,30 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .task { await loadExisting() }
+        .confirmationDialog(
+            "Switch to \(activeProtocol == .kosync ? "KOReader Sync" : "Kobo Sync")?",
+            isPresented: $pendingConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Switch and refresh library") {
+                Task { await testAndSave() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your library will be refreshed against the new server. Books not present on the new server will be archived (not deleted). Downloaded files and reading progress are preserved.")
+        }
+    }
+
+    private var protocolIsChanging: Bool {
+        activeProtocol != originalProtocol
+    }
+
+    private func handleTestAndSaveTap() {
+        if protocolIsChanging {
+            pendingConfirm = true
+        } else {
+            Task { await testAndSave() }
+        }
     }
 
     private var canTestAndSave: Bool {
@@ -86,7 +117,9 @@ struct SettingsView: View {
     }
 
     private func loadExisting() async {
-        activeProtocol = env.authStore.loadActiveProtocol()
+        let current = env.authStore.loadActiveProtocol()
+        activeProtocol = current
+        originalProtocol = current
         if let creds = try? env.authStore.load() {
             kosyncServerURL = creds.serverURL.absoluteString
             kosyncUsername = creds.basic.username
@@ -161,6 +194,13 @@ struct SettingsView: View {
             )
             env.authStore.saveActiveProtocol(.kosync)
             try env.bootIfCredentialsPresent()
+            if protocolIsChanging {
+                try await refreshLibrary(for: .kosync)
+            }
+            // Sync the baseline AFTER the refresh succeeds — if refresh throws,
+            // we leave `originalProtocol` as-is so the user still sees the
+            // confirmation on a retry rather than silently switching.
+            originalProtocol = .kosync
             status = .ok
         } catch {
             status = .failure("Failed to save: \(error.localizedDescription)")
@@ -186,6 +226,10 @@ struct SettingsView: View {
             )
             env.authStore.saveActiveProtocol(.kobo)
             try env.bootIfCredentialsPresent()
+            if protocolIsChanging {
+                try await refreshLibrary(for: .kobo)
+            }
+            originalProtocol = .kobo
             status = .ok
         } catch HTTPError.unauthorized {
             status = .failure("Token rejected by Kobo sync. Re-generate from CWA admin.")
@@ -194,5 +238,19 @@ struct SettingsView: View {
         } catch {
             status = .failure("Kobo init failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Build a fresh backend pair against the just-saved credentials and run
+    /// `LibraryService.refresh`. We read the active protocol via the
+    /// `BackendFactory` (which calls `loadActiveProtocol()`) — `saveActiveProtocol`
+    /// has already been called on the auth store at this point.
+    private func refreshLibrary(for proto: SyncProtocol) async throws {
+        let device = UIDevice.current.name
+        let (_, catalog) = try BackendFactory.build(
+            auth: env.authStore,
+            deviceID: env.deviceID,
+            deviceName: device
+        )
+        try await env.library.refresh(using: catalog, activeProtocol: proto)
     }
 }

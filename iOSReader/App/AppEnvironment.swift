@@ -15,6 +15,9 @@ final class AppEnvironment {
     /// synchronously to view fetches without crossing context boundaries.
     let modelContext: ModelContext
     let authStore: AuthStore
+    /// Stateless — only depends on `modelContext`, so we construct it eagerly
+    /// at init and keep it available even before credentials are present.
+    let library: LibraryService
 
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
     private(set) var sync: SyncService?
@@ -26,7 +29,9 @@ final class AppEnvironment {
     /// without double-stacking modals.
     var activeReader: ReaderRoute?
 
-    private let deviceID: String
+    /// Exposed (not `private`) so views can build backends for one-off
+    /// operations like the Settings library refresh after a protocol switch.
+    let deviceID: String
 
     init() throws {
         self.modelContainer = try ModelContainer(
@@ -34,6 +39,7 @@ final class AppEnvironment {
         )
         self.modelContext = ModelContext(self.modelContainer)
         self.authStore = AuthStore()
+        self.library = LibraryService(context: self.modelContext)
 
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory
