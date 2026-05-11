@@ -1,5 +1,10 @@
 import SwiftUI
 import Core
+import os
+
+private extension Logger {
+    static let thumbnail = Logger(subsystem: "me.iosreader.iOSReader", category: "thumbnail")
+}
 
 /// SwiftUI image view that fetches with HTTP Basic auth via `HTTPClient`.
 /// `AsyncImage` is unusable for this — it uses `URLSession.shared` and has no hook
@@ -27,15 +32,25 @@ struct AuthenticatedAsyncImage<Placeholder: View>: View {
     }
 
     private func load() async {
-        image = nil
-        guard let url else { return }
+        guard let url else {
+            image = nil
+            return
+        }
         if let cached = ImageMemoryCache.shared.image(for: url) {
             image = cached
             return
         }
-        guard let (data, _) = try? await http.data(for: URLRequest(url: url)),
-              let decoded = UIImage(data: data) else { return }
-        ImageMemoryCache.shared.store(decoded, for: url)
-        image = decoded
+        image = nil   // entering network path — clear stale image while we wait
+        do {
+            let (data, _) = try await http.data(for: URLRequest(url: url))
+            guard let decoded = UIImage(data: data) else { return }
+            ImageMemoryCache.shared.store(decoded, for: url)
+            image = decoded
+        } catch {
+            // Thumbnails fail silently in the UI (placeholder remains visible);
+            // log so a developer attached to the session can diagnose 401s,
+            // network drops, or decode failures.
+            Logger.thumbnail.debug("AuthenticatedAsyncImage fetch failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

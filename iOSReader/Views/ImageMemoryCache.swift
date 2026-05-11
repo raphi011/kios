@@ -16,7 +16,7 @@ final class ImageMemoryCache {
     }
 
     func store(_ image: UIImage, for url: URL) {
-        // Cost ≈ pixels × 4 bytes (RGBA). Safe overapproximation.
+        // UIImage.size is in points; total pixels = (size × scale)². ×4 for RGBA.
         let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
         cache.setObject(image, forKey: url as NSURL, cost: cost)
     }
