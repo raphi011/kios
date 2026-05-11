@@ -11,6 +11,8 @@ struct HomeRootView: View {
     /// N FetchDescriptors for an N-book library.
     @Query private var progresses: [ReadingProgress]
 
+    @Environment(\.modelContext) private var context
+
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
     }
@@ -25,18 +27,46 @@ struct HomeRootView: View {
                         description: Text("Books you download from Browse appear here.")
                     )
                 } else {
-                    List(books) { book in
-                        NavigationLink {
-                            BookDetailView(book: book)
-                        } label: {
-                            HomeBookRow(book: book,
-                                        progress: progressByBookID[book.id] ?? 0)
+                    List {
+                        ForEach(books) { book in
+                            NavigationLink {
+                                ReaderView(bookID: book.id)
+                            } label: {
+                                HomeBookRow(book: book,
+                                            progress: progressByBookID[book.id] ?? 0)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    delete(book)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("Home")
         }
+    }
+
+    private func delete(_ book: Book) {
+        if let url = book.fileURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        let id = book.id
+        if let download = try? context.fetch(
+            FetchDescriptor<Download>(predicate: #Predicate { $0.bookID == id })
+        ).first {
+            context.delete(download)
+        }
+        if let progress = try? context.fetch(
+            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
+        ).first {
+            context.delete(progress)
+        }
+        context.delete(book)
+        try? context.save()
     }
 }
 
