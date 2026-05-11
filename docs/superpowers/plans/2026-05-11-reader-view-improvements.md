@@ -71,12 +71,15 @@ xcodebuild test \
   -only-testing:iOSReaderTests/TapZoneClassifierTests
 ```
 
-**Adding new files to the Xcode target:** this project does not use XcodeGen / Tuist. After creating a new `.swift` file, open `iOSReader.xcodeproj` in Xcode and:
-1. Right-click the appropriate group in the navigator → **Add Files to "iOSReader"…** (or drag the file from Finder).
-2. Ensure the **iOSReader** target checkbox is ticked (and only the iOSReader target — *not* iOSReaderTests — except for test files, which go in the test target).
-3. Confirm the file now appears under the target in **Build Phases → Compile Sources**.
+**Adding new files to the Xcode target:** this project uses XcodeGen — `project.yml` is the source of truth and `iOSReader.xcodeproj/` is gitignored / regenerated. Any `.swift` file placed under `iOSReader/` (app target) or `iOSReaderTests/` (test target) is auto-picked up by `xcodegen generate`. After creating a new file:
 
-After every "Add file to Xcode" step, run the build command to confirm the file compiles.
+```bash
+xcodegen generate
+```
+
+That's it — no Xcode UI, no pbxproj edits, no commit of `project.pbxproj` (it's gitignored).
+
+After every "Add file" step, run `xcodegen generate` then the build command to confirm the file compiles.
 
 ---
 
@@ -188,7 +191,6 @@ Expected: `Test Suite 'All tests' passed` — 4 tests passed.
 ```bash
 git add iOSReader/Views/Reader/ReaderGestureHelpers.swift \
         iOSReaderTests/Views/Reader/TapZoneClassifierTests.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add TapZoneClassifier helper"
 ```
 
@@ -305,7 +307,6 @@ Expected: 6 tests passed.
 ```bash
 git add iOSReader/Views/Reader/ReaderGestureHelpers.swift \
         iOSReaderTests/Views/Reader/FontSizeStepTests.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add FontSizeStep helper"
 ```
 
@@ -425,7 +426,6 @@ Expected: 5 tests passed.
 ```bash
 git add iOSReader/Views/Reader/ReaderGestureHelpers.swift \
         iOSReaderTests/Views/Reader/SwipeDismissPolicyTests.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add SwipeDismissPolicy helper"
 ```
 
@@ -496,7 +496,6 @@ Expected: `BUILD SUCCEEDED`. (`activeReader` is unused but declared — fine.)
 ```bash
 git add iOSReader/Views/Reader/ReaderRoute.swift \
         iOSReader/App/AppEnvironment.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add ReaderRoute + openReader env API"
 ```
 
@@ -929,7 +928,6 @@ Expected: `BUILD SUCCEEDED`.
 
 ```bash
 git add iOSReader/Views/Reader/ iOSReader/Views/ReaderView.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "refactor(reader): move ReaderView and split out ReaderHost / DownloadingView"
 ```
 
@@ -1051,7 +1049,6 @@ Expected: `BUILD SUCCEEDED` (class is defined but unused — fine for now).
 
 ```bash
 git add iOSReader/Views/Reader/ReaderInputHandlers.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add ReaderInputHandlers for tap + pinch recognizers"
 ```
 
@@ -1289,7 +1286,6 @@ Expected: `BUILD SUCCEEDED`. (Container exists but isn't referenced; Task 12 wir
 
 ```bash
 git add iOSReader/Views/Reader/ReaderContainerVC.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add ReaderContainerVC with input, keys, font-size handling"
 ```
 
@@ -1515,7 +1511,6 @@ Expected: still broken (Task 12's mismatch) — skip.
 
 ```bash
 git add iOSReader/Views/Reader/ReaderChrome.swift \
-        iOSReader.xcodeproj/project.pbxproj
 git commit -m "feat(reader): add ReaderChrome views (top bar, bottom strip, font HUD)"
 ```
 
