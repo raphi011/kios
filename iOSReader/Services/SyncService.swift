@@ -135,9 +135,9 @@ final class SyncService {
         percentage: Double,
         pendingUpload: Bool
     ) {
-        // Pin the protocol at buffer time so a mid-flush protocol switch still
-        // flushes the buffered write via the originally-targeted backend
-        // (Phase 7.4 reads this).
+        // Pin the protocol at buffer time so a mid-flush user-driven protocol
+        // switch still flushes the buffered write via the originally-targeted
+        // backend.
         let pendingProtocol: String? = pendingUpload ? "kosync" : nil
         if let existing = currentLocalProgress(for: bookID) {
             existing.locatorJSON = locatorJSON
