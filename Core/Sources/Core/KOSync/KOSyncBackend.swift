@@ -33,7 +33,10 @@ public struct KOSyncBackend: SyncBackend {
         return CanonicalProgress(
             percentage: server.percentage,
             locatorJSON: nil,
-            timestamp: server.timestamp.map { Date(timeIntervalSince1970: $0) } ?? Date(),
+            // `.distantPast` (not `Date()`) when server omits the timestamp:
+            // LWW reconciliation must treat "age unknown" as "oldest possible"
+            // so it never beats a real local write.
+            timestamp: server.timestamp.map { Date(timeIntervalSince1970: $0) } ?? .distantPast,
             deviceID: server.deviceID,
             deviceName: server.device
         )
