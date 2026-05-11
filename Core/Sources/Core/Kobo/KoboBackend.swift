@@ -60,7 +60,7 @@ public struct KoboBackend: SyncBackend {
         guard let uuid = id.koboBookUUID else {
             throw BackendError.identityMissing(field: "koboBookUUID")
         }
-        let bookmark = try buildBookmark(from: p)
+        let bookmark = buildBookmark(from: p)
         // v1 status threshold: >=99% maps to Finished, else Reading. The
         // canonical progress doesn't carry a separate completion flag, so
         // tail-end ProgressPercent is the only signal we have.
@@ -79,11 +79,12 @@ public struct KoboBackend: SyncBackend {
     /// or malformed: a percentage-only update is still useful for cross-
     /// device progress, while preserving the cssSelector requires a well-
     /// formed locator we can trust.
-    private func buildBookmark(from p: CanonicalProgress) throws -> KoboStateUpdate.State.Bookmark {
+    private func buildBookmark(from p: CanonicalProgress) -> KoboStateUpdate.State.Bookmark {
         let totalProgression = p.percentage
         guard let json = p.locatorJSON,
               let data = json.data(using: .utf8),
-              let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let parsed = try? JSONSerialization.jsonObject(with: data),
+              let dict = parsed as? [String: Any] else {
             return .init(
                 progressPercent: totalProgression * 100,
                 contentSourceProgressPercent: totalProgression * 100,
@@ -94,12 +95,11 @@ public struct KoboBackend: SyncBackend {
         let locations = dict["locations"] as? [String: Any] ?? [:]
         let progression = locations["progression"] as? Double ?? totalProgression
         let cssSelector = locations["cssSelector"] as? String
-        // KoboProgressMapper.escapeCSS escapes `.` → `\.` when forming the
-        // cssSelector. Reverse that here so the koboSpan ID round-trips.
-        // The leading `#` is the CSS id selector and must be stripped.
+        // Strip the leading `#` (CSS id selector) then reverse the
+        // KoboProgressMapper.escapeCSS escape so the koboSpan id round-trips.
         let koboSpan: String? = {
             guard let sel = cssSelector, sel.hasPrefix("#") else { return nil }
-            return String(sel.dropFirst()).replacingOccurrences(of: #"\."#, with: ".")
+            return KoboProgressMapper.unescapeCSS(String(sel.dropFirst()))
         }()
         return KoboProgressMapper.toKoboBookmark(
             href: href,

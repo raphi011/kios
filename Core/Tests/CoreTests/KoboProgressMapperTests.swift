@@ -51,4 +51,11 @@ struct KoboProgressMapperTests {
         #expect(bm.location == nil)
         #expect(bm.progressPercent == 10.0)
     }
+
+    @Test func cssEscapeRoundTrips() {
+        let ids = ["kobo.10.1", "kobo.0.0", "kobo.123.456"]
+        for id in ids {
+            #expect(KoboProgressMapper.unescapeCSS(KoboProgressMapper.escapeCSS(id)) == id)
+        }
+    }
 }
