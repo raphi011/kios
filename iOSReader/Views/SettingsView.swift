@@ -3,9 +3,11 @@ import Core
 
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
-    @State private var serverURL: String = ""
-    @State private var username: String = ""
-    @State private var password: String = ""
+    @State private var activeProtocol: SyncProtocol = .kosync
+    @State private var kosyncServerURL: String = ""
+    @State private var kosyncUsername: String = ""
+    @State private var kosyncPassword: String = ""
+    @State private var koboBaseURL: String = ""
     @State private var status: Status = .idle
 
     enum Status: Equatable {
@@ -17,21 +19,38 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Server") {
-                TextField("https://cwa.example.com", text: $serverURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                TextField("Username", text: $username)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Password", text: $password)
+            Section("Sync protocol") {
+                Picker("Protocol", selection: $activeProtocol) {
+                    Text("KOReader Sync").tag(SyncProtocol.kosync)
+                    Text("Kobo Sync").tag(SyncProtocol.kobo)
+                }
+                .pickerStyle(.segmented)
+
+                switch activeProtocol {
+                case .kosync:
+                    TextField("https://cwa.example.com", text: $kosyncServerURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    TextField("Username", text: $kosyncUsername)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("Password", text: $kosyncPassword)
+
+                case .kobo:
+                    TextField("Kobo sync URL", text: $koboBaseURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    Text("Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .disabled(status == .testing)
             Section {
                 Button("Test & Save") { Task { await testAndSave() } }
-                    .disabled(serverURL.isEmpty || username.isEmpty || password.isEmpty
-                              || status == .testing)
+                    .disabled(!canTestAndSave || status == .testing)
                 statusView
             }
             Section {
@@ -42,6 +61,15 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .task { await loadExisting() }
+    }
+
+    private var canTestAndSave: Bool {
+        switch activeProtocol {
+        case .kosync:
+            return !kosyncServerURL.isEmpty && !kosyncUsername.isEmpty && !kosyncPassword.isEmpty
+        case .kobo:
+            return !koboBaseURL.isEmpty
+        }
     }
 
     @ViewBuilder
@@ -58,22 +86,36 @@ struct SettingsView: View {
     }
 
     private func loadExisting() async {
-        guard let creds = try? env.authStore.load() else { return }
-        serverURL = creds.serverURL.absoluteString
-        username = creds.basic.username
-        // Don't pre-fill password — keychain access already proved we have it,
-        // and pre-filling the field would suggest the password is visible.
+        activeProtocol = env.authStore.loadActiveProtocol()
+        if let creds = try? env.authStore.load() {
+            kosyncServerURL = creds.serverURL.absoluteString
+            kosyncUsername = creds.basic.username
+            // Don't pre-fill password — keychain access already proved we have it,
+            // and pre-filling the field would suggest the password is visible.
+        }
+        if let kobo = try? env.authStore.loadKobo() {
+            koboBaseURL = kobo.baseURL.absoluteString
+        }
     }
 
     private func testAndSave() async {
-        let trimmed = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        status = .testing
+        switch activeProtocol {
+        case .kosync:
+            await testAndSaveKOSync()
+        case .kobo:
+            await testAndSaveKobo()
+        }
+    }
+
+    private func testAndSaveKOSync() async {
+        let trimmed = kosyncServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed),
               url.scheme?.hasPrefix("http") == true else {
             status = .failure("Invalid URL")
             return
         }
-        status = .testing
-        let basic = BasicCredentials(username: username, password: password)
+        let basic = BasicCredentials(username: kosyncUsername, password: kosyncPassword)
         let http = HTTPClient(credentials: basic)
 
         // Probe OPDS — Calibre-Web (and CWA) expose it at /opds/.
@@ -115,12 +157,42 @@ struct SettingsView: View {
         // Both probes passed — persist and rebuild env services.
         do {
             try env.authStore.save(
-                serverURL: url, username: username, password: password
+                serverURL: url, username: kosyncUsername, password: kosyncPassword
             )
+            env.authStore.saveActiveProtocol(.kosync)
             try env.bootIfCredentialsPresent()
             status = .ok
         } catch {
             status = .failure("Failed to save: \(error.localizedDescription)")
+        }
+    }
+
+    private func testAndSaveKobo() async {
+        let trimmed = koboBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              url.scheme?.hasPrefix("http") == true else {
+            status = .failure("Invalid URL")
+            return
+        }
+        let http = HTTPClient()  // Kobo auth is in the URL path, not headers
+        let kc = KoboClient(baseURL: url, http: http)
+        do {
+            let res = try await kc.initialization()
+            // res.imageURLTemplate is non-optional in the type; if the response
+            // shape was bad, KoboClient would have thrown
+            // BackendError.serverShapeUnexpected already.
+            try env.authStore.saveKobo(
+                KoboCredentials(baseURL: url, imageURLTemplate: res.imageURLTemplate)
+            )
+            env.authStore.saveActiveProtocol(.kobo)
+            try env.bootIfCredentialsPresent()
+            status = .ok
+        } catch HTTPError.unauthorized {
+            status = .failure("Token rejected by Kobo sync. Re-generate from CWA admin.")
+        } catch HTTPError.notFound {
+            status = .failure("No Kobo sync endpoint at this URL. Check the path.")
+        } catch {
+            status = .failure("Kobo init failed: \(error.localizedDescription)")
         }
     }
 }
