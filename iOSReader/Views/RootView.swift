@@ -9,10 +9,10 @@ struct RootView: View {
             NavigationStack { SettingsView() }
         } else {
             TabView {
+                HomeRootView()
+                    .tabItem { Label("Home", systemImage: "house") }
                 BrowseRootView()
                     .tabItem { Label("Browse", systemImage: "books.vertical") }
-                DownloadedRootView()
-                    .tabItem { Label("Downloaded", systemImage: "arrow.down.circle") }
                 NavigationStack { SettingsView() }
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }
