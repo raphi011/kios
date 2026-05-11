@@ -12,22 +12,19 @@ struct BrowseRootView: View {
         NavigationStack(path: $path) {
             Group {
                 if let loader = rootLoader {
-                    FeedView(feedURL: loader.initialURL)
+                    FeedView(feedURL: loader.initialURL, path: $path)
                         .navigationTitle("Browse")
                 } else {
                     ProgressView().task { setup() }
                 }
             }
             .navigationDestination(for: SearchRoute.self) { route in
-                FeedView(feedURL: route.url)
+                FeedView(feedURL: route.url, path: $path)
                     .navigationTitle("Results: \(route.query)")
             }
             .navigationDestination(for: OpenReaderRoute.self) { route in
                 ReaderView(bookID: route.bookID)
             }
-            .environment(\.openBook, { book in
-                path.append(OpenReaderRoute(bookID: book.id))
-            })
         }
         .modifier(ConditionalSearchable(
             shouldShow: rootLoader?.searchDescriptorURL != nil,
@@ -74,19 +71,6 @@ struct SearchRoute: Hashable {
 
 struct OpenReaderRoute: Hashable {
     let bookID: UUID
-}
-
-// MARK: - openBook environment value
-
-struct OpenBookActionKey: EnvironmentKey {
-    static let defaultValue: (Book) -> Void = { _ in }
-}
-
-extension EnvironmentValues {
-    var openBook: (Book) -> Void {
-        get { self[OpenBookActionKey.self] }
-        set { self[OpenBookActionKey.self] = newValue }
-    }
 }
 
 /// Conditionally attach `.searchable` only when the root feed has advertised

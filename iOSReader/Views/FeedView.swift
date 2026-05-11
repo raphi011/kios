@@ -4,10 +4,15 @@ import Core
 
 struct FeedView: View {
     let feedURL: URL
+    /// Binding to the owning NavigationStack's path. Used to push ReaderView
+    /// onto the stack when a user taps an entry. Passed in (rather than
+    /// stored in the environment) because environment-value closures that
+    /// capture @State did not reliably re-render on update through
+    /// .navigationDestination boundaries.
+    @Binding var path: NavigationPath
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openBook) private var openBook
 
     @State private var loader: FeedLoader?
     @State private var pendingDialog: AcquisitionEntry?
@@ -76,7 +81,7 @@ struct FeedView: View {
         switch entry {
         case .navigation(let nav):
             NavigationLink {
-                FeedView(feedURL: nav.href)
+                FeedView(feedURL: nav.href, path: $path)
             } label: {
                 VStack(alignment: .leading) {
                     Text(nav.title).font(.headline)
@@ -110,7 +115,7 @@ struct FeedView: View {
         if let existing = BookActions.findBook(serverID: entry.serverID,
                                                format: format, context: modelContext),
            existing.fileURL != nil {
-            openBook(existing)
+            path.append(OpenReaderRoute(bookID: existing.id))
             return
         }
         guard let chosen = entry.acquisitions.first(where: { $0.format == format })
@@ -121,7 +126,7 @@ struct FeedView: View {
         // immediately. ReaderView shows a downloading-state UI until the
         // file lands, then transitions to the actual EPUB navigator.
         Task { _ = try? await env.downloads?.download(book: book) }
-        openBook(book)
+        path.append(OpenReaderRoute(bookID: book.id))
     }
 
     private func buttonLabel(entry: AcquisitionEntry, acq: Acquisition) -> String {

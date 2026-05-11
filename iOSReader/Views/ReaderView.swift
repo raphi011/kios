@@ -115,7 +115,7 @@ struct ReaderView: View {
         let assetRetriever = AssetRetriever(httpClient: httpClient)
 
         guard let fileURL = FileURL(url: url) else {
-            throw OpenError.invalidFileURL
+            throw OpenError.invalidFileURL(url)
         }
 
         let asset = try await assetRetriever.retrieve(url: fileURL)
@@ -131,10 +131,21 @@ struct ReaderView: View {
             .get()
     }
 
-    private enum OpenError: Error {
-        case invalidFileURL
+    private enum OpenError: LocalizedError {
+        case invalidFileURL(URL)
         case asset(AssetRetrieveURLError)
         case publication(PublicationOpenError)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidFileURL(let url):
+                return "Readium rejected the file URL: \(url.absoluteString)"
+            case .asset(let inner):
+                return "Asset retrieval failed: \(inner.localizedDescription)"
+            case .publication(let inner):
+                return "Publication open failed: \(inner.localizedDescription)"
+            }
+        }
     }
 
     private func onOpen(book: Book) async {
