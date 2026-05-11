@@ -1,5 +1,10 @@
 import Foundation
 
+public enum SyncProtocol: String, Sendable, Codable {
+    case kosync
+    case kobo
+}
+
 /// Combined credentials for a single Calibre-Web-Automated server: the URL
 /// plus HTTP Basic credentials. Same credentials cover both `/opds/` and
 /// `/kosync` on CWA.
@@ -13,6 +18,20 @@ public struct ServerCredentials: Sendable, Equatable {
     }
 }
 
+/// Kobo sync credentials. `baseURL` is treated as a secret because the auth
+/// token is encoded in its path (CWA's `/kobo/{TOKEN}/` scheme).
+/// `imageURLTemplate` is populated after the first `/v1/initialization`
+/// response and persisted so the cover-rendering pipeline survives restarts.
+public struct KoboCredentials: Sendable, Equatable {
+    public let baseURL: URL
+    public let imageURLTemplate: String?
+
+    public init(baseURL: URL, imageURLTemplate: String? = nil) {
+        self.baseURL = baseURL
+        self.imageURLTemplate = imageURLTemplate
+    }
+}
+
 /// Persists the user's server URL + username in `UserDefaults` and the
 /// password in `KeychainStore`. Single-server in v1.
 public final class AuthStore: Sendable {
@@ -23,9 +42,12 @@ public final class AuthStore: Sendable {
     // while keeping the class Sendable.
     private nonisolated(unsafe) let defaults: UserDefaults
 
-    private static let serverURLKey = "iOSReader.serverURL"
-    private static let usernameKey  = "iOSReader.username"
-    private static let pwAccount    = "password"
+    private static let serverURLKey            = "iOSReader.serverURL"
+    private static let usernameKey             = "iOSReader.username"
+    private static let pwAccount               = "password"
+    private static let activeProtocolKey       = "iOSReader.activeProtocol"
+    private static let koboImageURLTemplateKey = "iOSReader.koboImageURLTemplate"
+    private static let koboBaseURLAccount      = "koboBaseURL"
 
     public init(
         keychain: KeychainStore = .init(service: "me.iosreader.credentials"),
@@ -62,6 +84,46 @@ public final class AuthStore: Sendable {
     public func clear() throws {
         defaults.removeObject(forKey: Self.serverURLKey)
         defaults.removeObject(forKey: Self.usernameKey)
+        defaults.removeObject(forKey: Self.activeProtocolKey)
+        defaults.removeObject(forKey: Self.koboImageURLTemplateKey)
         try keychain.delete(account: Self.pwAccount)
+        try keychain.delete(account: Self.koboBaseURLAccount)
+    }
+
+    /// Loads the user's selected sync protocol. Returns `.kosync` if never set
+    /// (first-launch default).
+    public func loadActiveProtocol() -> SyncProtocol {
+        guard let raw = defaults.string(forKey: Self.activeProtocolKey),
+              let proto = SyncProtocol(rawValue: raw) else {
+            return .kosync
+        }
+        return proto
+    }
+
+    public func saveActiveProtocol(_ proto: SyncProtocol) {
+        defaults.set(proto.rawValue, forKey: Self.activeProtocolKey)
+    }
+
+    /// Stores Kobo credentials. The base URL goes to the Keychain (contains
+    /// the auth token); the imageURLTemplate goes to UserDefaults.
+    public func saveKobo(_ creds: KoboCredentials) throws {
+        try keychain.set(creds.baseURL.absoluteString, account: Self.koboBaseURLAccount)
+        if let tmpl = creds.imageURLTemplate {
+            defaults.set(tmpl, forKey: Self.koboImageURLTemplateKey)
+        } else {
+            defaults.removeObject(forKey: Self.koboImageURLTemplateKey)
+        }
+    }
+
+    public func loadKobo() throws -> KoboCredentials? {
+        guard let urlString = try keychain.get(account: Self.koboBaseURLAccount),
+              let url = URL(string: urlString) else { return nil }
+        let tmpl = defaults.string(forKey: Self.koboImageURLTemplateKey)
+        return KoboCredentials(baseURL: url, imageURLTemplate: tmpl)
+    }
+
+    public func clearKobo() throws {
+        try keychain.delete(account: Self.koboBaseURLAccount)
+        defaults.removeObject(forKey: Self.koboImageURLTemplateKey)
     }
 }

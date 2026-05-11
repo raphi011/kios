@@ -91,4 +91,101 @@ struct AuthStoreTests {
         )
         #expect(try bareStore.load() == nil)
     }
+
+    @Test func activeProtocolDefaultsToKOSync() {
+        let store = makeStore()
+        #expect(store.loadActiveProtocol() == .kosync)
+    }
+
+    @Test func activeProtocolRoundTrip() {
+        let store = makeStore()
+        defer { try? store.clear() }
+
+        store.saveActiveProtocol(.kobo)
+        #expect(store.loadActiveProtocol() == .kobo)
+    }
+
+    @Test func loadKoboReturnsNilWhenEmpty() throws {
+        let store = makeStore()
+        #expect(try store.loadKobo() == nil)
+    }
+
+    @Test func saveAndLoadKoboRoundTrip() throws {
+        let store = makeStore()
+        defer { try? store.clear() }
+
+        try store.saveKobo(
+            KoboCredentials(
+                baseURL: URL(string: "https://cwa.example/kobo/SECRET-TOKEN/")!,
+                imageURLTemplate: "https://cdn.example/{ImageId}/{Width}/{Height}/false/image.jpg"
+            )
+        )
+
+        let loaded = try store.loadKobo()
+        #expect(loaded?.baseURL.absoluteString == "https://cwa.example/kobo/SECRET-TOKEN/")
+        #expect(loaded?.imageURLTemplate == "https://cdn.example/{ImageId}/{Width}/{Height}/false/image.jpg")
+    }
+
+    @Test func saveAndLoadKoboWithoutImageURLTemplate() throws {
+        let store = makeStore()
+        defer { try? store.clear() }
+
+        try store.saveKobo(
+            KoboCredentials(baseURL: URL(string: "https://cwa.example/kobo/T/")!)
+        )
+
+        let loaded = try store.loadKobo()
+        #expect(loaded?.baseURL.absoluteString == "https://cwa.example/kobo/T/")
+        #expect(loaded?.imageURLTemplate == nil)
+    }
+
+    @Test func saveKoboOverwritesImageURLTemplate() throws {
+        let store = makeStore()
+        defer { try? store.clear() }
+
+        try store.saveKobo(
+            KoboCredentials(
+                baseURL: URL(string: "https://cwa.example/kobo/T/")!,
+                imageURLTemplate: "https://cdn.example/template1"
+            )
+        )
+        try store.saveKobo(
+            KoboCredentials(baseURL: URL(string: "https://cwa.example/kobo/T/")!)
+        )
+
+        let loaded = try store.loadKobo()
+        #expect(loaded?.imageURLTemplate == nil)
+    }
+
+    @Test func clearWipesKobo() throws {
+        let store = makeStore()
+
+        try store.save(
+            serverURL: URL(string: "https://cwa.example/")!,
+            username: "alice",
+            password: "hunter2"
+        )
+        store.saveActiveProtocol(.kobo)
+        try store.saveKobo(
+            KoboCredentials(
+                baseURL: URL(string: "https://cwa.example/kobo/T/")!,
+                imageURLTemplate: "https://cdn.example/template"
+            )
+        )
+
+        try store.clear()
+
+        #expect(try store.load() == nil)
+        #expect(try store.loadKobo() == nil)
+        #expect(store.loadActiveProtocol() == .kosync)
+    }
+
+    @Test func clearWipesActiveProtocol() throws {
+        let store = makeStore()
+
+        store.saveActiveProtocol(.kobo)
+        try store.clear()
+
+        #expect(store.loadActiveProtocol() == .kosync)
+    }
 }
