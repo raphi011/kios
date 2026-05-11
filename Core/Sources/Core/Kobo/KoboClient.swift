@@ -39,3 +39,48 @@ public struct KoboClient: Sendable {
         return try KoboDecoder.decode(Envelope.self, from: data).resources
     }
 }
+
+/// Result of one full `librarySync` call — entries aggregated across any
+/// continuation pages, plus the latest synctoken to persist for next time.
+public struct KoboLibrarySyncResult: Sendable {
+    public let entries: [KoboSyncEntry]
+    public let nextSyncToken: String?
+
+    public init(entries: [KoboSyncEntry], nextSyncToken: String?) {
+        self.entries = entries
+        self.nextSyncToken = nextSyncToken
+    }
+}
+
+public extension KoboClient {
+    /// `GET /v1/library/sync` — paginated incremental sync of the user's
+    /// library. The server signals continuation via the `x-kobo-sync` header
+    /// (`"continue"` means call again) and threads cursor state through
+    /// `x-kobo-synctoken`. Pass the previously persisted token (or `nil` on
+    /// first sync); the returned `nextSyncToken` should be persisted for the
+    /// next invocation.
+    func librarySync(syncToken: String?) async throws -> KoboLibrarySyncResult {
+        var allEntries: [KoboSyncEntry] = []
+        var token = syncToken
+
+        while true {
+            let url = baseURL.appendingPathComponent("v1/library/sync")
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            if let token { req.setValue(token, forHTTPHeaderField: "x-kobo-synctoken") }
+            let (data, response) = try await http.data(for: req)
+            guard let httpResp = response as? HTTPURLResponse else {
+                throw BackendError.serverShapeUnexpected(detail: "not http response")
+            }
+
+            let pageEntries = try KoboDecoder.decode([KoboSyncEntryOrSkip].self, from: data)
+                .compactMap { $0.entry }
+            allEntries.append(contentsOf: pageEntries)
+
+            token = httpResp.value(forHTTPHeaderField: "x-kobo-synctoken") ?? token
+            let cont = httpResp.value(forHTTPHeaderField: "x-kobo-sync") ?? ""
+            if cont != "continue" { break }
+        }
+        return KoboLibrarySyncResult(entries: allEntries, nextSyncToken: token)
+    }
+}
