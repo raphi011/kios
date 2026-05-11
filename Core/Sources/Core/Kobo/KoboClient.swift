@@ -62,8 +62,16 @@ public extension KoboClient {
     func librarySync(syncToken: String?) async throws -> KoboLibrarySyncResult {
         var allEntries: [KoboSyncEntry] = []
         var token = syncToken
+        var pages = 0
 
         while true {
+            pages += 1
+            if pages > Self.maxSyncPages {
+                throw BackendError.serverShapeUnexpected(
+                    detail: "library sync exceeded \(Self.maxSyncPages) pages"
+                )
+            }
+
             let url = baseURL.appendingPathComponent("v1/library/sync")
             var req = URLRequest(url: url)
             req.httpMethod = "GET"
@@ -83,4 +91,9 @@ public extension KoboClient {
         }
         return KoboLibrarySyncResult(entries: allEntries, nextSyncToken: token)
     }
+
+    /// Defense-in-depth against a server that keeps signalling "continue"
+    /// indefinitely. A normal CWA library fits well under 100 paginated
+    /// requests; anything past this is a server bug or a hostile response.
+    static var maxSyncPages: Int { 100 }
 }
