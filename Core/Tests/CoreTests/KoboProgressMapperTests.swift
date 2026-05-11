@@ -29,4 +29,26 @@ struct KoboProgressMapperTests {
         #expect(locations["cssSelector"] == nil)
         #expect(locations["progression"] as? Double == 0.12)
     }
+
+    @Test func readiumToKoboWithSpan() {
+        let bm = KoboProgressMapper.toKoboBookmark(
+            href: "f_0035.xhtml",
+            koboSpanId: "kobo.10.1",
+            progression: 0.45,
+            totalProgression: 0.16
+        )
+        #expect(bm.progressPercent == 45.0)
+        #expect(bm.contentSourceProgressPercent == 16.0)
+        #expect(bm.location?.value == "kobo.10.1")
+        #expect(bm.location?.source == "f_0035.xhtml")
+    }
+
+    @Test func readiumToKoboWithoutSpan() {
+        let bm = KoboProgressMapper.toKoboBookmark(
+            href: "f_0035.xhtml", koboSpanId: nil,
+            progression: 0.10, totalProgression: 0.05
+        )
+        #expect(bm.location == nil)
+        #expect(bm.progressPercent == 10.0)
+    }
 }
