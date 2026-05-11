@@ -6,6 +6,11 @@ struct iOSReaderApp: App {
     @State private var environment: AppEnvironment
 
     init() {
+        URLCache.shared = URLCache(
+            memoryCapacity: 8 * 1024 * 1024,
+            diskCapacity: 50 * 1024 * 1024,
+            directory: nil
+        )
         do {
             _environment = State(initialValue: try AppEnvironment())
         } catch {
