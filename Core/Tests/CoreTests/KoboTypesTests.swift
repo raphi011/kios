@@ -85,6 +85,30 @@ struct KoboTypesTests {
         let bag = try KoboDecoder.decode(KoboContributorBag.self, from: json)
         #expect(bag.contributors == [])
     }
+
+    @Test func syncEntryParsingSkipsStrayStringEntry() throws {
+        let json = #"""
+        [
+          { "ChangedReadingState": { "ReadingState": { "EntitlementId":"u1","Created":"x","LastModified":"x","PriorityTimestamp":"x","StatusInfo":{"LastModified":"x","Status":"Reading","TimesStartedReading":1},"Statistics":{"LastModified":"x"},"CurrentBookmark":{"LastModified":"x"} } } },
+          "ResponseStatus",
+          { "DeletedTag": { "Tag": { "Id": "t1", "LastModified": "x" } } },
+          { "SomethingUnknown": { "Field": 1 } }
+        ]
+        """#.data(using: .utf8)!
+
+        let entries = try KoboDecoder.decode([KoboSyncEntryOrSkip].self, from: json).compactMap { $0.entry }
+        #expect(entries.count == 2)
+        if case .changedReadingState(let rs) = entries[0] {
+            #expect(rs.entitlementId == "u1")
+        } else {
+            Issue.record("expected changedReadingState first")
+        }
+        if case .deletedTag = entries[1] {
+            // good
+        } else {
+            Issue.record("expected deletedTag second")
+        }
+    }
 }
 
 private struct KoboContributorBag: Decodable {
