@@ -37,7 +37,7 @@ struct BookDetailView: View {
     private var actionSection: some View {
         Section {
             if book.fileURL != nil {
-                NavigationLink("Open") { ReaderView(bookID: book.id) }
+                Button("Open") { env.openReader(book.id) }
                 Button("Remove download", role: .destructive) {
                     remove(book)
                 }
