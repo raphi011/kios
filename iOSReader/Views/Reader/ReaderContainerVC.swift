@@ -1,0 +1,196 @@
+import UIKit
+import ReadiumShared
+import ReadiumNavigator
+
+/// UIKit container that hosts `EPUBNavigatorViewController` as a child VC
+/// and owns the input layer (taps, pinch, hardware keys, status-bar control).
+@MainActor
+final class ReaderContainerVC: UIViewController {
+
+    // MARK: - Callbacks
+
+    var onLocatorChange: ((Locator) -> Void)?
+    var onCenterTap: (() -> Void)?
+    var onPinchUpdate: ((Int?) -> Void)?
+    var onDismissRequested: (() -> Void)?
+
+    // MARK: - Inputs (set via update())
+
+    private(set) var fontSizePct: Int = 100
+    private(set) var statusBarHidden: Bool = true
+
+    // MARK: - Internals
+
+    private let publication: Publication
+    private let initialLocator: Locator?
+    private var navigator: EPUBNavigatorViewController?
+    private var inputHandlers: ReaderInputHandlers?
+
+    init(publication: Publication, initialLocator: Locator?) {
+        self.publication = publication
+        self.initialLocator = initialLocator
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    // MARK: - Lifecycle
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        installNavigator()
+        installInputHandlers()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // First-responder is required for `UIKeyCommand`s to fire.
+        becomeFirstResponder()
+    }
+
+    override var canBecomeFirstResponder: Bool { true }
+    override var prefersStatusBarHidden: Bool { statusBarHidden }
+    override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { .fade }
+
+    // MARK: - Updates from SwiftUI
+
+    /// Called from `ReaderHost.updateUIViewController` whenever SwiftUI re-renders.
+    func update(fontSizePct: Int, statusBarHidden: Bool) {
+        if self.fontSizePct != fontSizePct {
+            self.fontSizePct = fontSizePct
+            applyFontSize()
+        }
+        if self.statusBarHidden != statusBarHidden {
+            self.statusBarHidden = statusBarHidden
+            setNeedsStatusBarAppearanceUpdate()
+        }
+    }
+
+    // MARK: - Navigator setup
+
+    private func installNavigator() {
+        let prefs = EPUBPreferences(fontSize: Double(fontSizePct) / 100.0)
+        let config = EPUBNavigatorViewController.Configuration(preferences: prefs)
+        do {
+            let nav = try EPUBNavigatorViewController(
+                publication: publication,
+                initialLocation: initialLocator,
+                config: config
+            )
+            nav.delegate = self
+            addChild(nav)
+            nav.view.frame = view.bounds
+            nav.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            view.addSubview(nav.view)
+            nav.didMove(toParent: self)
+            self.navigator = nav
+        } catch {
+            installErrorLabel("Failed to open EPUB: \(error.localizedDescription)")
+        }
+    }
+
+    private func installErrorLabel(_ message: String) {
+        let label = UILabel()
+        label.text = message
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.textColor = .secondaryLabel
+        label.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
+        ])
+    }
+
+    // MARK: - Input handlers
+
+    private func installInputHandlers() {
+        let handlers = ReaderInputHandlers(currentFontSizePct: { [weak self] in
+            self?.fontSizePct ?? 100
+        })
+        handlers.onLeftTap = { [weak self] in self?.turnBackward() }
+        handlers.onRightTap = { [weak self] in self?.turnForward() }
+        handlers.onCenterTap = { [weak self] in self?.onCenterTap?() }
+        handlers.onPinchUpdate = { [weak self] pct in self?.onPinchUpdate?(pct) }
+        handlers.onPinchCommit = { [weak self] pct in
+            // The container is the only place that owns the navigator handle.
+            // Apply the preferences here; SwiftUI also writes @AppStorage,
+            // which round-trips back via `update(fontSizePct:)` — that path
+            // is a no-op because `fontSizePct` will already equal `pct`.
+            self?.fontSizePct = pct
+            self?.applyFontSize()
+            self?.onPinchUpdate?(nil)  // dismiss HUD
+            self?.onPinchCommitToSwiftUI?(pct)
+        }
+        handlers.attach(to: view)
+        self.inputHandlers = handlers
+    }
+
+    /// Bridges pinch commit out to SwiftUI so it can persist via @AppStorage.
+    var onPinchCommitToSwiftUI: ((Int) -> Void)?
+
+    // MARK: - Page turns
+
+    private func turnForward() {
+        guard let nav = navigator else { return }
+        Task { _ = await nav.goForward(options: NavigatorGoOptions(animated: false)) }
+    }
+
+    private func turnBackward() {
+        guard let nav = navigator else { return }
+        Task { _ = await nav.goBackward(options: NavigatorGoOptions(animated: false)) }
+    }
+
+    // MARK: - Font size
+
+    private func applyFontSize() {
+        guard let nav = navigator else { return }
+        let prefs = EPUBPreferences(fontSize: Double(fontSizePct) / 100.0)
+        nav.submitPreferences(prefs)
+    }
+
+    // MARK: - Hardware keys
+
+    override var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(
+                title: "Next Page",
+                action: #selector(keyForward),
+                input: UIKeyCommand.inputRightArrow,
+                discoverabilityTitle: "Next Page"
+            ),
+            UIKeyCommand(
+                title: "Previous Page",
+                action: #selector(keyBackward),
+                input: UIKeyCommand.inputLeftArrow,
+                discoverabilityTitle: "Previous Page"
+            ),
+            UIKeyCommand(
+                title: "Close",
+                action: #selector(keyDismiss),
+                input: UIKeyCommand.inputEscape,
+                discoverabilityTitle: "Close Reader"
+            ),
+        ]
+    }
+
+    @objc private func keyForward() { turnForward() }
+    @objc private func keyBackward() { turnBackward() }
+    @objc private func keyDismiss() { onDismissRequested?() }
+}
+
+// MARK: - EPUBNavigatorDelegate
+
+extension ReaderContainerVC: EPUBNavigatorDelegate {
+    nonisolated func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
+        Task { @MainActor [weak self] in
+            self?.onLocatorChange?(locator)
+        }
+    }
+
+    nonisolated func navigator(_ navigator: Navigator, presentError error: NavigatorError) {}
+}
