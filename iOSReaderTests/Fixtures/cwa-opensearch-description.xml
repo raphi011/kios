@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+   <LongName>Calibre-Web Automated</LongName>
+   <ShortName>Calibre-Web Automated</ShortName>
+   <Description>Calibre-Web Automated eBook Catalog</Description>
+   <Developer>CrocodileStick</Developer>
+   <Contact>https://github.com/crocodilestick/calibre-web-automated</Contact>
+   <Url type="text/html"
+        template="/opds/search/{searchTerms}"/>
+   <Url type="application/atom+xml"
+        template="/opds/search?query={searchTerms}"/>
+   <SyndicationRight>open</SyndicationRight>
+   <Language>en-EN</Language>
+   <OutputEncoding>UTF-8</OutputEncoding>
+   <InputEncoding>UTF-8</InputEncoding>
+</OpenSearchDescription>

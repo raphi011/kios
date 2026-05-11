@@ -1,0 +1,2304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:dcterms="http://purl.org/dc/terms/">
+  <icon>/static/favicon.ico</icon>
+  <id>urn:uuid:2853dacf-ed79-42f5-8e8a-a7bb3d1ae6a2</id>
+  <updated>2026-05-11T09:01:26+00:00</updated>
+  <link rel="self"
+        href="/opds/books/letter/00?"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="start"
+        href="/opds"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="up"
+        href="/opds"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+
+
+  <link rel="next"
+        title="Next"
+        href="/opds/books/letter/00?offset=60"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+
+
+    <link rel="search"
+      href="/opds/osd"
+      type="application/opensearchdescription+xml"/>
+  <link type="application/atom+xml" rel="search" title="Search" href="/opds/search/{searchTerms}" />
+  <title>Calibre-Web Automated</title>
+  <author>
+    <name>Calibre-Web Automated</name>
+    <uri>https://github.com/crocodilestick/calibre-web-automated</uri>
+  </author>
+
+  
+  
+  <entry>
+    <title>... trotzdem Ja zum Leben sagen: Ein Psychologe erlebt das Konzentrationslager</title>
+    <id>urn:uuid:22483eb3-c6d8-40b1-b512-2d1523487291</id>
+    <updated>2024-08-22T18:10:36+00:00</updated>
+    
+      <author>
+        <name>Viktor E. Frankl</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Kösel-Verlag</name>
+      </publisher>
+    
+    <published>2010-12-08T22:00:00+00:00</published>
+    
+      <dcterms:language>deu</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Memoir / Biography"
+              label="Memoir / Biography"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Philosophy"
+              label="Philosophy"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/23" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/23" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/23/epub/"
+          length="722087" mtime="2024-08-22T18:10:36+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The 4-Hour Chef: The Simple Path to Cooking Like a Pro, Learning Anything, and Living the Good Life</title>
+    <id>urn:uuid:d1e471d0-6d14-4ff6-9745-a3171fcce5ac</id>
+    <updated>2024-12-15T07:24:20+00:00</updated>
+    
+      <author>
+        <name>Timothy Ferriss</name>
+      </author>
+    
+    
+      <publisher>
+        <name>New Harvest</name>
+      </publisher>
+    
+    <published>2012-11-20T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Cooking"
+              label="Cooking"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    <summary>“If you crossed Jason Bourne with Julia Child, you’d end up with Tim Ferriss.” – Marco Canora, Chef-Partner of Hearth &amp; Terroir &#34;Tim Ferriss distills kitchen wisdom like a rotary evaporator on power surge. The results are potent, lucid, and delicious.&#34; - Nick Kokonas, Co-Owner, Alinea, Next, The Aviary WHAT IF YOU COULD BECOME WORLD-CLASS IN ANYTHING IN 6 MONTHS OR LESS? The 4-Hour Chef isn’t just a cookbook. It’s a choose-your-own-adventure guide to the world of rapid learning. 1 New York Times bestselling author (and lifelong non-cook) Tim Ferriss takes you from Manhattan to Okinawa, and from Silicon Valley to Calcutta, unearthing the secrets of the world’s fastest learners and greatest chefs. Ferriss uses cooking to explain “meta-learning,” a step-by-step process that can be used to master anything, whether searing steak or shooting 3-pointers in basketball. That is the real “recipe” of The 4-Hour Chef.You&#39;ll train inside the kitchen for everything outside the kitchen. Featuring tips and tricks from chess prodigies, world-renowned chefs, pro athletes, master sommeliers, super models, and everyone in between, this “cookbook for people who don’t buy cookbooks” is a guide to mastering cooking and life. The 4-Hour Chef is a five-stop journey through the art and science of learning: META-LEARNING. Before you learn to cook, you must learn to learn. META charts the path to doubling your learning potential. THE DOMESTIC. DOM is where you learn the building blocks of cooking. These are the ABCs (techniques) that can take you from Dr, Seuss to Shakespeare. THE WILD. Becoming a master student requires self-sufficiency in all things. WILD teaches you to hunt, forage, and survive. THE SCIENTIST. SCI is the mad scientist and modernist painter wrapped into one. This is where you rediscover whimsy and wonder. THE PROFESSIONAL. Swaraj, a term usually associated with Mahatma Gandhi, can be translated as “self-rule.” In PRO, we’ll look at how the best in the world become the best in the world, and how you can chart your own path far beyond this book. Amazon.com ReviewEnjoy a Sampler Platter of *The 4-Hour Chef*Click on thumbnails for larger imagesTim learns about selecting the best cuts at Dickson&#39;s Farmstand Meats.At Dickson&#39;s Farmstand Meats, Tim gets tips on the art of butchering from an in-house expert.Tim prepares to make Bistecca Alla Panzanese.He coats the meat with grapeseed oil and seasons both sides with salt and pepper.Harissa Crab Cakes, a quick appetizer that showcases the flavors of chili and lime.The ingredients for Mashed Coconut Cauliflower with Cashews--mashed potato mouthfeel without the guilt.Tim prepares succulent Herbed Sous-Vide Turkey Legs with thyme, sage, garlic, and butter.These White Chocolate Chip and Pistachio Cookies have a delectable flavor and texture.About the AuthorTim Ferriss is author of the #1 New York Times best sellers The 4-Hour Workweek and The 4-Hour Body. He’s been called “The Superman of Silicon Valley” by Wired, one of Fast Company’s “Most Innovative Business People” and “the world’s best guinea pig” by Newsweek, which ranked him in its top 10 “most powerful” personalities on the 2012 Digital 100 Power Index. He is an adviser and faculty member at Singularity University, based at NASA Ames Research Center, which focuses on leveraging accelerating technologies to address global problems. Tim’s work has been featured in The New York Times, Forbes, The Economist, and The New Yorker, among many others.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/250" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/250" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/250/epub/"
+          length="22759989" mtime="2024-12-15T07:24:20+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/250/kepub/"
+          length="22971435" mtime="2024-12-15T07:24:20+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>80,000 Hours: Find a fulfilling career that does good</title>
+    <id>urn:uuid:88ade3be-e267-476c-87dc-f7c2712543b3</id>
+    <updated>2024-08-22T18:10:33+00:00</updated>
+    
+      <author>
+        <name>Benjamin Todd</name>
+      </author>
+    
+    
+    <published>2016-11-27T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Business"
+              label="Business"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/9" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/9" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/9/epub/"
+          length="1284048" mtime="2024-08-22T18:10:33+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Abaddon&#39;s Gate (Expanse)</title>
+    <id>urn:uuid:c717e0d7-7c9f-4394-9884-81266f52590c</id>
+    <updated>2024-08-22T18:10:48+00:00</updated>
+    
+      <author>
+        <name>James S. A. Corey</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Little, Brown Book Group</name>
+      </publisher>
+    
+    <published>2013-06-03T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/76" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/76" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/76/epub/"
+          length="2675008" mtime="2024-08-22T18:10:48+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Adventures of Amina al-Sirafi</title>
+    <id>urn:uuid:900b3690-504a-4285-a50f-fe8648c495d4</id>
+    <updated>2024-11-07T07:57:55+00:00</updated>
+    
+      <author>
+        <name>Shannon Chakraborty</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2022-12-12T12:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <summary>Shannon Chakraborty, the bestselling author of The City of Brass, launches a new trilogy of magic and mayhem with this tale of pirates and sorcerers, forbidden artefacts and ancient mysteries, and one woman&#39;s quest to seize a final chance at glory... A pirate of infamy and one of the most storied and scandalous captains to sail the seven seas. Amina al-Sirafi has survived backstabbing rogues, vengeful merchant princes, several husbands, and one actual demon to retire peacefully with her family to a life of piety, motherhood, and absolutely nothing that hints of the supernatural. But when she&#39;s offered a job no bandit could refuse, she jumps at the chance for one final adventure with her old crew that will make her a legend and offers a fortune that will secure her and her family&#39;s future forever. Yet the deeper Amina dives the higher the stakes. For there&#39;s always risk in wanting to become a legend, to seize one last chance at glory, to savour just a bit more power...and the price...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/233" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/233" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/233/epub/"
+          length="13899361" mtime="2024-11-07T07:57:55+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/233/kepub/"
+          length="13526189" mtime="2024-11-07T07:57:55+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>AI Engineering (for True Epub)</title>
+    <id>urn:uuid:1a80b78b-b87f-4d37-adb4-8a69da9b56b3</id>
+    <updated>2026-05-10T11:45:02+00:00</updated>
+    
+      <author>
+        <name>Chip Huyen</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2024-12-04T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>Recent breakthroughs in AI have not only increased demand for AI products, but they&#39;ve also lowered the barriers to entry for those who want to build AI products. The model-as-a-service approach has transformed AI from an esoteric discipline into a powerful development tool that anyone can use. Everyone, including those with minimal or no prior AI experience, can now leverage AI models to build applications. In this book, author Chip Huyen discusses AI engineering: the process of building applications with readily available foundation models.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/307" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/307" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/307/epub/"
+          length="28737144" mtime="2026-05-10T11:45:02+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Alle Toten fliegen hoch 06 - Man kann auch in die Höhe fallen</title>
+    <id>urn:uuid:8b197571-93ed-411c-aff5-bc9a0a0c5055</id>
+    <updated>2025-09-04T15:01:16+00:00</updated>
+    
+      <author>
+        <name>Joachim Meyerhoff</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Kiepenheuer &amp; Witsch GmbH &amp; Co. KG</name>
+      </publisher>
+    
+    <published>2024-11-22T23:00:00+00:00</published>
+    
+      <dcterms:language>deu</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="German"
+              label="German"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Memoir / Biography"
+              label="Memoir / Biography"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/301" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/301" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/301/epub/"
+          length="4158493" mtime="2025-09-04T15:01:16+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/301/kepub/"
+          length="4199643" mtime="2025-09-04T15:01:16+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>American Dirt</title>
+    <id>urn:uuid:6b8749ea-4ca3-4982-b1dd-eee801d9975c</id>
+    <updated>2024-08-22T18:10:45+00:00</updated>
+    
+      <author>
+        <name>Jeanine Cummins</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Rowohlt E-Book</name>
+      </publisher>
+    
+    <published>2020-01-23T22:00:00+00:00</published>
+    
+      <dcterms:language>deu</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fiction"
+              label="Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/63" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/63" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/63/epub/"
+          length="642170" mtime="2024-08-22T18:10:45+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>And Then There Were None</title>
+    <id>urn:uuid:743ebdeb-4536-4b7a-a45f-499959c1f736</id>
+    <updated>2024-08-22T18:10:51+00:00</updated>
+    
+      <author>
+        <name>Agatha Christie</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2010-10-13T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Mystery"
+              label="Mystery"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/96" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/96" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/96/epub/"
+          length="236403" mtime="2024-08-22T18:10:51+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Antifragile</title>
+    <id>urn:uuid:6c0e29ca-cd87-4b80-a736-a0ab7406c714</id>
+    <updated>2024-08-22T18:10:46+00:00</updated>
+    
+      <author>
+        <name>Nassim Nicholas Taleb</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Penguin Publishing Group</name>
+      </publisher>
+    
+    <published>2012-11-26T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Philosophy"
+              label="Philosophy"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/69" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/69" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/69/epub/"
+          length="2079484" mtime="2024-08-22T18:10:46+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Anxious Generation: How the Great Rewiring of Childhood Is Causing an Epidemic of Mental Illness</title>
+    <id>urn:uuid:614ee31e-f3f6-4263-a1ec-5ea810e873be</id>
+    <updated>2024-11-27T16:11:06+00:00</updated>
+    
+      <author>
+        <name>Jonathan Haidt</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Penguin Publishing Group</name>
+      </publisher>
+    
+    <published>2024-03-26T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Psychology"
+              label="Psychology"/>
+    
+    <summary>From New York Times bestselling coauthor of The Coddling of the American Mind, an essential investigation into the collapse of youth mental health—and a plan for a healthier, freer childhood.“An urgent and provocative read on why so many kids are not okay—and how to course correct.&#34; —Adam Grant“A crucial read for parents of children of elementary school age and beyond, who face the rapidly changing landscape of childhood.” —Emily Oster“Every single parent needs to stop what they are doing and read this book immediately.&#34;—Johann HariAfter more than a decade of stability or improvement, the mental health of adolescents plunged in the early 2010s. Rates of depression, anxiety, self-harm, and suicide rose sharply, more than doubling on many measures. Why?In The Anxious Generation, social psychologist Jonathan Haidt lays out the facts about the epidemic of teen...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/243" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/243" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/243/epub/"
+          length="16733266" mtime="2024-11-27T16:11:06+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/243/kepub/"
+          length="16724166" mtime="2024-11-27T16:11:06+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Anxious People: A Novel</title>
+    <id>urn:uuid:822c9415-42db-4fd0-ba16-0900f15b61ce</id>
+    <updated>2025-06-08T08:12:20+00:00</updated>
+    
+      <author>
+        <name>Fredrik Backman</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Atria Books</name>
+      </publisher>
+    
+    <published>2020-09-08T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fiction"
+              label="Fiction"/>
+    
+    <summary>From the #1 New York Times bestselling author of A Man Called Ove and &#34;writer of astonishing depth&#34; (The Washington Times) comes a poignant comedy about a crime that never took place, a would-be bank robber who disappears into thin air, and eight extremely anxious strangers who find they have more in common than they ever imagined.Viewing an apartment normally doesn&#39;t turn into a life-or-death situation, but this particular open house becomes just that when a failed bank robber bursts in and takes everyone in the apartment hostage. As the pressure mounts, the eight strangers slowly begin opening up to one another and reveal long-hidden truths. First is Zara, a wealthy bank director who has been too busy to care about anyone else until tragedy changed her life. Now, she&#39;s obsessed with visiting open houses to see how ordinary people live—and, perhaps, to set an old wrong to right. Then there&#39;s Roger and Anna-Lena, an Ikea-addicted...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/286" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/286" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/286/epub/"
+          length="2821621" mtime="2025-06-08T08:12:20+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/286/kepub/"
+          length="2867561" mtime="2025-06-08T08:12:20+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Art of Leadership</title>
+    <id>urn:uuid:3c04fe75-3720-4d6e-8b83-a0c5879140b6</id>
+    <updated>2026-05-10T12:41:29+00:00</updated>
+    
+      <author>
+        <name>Michael Lopp</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2020-05-19T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Business"
+              label="Business"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>Many people think leadership is a higher calling that resides exclusively with a select few who practice and preach big, complex leadership philosophies. But as this practical book reveals, what’s most important for leadership is principled consistency. Time and again, small things done well build trust and respect within a team.Using stories from his time at Netscape, Apple, and Slack, Michael Lopp presents a series of small but compelling practices to help you build leadership skills. You’ll learn how to create teams that are highly productive, highly respected, and highly trusted. Lopp has been speaking and writing about this topic for over a decade and now maintains a Slack leadership channel with over 13,000 members.The essays in this book examine the practical skills Lopp learned from exceptional leaders—as a manager at Netscape, a senior manager and director at Apple, and an executive at Slack. You’ll learn how to apply these lessons to your own experience.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/319" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/319" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/319/epub/"
+          length="1083462" mtime="2026-05-10T12:41:29+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Art of Public Speaking</title>
+    <id>urn:uuid:eb2e26cc-5ce3-4a94-914d-90ad4ddca379</id>
+    <updated>2025-03-06T06:10:27+00:00</updated>
+    
+      <author>
+        <name>Dale Carnegie</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Sheba Blake Publishing</name>
+      </publisher>
+    
+    <published>2013-12-01T05:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Adventure"
+              label="Adventure"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Business"
+              label="Business"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Children"
+              label="Children"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Crime"
+              label="Crime"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Health / Fitness"
+              label="Health / Fitness"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Historical Fiction"
+              label="Historical Fiction"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="History"
+              label="History"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Horror"
+              label="Horror"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Memoir / Biography"
+              label="Memoir / Biography"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Mystery"
+              label="Mystery"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Philosophy"
+              label="Philosophy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Psychology"
+              label="Psychology"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Romance"
+              label="Romance"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Thriller"
+              label="Thriller"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Young Adult"
+              label="Young Adult"/>
+    
+    <summary>Training in public speaking is not a matter of externals—primarily; it is not a matter of imitation—fundamentally; it is not a matter of conformity to standards—at all. Public speaking is public utterance, public issuance, of the man himself; therefore the first thing both in time and in importance is that the man should be and think and feel things that are worthy of being given forth. Unless there be something of value within, no tricks of training can ever make of the talker anything more than a machine—albeit a highly perfected machine—for the delivery of other men&#39;s goods. So self-development is fundamental in our plan.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/273" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/273" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/273/epub/"
+          length="444245" mtime="2025-03-06T06:10:27+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/273/kepub/"
+          length="498191" mtime="2025-03-06T06:10:27+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Art of Simple Food</title>
+    <id>urn:uuid:b153c786-860a-4eaa-a672-0cc875cdcd04</id>
+    <updated>2024-12-26T09:38:05+00:00</updated>
+    
+      <author>
+        <name>Alice Waters</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Crown Publishing Group</name>
+      </publisher>
+    
+    <published>2010-08-08T23:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Cooking"
+              label="Cooking"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/257" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/257" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/257/epub/"
+          length="9001693" mtime="2024-12-26T09:38:05+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/257/kepub/"
+          length="9071050" mtime="2024-12-26T09:38:05+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Art of Spending Money: Simple Choices for a Richer Life</title>
+    <id>urn:uuid:7fa70fd6-8567-4520-8875-2c6b0cf58570</id>
+    <updated>2026-05-10T12:41:49+00:00</updated>
+    
+      <author>
+        <name>Morgan Housel</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Penguin Publishing Group</name>
+      </publisher>
+    
+    <published>2025-10-07T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Business"
+              label="Business"/>
+    
+    <summary>From the bestselling author of The Psychology of Money and Same as Ever, lessons on harnessing the power of money to live a happier lifeMost of us don’t know how to spend money. We chase things that impress others but leave us cold. Or we save endlessly, afraid to spend on what would actually make life better. We confuse admiration with envy, comfort with excess, and utility with status. The Art of Spending Money doesn&#39;t provide budgets, hacks, or one-size-fits-all solutions. It gives you understanding of how your relationship with money shapes your decisions—and how to reshape it so money works for you.Morgan Housel’s work has helped millions rethink how they earn, save, and invest. Now he turns his attention to the other side of the equation: how to spend. With insight and warmth, he shows why the most valuable return on investment is peace of mind, why expectations matter more than income, and why doing well with...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/320" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/320" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/320/epub/"
+          length="1082685" mtime="2026-05-10T12:41:49+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Art of Thinking Clearly</title>
+    <id>urn:uuid:6da96c0c-8eed-439b-9153-8776661b5417</id>
+    <updated>2024-09-20T19:35:15+00:00</updated>
+    
+      <author>
+        <name>Rolf Dobelli</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2014-05-05T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Psychology"
+              label="Psychology"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/189" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/189" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/189/azw3/"
+          length="507584" mtime="2024-09-20T19:35:15+00:00" type="application/x-mobi8-ebook"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Asterix 01</title>
+    <id>urn:uuid:18083662-694d-42ce-b51d-b8b1256e9fef</id>
+    <updated>2024-10-14T17:04:59+00:00</updated>
+    
+      <author>
+        <name>Asterix der Gallier</name>
+      </author>
+    
+    
+    <published>101-01-01T00:00:00+00:00</published>
+    
+      <dcterms:language>deu</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Comic"
+              label="Comic"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/202" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/202" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/202/cbr/"
+          length="181074276" mtime="2024-10-14T17:04:59+00:00" type="application/x-cbr"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Atomic Habits</title>
+    <id>urn:uuid:70c7e772-ba2b-4ed1-b664-8ab518dde16c</id>
+    <updated>2024-08-22T18:10:44+00:00</updated>
+    
+      <author>
+        <name>James Clear</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Random House Publishing Group</name>
+      </publisher>
+    
+    <published>2018-10-17T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/61" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/61" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/61/epub/"
+          length="3354356" mtime="2024-08-22T18:10:44+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Autobiography of Benjamin Franklin</title>
+    <id>urn:uuid:cc22ae17-6dfc-4022-ab7f-5c5023f75d7e</id>
+    <updated>2024-08-22T18:10:57+00:00</updated>
+    
+      <author>
+        <name>Benjamin Franklin</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Public Domain Books</name>
+      </publisher>
+    
+    <published>1994-06-30T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="History"
+              label="History"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Memoir / Biography"
+              label="Memoir / Biography"/>
+    
+    <summary>THIS TITLE IS AN OUT-OF-COPYRIGHT BOOK. THE QUALITY OF THE CONVERTED EBOOK WILL VARY.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/109" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/109" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/109/epub/"
+          length="173710" mtime="2024-08-22T18:10:57+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Babylon&#39;s Ashes: Book Six of the Expanse (now a Prime Original series)</title>
+    <id>urn:uuid:14f14ee7-37a6-4616-9e94-149f1621d0e7</id>
+    <updated>2024-08-22T18:10:44+00:00</updated>
+    
+      <author>
+        <name>James S. A. Corey</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Little, Brown Book Group</name>
+      </publisher>
+    
+    <published>2016-12-07T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/58" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/58" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/58/epub/"
+          length="2523648" mtime="2024-08-22T18:10:44+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Between Two Fires</title>
+    <id>urn:uuid:fa974eb5-51ed-4248-aa5d-a6de3c3a978d</id>
+    <updated>2024-10-30T09:40:59+00:00</updated>
+    
+      <author>
+        <name>Christopher Buehlman</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Ace</name>
+      </publisher>
+    
+    <published>2012-10-02T07:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Horror"
+              label="Horror"/>
+    
+    <summary>His extraordinary debut, Those Across the River, was hailed as “genre-bending Southern horror” (California Literary Review), “graceful [and] horrific” (Patricia Briggs). Now Christopher Buehlman invites readers into an even darker age—one of temptation and corruption, of war in heaven, and of hell on earth… And Lucifer said: “Let us rise against Him now in all our numbers, and pull the walls of heaven down…” The year is 1348. Thomas, a disgraced knight, has found a young girl alone in a dead Norman village. An orphan of the Black Death, and an almost unnerving picture of innocence, she tells Thomas that plague is only part of a larger cataclysm—that the fallen angels under Lucifer are rising in a second war on heaven, and that the world of men has fallen behind the lines of conflict. Is it delirium or is it faith? She believes she has seen the angels of God. She believes the righteous dead speak to her in dreams. And now she has convinced the faithless Thomas to shepherd her across a depraved landscape to Avignon. There, she tells Thomas, she will fulfill her mission: to confront the evil that has devastated the earth, and to restore to this betrayed, murderous knight the nobility and hope of salvation he long abandoned. As hell unleashes its wrath, and as the true nature of the girl is revealed, Thomas will find himself on a macabre battleground of angels and demons, saints, and the risen dead, and in the midst of a desperate struggle for nothing less than the soul of man. Review&#39;&#39;Having made a huge bloody splash with Those across the River, Buehlman returns with a book set in 1348 Europe . . . It&#39;s intriguing that Buehlman has leapt so far from the mid-century Southern setting of his first novel, just as intriguing that he&#39;s also an award-winning poet. Expect demand.&#39;&#39; --Library JournalAbout the AuthorCHRISTOPHER BUEHLMAN is a writer and performer from St. Petersburg, Florida. The winner of the 2007 Bridport Prize for poetry, he is also the author of several plays and the acclaimed horror novel Those Across the River. He lives with his wife and his rescued dog, Duck.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/212" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/212" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/212/epub/"
+          length="534939" mtime="2024-10-30T09:40:59+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/212/kepub/"
+          length="592315" mtime="2024-10-30T09:40:59+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Beyond Vibe Coding (for True Epub)</title>
+    <id>urn:uuid:44969cbb-5e99-463b-ae34-0933b1dbec5f</id>
+    <updated>2026-05-10T11:45:12+00:00</updated>
+    
+      <author>
+        <name>Addy Osmani</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2025-08-25T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>AI is transforming software development, shifting programmers from writing code to collaborating with AI in an intent-driven workflow—this is vibe coding. Beyond Vibe Coding explores how AI-powered coding assistants like GitHub Copilot and OpenAI Codex are reshaping the way we build software, from automating routine coding tasks to influencing architecture and design decisions. Written by Addy Osmani, this guide provides developers, tech leads, and organizations with practical strategies to integrate AI into their workflows effectively.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/308" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/308" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/308/epub/"
+          length="3447542" mtime="2026-05-10T11:45:12+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Bigger Leaner Stronger: The Simple Science of Building the Ultimate Male Body (The Bigger Leaner Stronger Series Book 1)</title>
+    <id>urn:uuid:7db5c610-5509-4a32-8b81-55489ec64943</id>
+    <updated>2024-08-22T18:10:40+00:00</updated>
+    
+      <author>
+        <name>Michael Matthews</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Oculus Publishers</name>
+      </publisher>
+    
+    <published>2014-01-04T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Health / Fitness"
+              label="Health / Fitness"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/43" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/43" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/43/epub/"
+          length="4857374" mtime="2024-08-22T18:10:40+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Book Thief: Film Tie-in Enhanced Edition (Definitions)</title>
+    <id>urn:uuid:1d49de4d-71ea-442e-9a0f-153f0cf074b2</id>
+    <updated>2024-08-22T18:10:46+00:00</updated>
+    
+      <author>
+        <name>Markus Zusak</name>
+      </author>
+    
+    
+      <publisher>
+        <name>RHCP</name>
+      </publisher>
+    
+    <published>2014-02-27T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Historical Fiction"
+              label="Historical Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/67" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/67" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/67/epub/"
+          length="3098135" mtime="2024-08-22T18:10:46+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Book You Wish Your Parents Had Read (and Your Children Will Be Glad That You Did)</title>
+    <id>urn:uuid:9840124b-ea71-4ddb-95bb-5a1868d84231</id>
+    <updated>2024-08-22T18:10:39+00:00</updated>
+    
+      <author>
+        <name>Philippa Perry</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Penguin Publishing Group</name>
+      </publisher>
+    
+    <published>2019-03-06T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Parenting"
+              label="Parenting"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/35" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/35" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/35/epub/"
+          length="727638" mtime="2024-08-22T18:10:39+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Border</title>
+    <id>urn:uuid:e52c96ee-4a22-4ccf-a4e8-d86c6d546bc1</id>
+    <updated>2025-06-08T08:12:20+00:00</updated>
+    
+      <author>
+        <name>Don Winslow</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2019-02-26T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Crime"
+              label="Crime"/>
+    
+    <summary>ONE OF THE MOST ANTICIPATED BOOKS OF THE YEARWashington Post&#39;s &#34;10 Books to Read in February&#34;&#34;A harsh, important book.&#34; – Stephen King&#34;Powerful and troubling.&#34; – Associated Press&#34;The publication of [The Border] represents a landmark moment in crime fiction.&#34; – Booklist (starred review)&#34;An action-filled, sometimes even instructive look at the world of the narcos and their discontents.&#34;— Kirkus ReviewsThe explosive, highly anticipated conclusion to the epic Cartel trilogy from the New York Times bestselling author of The ForceWhat do you do when there are no borders? When the lines you thought existed simply vanish? How do you plant your feet to make a stand when you no longer know what side you&#39;re on?The war has come home.For over forty years, Art Keller has been on the...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/289" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/289" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/289/epub/"
+          length="2457096" mtime="2025-06-08T08:12:20+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/289/kepub/"
+          length="2593327" mtime="2025-06-08T08:12:20+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Brisingr</title>
+    <id>urn:uuid:c41bf2cd-0c74-49ff-8884-f23852e358c6</id>
+    <updated>2024-11-06T17:44:08+00:00</updated>
+    
+      <author>
+        <name>Christopher Paolini</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Random House Children&#39;s Books</name>
+      </publisher>
+    
+    <published>2010-04-27T07:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Adventure"
+              label="Adventure"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Children"
+              label="Children"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Young Adult"
+              label="Young Adult"/>
+    
+    <summary>SUMMARY: Oaths sworn . . . loyalties tested . . . forces collide.It&#39;s been only months since Eragon first uttered &#34;brisingr,&#34; the ancient language term for fire. Since then, he&#39;s not only learned to create magic with words-he&#39;s been challenged to his very core. Following the colossal battle against the Empire&#39;s warriors on the Burning Plains, Eragon and his dragon, Saphira, have narrowly escaped with their lives. Still, there is more adventure at hand for the Rider and his dragon, as Eragon finds himself bound by a tangle of promises he may not be able to keep.First is Eragon&#39;s oath to his cousin, Roran: to help rescue Roran&#39;s beloved from King Galbatorix&#39;s clutches. But Eragon owes his loyalty to others, too. The Varden are in desperate need of his talents and strength-as are the elves and dwarves. When unrest claims the rebels and danger strikes from every corner, Eragon must make choices-choices that will take him across the Empire and beyond, choices that may lead to unimagined sacrifice.Eragon is the greatest hope to rid the land of tyranny. Can this once simple farm boy unite the rebel forces and defeat the king?</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/225" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/225" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/225/epub/"
+          length="1387350" mtime="2024-11-06T17:44:08+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/225/kepub/"
+          length="1491139" mtime="2024-11-06T17:44:08+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Building a Second Brain</title>
+    <id>urn:uuid:2377ddc2-e33f-412d-bf06-46338307d1d8</id>
+    <updated>2024-08-22T18:10:40+00:00</updated>
+    
+      <author>
+        <name>Tiago Forte</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Profile</name>
+      </publisher>
+    
+    <published>2022-06-13T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/41" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/41" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/41/epub/"
+          length="2217586" mtime="2024-08-22T18:10:40+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Building an Event-Driven Data Mesh</title>
+    <id>urn:uuid:82ebe51d-ab57-4498-83e5-d7b7c2685ab3</id>
+    <updated>2024-09-09T05:59:47+00:00</updated>
+    
+      <author>
+        <name>Adam Bellemare</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>101-01-01T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>The exponential growth of data combined with the need to derive real-time business value is a critical issue today. An event-driven data mesh can power real-time operational and analytical workloads, all from a single set of data product streams. With practical real-world examples, this book shows you how to successfully design and build an event-driven data mesh.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/163" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/163" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/163/epub/"
+          length="6747380" mtime="2024-09-09T05:59:47+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/163/kepub/"
+          length="6762597" mtime="2024-09-09T05:59:47+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Building Event-Driven Microservices</title>
+    <id>urn:uuid:072f649e-1e17-4665-a7a3-04d8bc28437e</id>
+    <updated>2024-09-09T05:59:47+00:00</updated>
+    
+      <author>
+        <name>Adam Bellemare</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2020-01-28T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>Organizations today often struggle when trying to balance business requirements with ever-increasing volumes of data. Yet the need to take advantage of real-time data continues to grow among the most competitive digital industries. Conventional system architectures may not be up to the task. With this practical guide, you&#39;ll learn how to leverage large-scale data usage across the business units in your organization using the principles of event-driven microservices.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/162" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/162" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/162/epub/"
+          length="6983690" mtime="2024-09-09T05:59:47+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/162/kepub/"
+          length="7034173" mtime="2024-09-09T05:59:47+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Building Evolutionary Architectures</title>
+    <id>urn:uuid:e101bc58-e984-41f1-8f01-240dbe9753f9</id>
+    <updated>2024-09-09T05:59:47+00:00</updated>
+    
+      <author>
+        <name>Neal Ford| Rebecca Parsons| Patrick Kua</name>
+      </author>
+    
+      <author>
+        <name>Pramod Sadalage</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2022-11-22T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Business"
+              label="Business"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>The software development ecosystem is constantly changing, providing a constant stream of new tools, frameworks, techniques, and paradigms. Over the past few years, incremental developments in core engineering practices for software development have created the foundations for rethinking how architecture changes over time, along with ways to protect important architectural characteristics as it evolves. This practical guide ties those parts together with a new way to think about architecture and time.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/164" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/164" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/164/epub/"
+          length="8826851" mtime="2024-09-09T05:59:47+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/164/kepub/"
+          length="9103838" mtime="2024-09-09T05:59:47+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Building Microservices</title>
+    <id>urn:uuid:1883dc88-d286-4744-93cb-9c36a7ada0bc</id>
+    <updated>2024-09-09T05:59:53+00:00</updated>
+    
+      <author>
+        <name>Sam Newman</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2021-07-23T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>As organizations shift from monolithic applications to smaller, self-contained microservices, distributed systems have become more fine-grained. But developing these new systems brings its own host of problems. This expanded second edition takes a holistic view of topics that you need to consider when building, managing, and scaling microservices architectures. Through clear examples and practical advice, author Sam Newman gives everyone from architects and developers to testers and IT operators a firm grounding in the concepts.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/184" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/184" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/184/epub/"
+          length="14258133" mtime="2024-09-09T05:59:53+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/184/kepub/"
+          length="14451384" mtime="2024-09-09T05:59:53+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Building Multi-Tenant SaaS Architectures</title>
+    <id>urn:uuid:da3ff12c-c8f3-4ac7-b86e-e4af1f0ae96a</id>
+    <updated>2024-09-09T05:59:53+00:00</updated>
+    
+      <author>
+        <name>Tod Golding</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2024-05-02T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>Software as a service (SaaS) is on the path to becoming the de facto model for building, delivering, and operating software solutions. Adopting a multi-tenant SaaS model requires builders to take on a broad range of new architecture, implementation, and operational challenges. How data is partitioned, how resources are isolated, how tenants are authenticated, how microservices are built--these are just a few of the many areas that need to be on your radar when you&#39;re designing and creating SaaS offerings.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/183" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/183" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/183/epub/"
+          length="13373489" mtime="2024-09-09T05:59:53+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/183/kepub/"
+          length="13532326" mtime="2024-09-09T05:59:53+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Bury Our Bones in the Midnight Soil</title>
+    <id>urn:uuid:63610f83-ed24-4ecf-9348-86dea7a38caa</id>
+    <updated>2026-05-10T12:40:03+00:00</updated>
+    
+      <author>
+        <name>Schwab| V. E.</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Macmillan</name>
+      </publisher>
+    
+    <published>101-01-01T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Horror"
+              label="Horror"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/313" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/313" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/313/epub/"
+          length="10687206" mtime="2026-05-10T12:40:03+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Caliban&#39;s War (Expanse)</title>
+    <id>urn:uuid:084bfce1-7b1e-4421-a871-f13f63a0e22c</id>
+    <updated>2024-08-22T18:10:47+00:00</updated>
+    
+      <author>
+        <name>James S. A. Corey</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Little, Brown Book Group</name>
+      </publisher>
+    
+    <published>2012-06-06T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/70" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/70" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/70/epub/"
+          length="577850" mtime="2024-08-22T18:10:47+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Cartel: A Novel</title>
+    <id>urn:uuid:9bbd719a-f762-4da4-9292-b685309e0d4c</id>
+    <updated>2025-06-08T08:12:20+00:00</updated>
+    
+      <author>
+        <name>Don Winslow</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Knopf</name>
+      </publisher>
+    
+    <published>2015-06-23T05:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Crime"
+              label="Crime"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Mystery"
+              label="Mystery"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Thriller"
+              label="Thriller"/>
+    
+    <summary>A NEW YORK TIMES BESTSELLER From the internationally best-selling author of the acclaimed novel The Power of the Dog comes The Cartel, a gripping, true-to-life, ripped-from-the-headlines epic story of power, corruption, revenge, and justice spanning the past decade of the Mexican-American drug wars. It’s 2004. DEA agent Art Keller has been fighting the war on drugs for thirty years in a blood feud against Adán Barrera, the head of El Federación, the world’s most powerful cartel, and the man who brutally murdered Keller’s partner. Finally putting Barrera away cost Keller dearly—the woman he loves, the beliefs he cherishes, the life he wants to lead. Then Barrera gets out, determined to rebuild the empire that Keller shattered. Unwilling to live in a world with Barrera in it, Keller goes on a ten-year odyssey to take him down. His obsession with justice—or is it revenge?—becomes a ruthless struggle that stretches from the cities, mountains, and deserts of Mexico to Washington’s corridors of power to the streets of Berlin and Barcelona. Keller fights his personal battle against the devastated backdrop of Mexico’s drug war, a conflict of unprecedented scale and viciousness, as cartels vie for power and he comes to the final reckoning with Barrera—and himself—that he always knew must happen. The Cartel is a story of revenge, honor, and sacrifice, as one man tries to face down the devil without losing his soul. It is the story of the war on drugs and the men—and women—who wage it. From the Hardcover edition.**Review“A big, sprawling, ultimately stunning crime tableau. . . . The Cartel, like The Power of the Dog, can be better appreciated for its gritty, gasp-inducing knowledge of true crime’s brutal extremes and for its unflinching awareness of what Mr. Winslow calls ‘evil beyond the possibility of redemption.’” —Janet Maslin, The New York Times “You don’t have to read Don Winslow’s The Power of the Dog to get swept away by The Cartel, its ripped-from-the-headlines sequel, but you should. You should try to get your hands on everything Winslow’s written, because he’s one of the best thriller writers on the planet. An epic, gritty south-of-the-border Godfather for our time.” —Benjamin Percy, Esquire “Clearly one of the most ambitious and most accomplished crime novels to appear in the last fifteen years, The Cartel will likely retain that distinction even as the twenty-first century grinds on.” —Bill Ott, Booklist “Don Winslow’s The Cartel is the most important crime saga of the millennium. . . . The Cartel is fiction in the same way Upton Sinclair’s The Jungle is fiction. This is reporting and exposé built around an intricate plot, finely etched characters, and whip-crack dialogue. Storytelling that matters.” —Robert Anglen, Arizona Republic “A Game of Thrones of the Mexican drug wars, a multipart, intricately plotted, blood-soaked epic that tells the story of how America’s unquenchable appetite for illegal drugs has brought chaos to our southern neighbors and darkened our own political and criminal culture.” —Will Dana, Rolling Stone “Astoundingly ambitious. . . . Draws on real events and people as it chronicles Mexico’s drug wars. . . . Masterfully organized and teeming with memorable characters, it is unlikely to be bettered this year.” —John Dugdale, The Sunday Times (London), thriller of the month “Winslow’s masterly sequel to The Power of the Dog continues his epic story of the Mexican drug wars. This exhaustively researched novel elucidates not just the situation in Mexico but the consequences of our own disastrous forty-year ‘war on drugs.’” —Publishers Weekly “Winslow is the most fearless chronicler of the chaos and violence along the U.S.-Mexico border. . . . [He] has written what could be the War and Peace of the War on Drugs.” —Erik Hedegaard, Men’s Journal “Don Winslow delivers his longest and finest novel yet in The Cartel. This is the War and Peace of dopewar books. Tense, brutal, wildly atmospheric, stunningly plotted, deeply etched. It’s got the jazz dog feel of a shot of pure meth!!” —James Ellroy “Don Winslow has done it again. The Cartel is a first rate edge-of-your-seat thriller for sure, but it also continues Winslow’s incisive reporting on the dangers and intricacies of the world we live in. There is no higher mark for a storyteller than to both educate and entertain. With Winslow these aspects are entwined like strands of DNA. He’s a master and this book proves it once again.” —Michael Connelly**** “The Cartel is a gut-punch of a novel. Big, ambitious, violent and widely entertaining, Don Winslow’s latest is an absolute must-read.” —Harlan Coben “Sensationally good, even after the near-perfection of The Power of the Dog. Less of a sequel than an integral part of a solid-gold whole.” —Lee Child About the Author Don Winslow has worked as a movie theatre manager, a production assistant, and as a private investigator. In addition to being a novelist he now works as an independent consultant in issues involving litigation arising from criminal behaviour. His novels include The Kings of Cool, Savages, The Death and Life of Bobby Z, California Fire and Life, The Power of the Dog, The Winter of Frankie Machine and The Dawn Patrol. In 2012 Savages was released as a blockbuster film.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/288" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/288" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/288/epub/"
+          length="818774" mtime="2025-06-08T08:12:20+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/288/kepub/"
+          length="929315" mtime="2025-06-08T08:12:20+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Cemetery Road</title>
+    <id>urn:uuid:3ed54340-dbe4-44a0-ba7a-05d1fda4455d</id>
+    <updated>2024-08-21T06:11:54+00:00</updated>
+    
+      <author>
+        <name>Greg Iles</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2020-05-14T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Thriller"
+              label="Thriller"/>
+    
+    <summary>Don&#39;t miss the latest Natchez Burning novel, SOUTHERN MANSometimes the price of justice is a good man&#39;s soul.The #1 New York Times bestselling author of the Natchez Burning trilogy returns with an electrifying tale of friendship, betrayal, and shattering secrets that threaten to destroy a small Mississippi town.&#34;An ambitious stand-alone thriller that is both an absorbing crime story and an in-depth exploration of grief, betrayal and corruption... Iles&#39;s latest calls to mind the late, great Southern novelist Pat Conroy. Like Conroy, Iles writes with passion, intensity and absolute commitment.&#34; — Washington PostWhen Marshall McEwan left his Mississippi hometown at eighteen, he vowed never to return. The trauma that drove him away spurred him to become one of the most successful journalists in Washington, DC. But as the ascendancy of a chaotic...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/1" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/1" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/1/epub/"
+          length="1630426" mtime="2024-08-21T06:11:54+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/1/kepub/"
+          length="1965788" mtime="2024-08-21T06:11:54+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Chances Are</title>
+    <id>urn:uuid:d428783d-13fe-47fa-9d3c-07d1dce0a991</id>
+    <updated>2025-04-07T06:13:57+00:00</updated>
+    
+      <author>
+        <name>Richard Russo</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Allen &amp; Unwin</name>
+      </publisher>
+    
+    <published>101-01-01T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fiction"
+              label="Fiction"/>
+    
+    <summary>One beautiful September day, three sixty-six-year-old men convene on Martha&#39;s Vineyard, friends ever since meeting in college in the 1960s. They couldn&#39;t have been more different then, or even today - Lincoln&#39;s a commercial real estate broker, Teddy a tiny-press publisher and Mickey an ageing musician. But each man holds his own secrets, in addition to the monumental mystery that none of them has ever stopped puzzling over since 1971: the disappearance of their friend Jacy. Now, decades later, the distant past interrupts the present as the truth about what happened to Jacy finally emerges, forcing the men to reconsider everything they thought they knew about each other. Shot through with Russo&#39;s trademark comedy and humanity, Chances Are also introduces a new level of suspense and menace that will quicken the reader&#39;s heartbeat throughout this absorbing saga of how friendship&#39;s bonds are every bit as constricting and rewarding as those of family. For...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/275" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/275" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/275/epub/"
+          length="774959" mtime="2025-04-07T06:13:57+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/275/kepub/"
+          length="824575" mtime="2025-04-07T06:13:57+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Chess for Dummies</title>
+    <id>urn:uuid:1c2a49c9-9bee-4e99-99ae-a459ff55b916</id>
+    <updated>2025-07-15T05:08:53+00:00</updated>
+    
+      <author>
+        <name>James Eade</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Wiley</name>
+      </publisher>
+    
+    <published>2016-08-29T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    <summary>Your quick and easy guide to chess Kings, queens, knights—does chess seem like a royal pain to grasp? Taking the intimidation out of this age-old pastime, Chess For Dummies, 4th Edition is here to help beginners wrap their minds around the rules of the game, make sense of those puzzling pieces, and start playing chess like a champ. From using the correct chess terminology to engaging in the art of the attack, you&#39;ll get easy-to-follow, step-by-step explanations that demystify the game—and give you an extra edge. Chess isn&#39;t a game you can master—it&#39;s an activity that requires patience, strategy, and constant learning. But that&#39;s all part of the fun and challenge! Whether you&#39;re playing chess online, in a tournament, or with a family member or friend, this hands-on guide gets you familiar with the game and its components, giving you the know-how to put the principles of play into action from the opening to the endgame. Grasp the principles...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/294" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/294" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/294/epub/"
+          length="16984195" mtime="2025-07-15T05:08:53+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/294/kepub/"
+          length="17038608" mtime="2025-07-15T05:08:53+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Children of the Sky (Zones of Thought series Book 3)</title>
+    <id>urn:uuid:7bb690f5-3021-48fe-9596-528c70b99cb8</id>
+    <updated>2024-08-22T18:10:51+00:00</updated>
+    
+      <author>
+        <name>Vernor Vinge</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Tom Doherty Associates</name>
+      </publisher>
+    
+    <published>2011-10-10T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/89" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/89" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/89/epub/"
+          length="751375" mtime="2024-08-22T18:10:51+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Cibola Burn (Expanse)</title>
+    <id>urn:uuid:62057445-59c6-49a3-bd8d-07727af430ab</id>
+    <updated>2024-08-22T18:11:05+00:00</updated>
+    
+      <author>
+        <name>James S. A. Corey</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Little, Brown Book Group</name>
+      </publisher>
+    
+    <published>2014-06-04T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/135" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/135" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/135/epub/"
+          length="682475" mtime="2024-08-22T18:11:05+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>City in Ruins</title>
+    <id>urn:uuid:b5dea357-0370-42e9-8f82-590f787c1539</id>
+    <updated>2024-10-14T16:37:37+00:00</updated>
+    
+      <author>
+        <name>Winslow| Don</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2024-04-02T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Crime"
+              label="Crime"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/200" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/200" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/200/epub/"
+          length="757556" mtime="2024-10-14T16:37:37+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/200/kepub/"
+          length="807198" mtime="2024-10-14T16:37:37+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The City of Brass</title>
+    <id>urn:uuid:974dada4-77ee-4918-8299-71587af15d6f</id>
+    <updated>2024-08-22T18:24:29+00:00</updated>
+    
+      <author>
+        <name>S. A. Chakraborty</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2018-06-11T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <summary>NAMED ONE OF THE BEST BOOKS OF THE YEAR BY Library Journal | Vulture | The Verge | SYFYWireStep into The City of Brass, the spellbinding debut from S. A. Chakraborty perfect for fans of The Golem and the Jinni, The Grace of Kings, and Uprooted, in which the future of a magical Middle Eastern kingdom rests in the hands of a clever and defiant young con artist with miraculous healing gifts. On the streets of eighteenth-century Cairo, Nahri is a con woman of unsurpassed skill. She makes her living swindling Ottoman nobles, hoping to one day earn enough to change her fortunes. But when Nahri accidentally summons Dara, an equally sly, darkly mysterious djinn warrior, during one of her cons, she learns that even the cleverest of schemes can have deadly consequences. Forced to flee Cairo, Dara and Nahri journey together across hot, windswept sands teeming with creatures of fire and rivers where the mythical marid sleep, past ruins...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/136" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/136" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/136/epub/"
+          length="1432043" mtime="2024-08-22T18:24:29+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/136/kepub/"
+          length="1528426" mtime="2024-08-22T18:24:29+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>City of Dreams</title>
+    <id>urn:uuid:22a42e38-6f50-44ae-ad9c-80088163f35a</id>
+    <updated>2024-08-21T06:27:50+00:00</updated>
+    
+      <author>
+        <name>Don Winslow</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2023-04-18T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Crime"
+              label="Crime"/>
+    
+    <summary>New York Times BestsellerFollowing the epic, ambitious, instant New York Times bestseller City on Fire, &#34;The Godfather for our generation&#34; (Adrian McKinty), comes the dramatic second novel in an epic crime trilogy from Don Winslow, #1 internationally bestselling author of the Cartel trilogy (The Power of the Dog, The Cartel and The Border).Hollywood.The city where dreams are made. On the losing side of a bloody East Coast crime war, Danny Ryan is now on the run. The Mafia, the cops, the FBI all want him dead or in prison. With his little boy, his elderly father and the tattered remnants of his loyal crew of soldiers, he makes the classic American migration to California to start a new life.A quiet, peaceful existence.But the Feds track him down and want Danny to do them a favor that could make him a fortune or kill him. And when Hollywood starts shooting a film based on his former life, Danny...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/4" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/4" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/4/epub/"
+          length="2393481" mtime="2024-08-21T06:27:50+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/4/kepub/"
+          length="2436865" mtime="2024-08-21T06:27:50+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>City of Thieves</title>
+    <id>urn:uuid:54c8d2ec-ba73-4561-b1a8-cfee7cd43879</id>
+    <updated>2025-04-21T17:15:51+00:00</updated>
+    
+      <author>
+        <name>David Benioff</name>
+      </author>
+    
+    
+      <publisher>
+        <name>ePub Bud (www.epubbud.com)</name>
+      </publisher>
+    
+    <published>2008-05-13T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Historical Fiction"
+              label="Historical Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/283" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/283" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/283/epub/"
+          length="276625" mtime="2025-04-21T17:15:51+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/283/kepub/"
+          length="309754" mtime="2025-04-21T17:15:51+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>City on Fire</title>
+    <id>urn:uuid:83d66170-d5b4-4225-9449-3be47d1ca5dd</id>
+    <updated>2025-01-12T14:03:33+00:00</updated>
+    
+      <author>
+        <name>Don Winslow</name>
+      </author>
+    
+    
+    <published>2022-04-26T05:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Mystery"
+              label="Mystery"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Thriller"
+              label="Thriller"/>
+    
+    <summary>Two criminal empires together control all of New England. Until a beautiful woman comes between the Irish and the Italians, launching a war that will see them kill each other, destroy an alliance, and set a city on fire. Danny Ryan yearns for a more “legit” life and a place in the sun. But as the bloody conflict stacks body on body and brother turns against brother, Danny has to rise above himself. To save the friends he loves like family and the family he has sworn to protect, he becomes a leader, a ruthless strategist, and a master of a treacherous game in which the winners live and the losers die. From the gritty streets of Providence to the glittering screens of Hollywood to the golden casinos of Las Vegas, two rival crime families ignite a war that will leave only one standing. The winner will forge a dynasty.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/266" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/266" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/266/epub/"
+          length="324682" mtime="2025-01-12T14:03:33+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/266/kepub/"
+          length="373224" mtime="2025-01-12T14:03:33+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>A Clash of Kings (A Song of Ice and Fire, Book 2)</title>
+    <id>urn:uuid:2d12f4c7-6124-4815-a933-88c6acad7292</id>
+    <updated>2024-08-22T18:10:55+00:00</updated>
+    
+      <author>
+        <name>George R. R. Martin</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Random House Publishing Group</name>
+      </publisher>
+    
+    <published>2002-12-31T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/104" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/104" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/104/epub/"
+          length="1719091" mtime="2024-08-22T18:10:55+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Clean Code</title>
+    <id>urn:uuid:480e8f26-a3bb-45bd-b075-cd833e7de154</id>
+    <updated>2024-08-22T18:10:57+00:00</updated>
+    
+      <author>
+        <name>Martin Robert C.</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Pearson Education</name>
+      </publisher>
+    
+    <published>2008-07-31T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/108" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/108" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/108/epub/"
+          length="32019780" mtime="2024-08-22T18:10:57+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Communication Patterns</title>
+    <id>urn:uuid:99e5689f-67ea-4784-b0b1-43cde128ecaa</id>
+    <updated>2024-09-09T05:59:52+00:00</updated>
+    
+      <author>
+        <name>Jacqui Read</name>
+      </author>
+    
+    
+      <publisher>
+        <name>O&#39;Reilly Media, Inc.</name>
+      </publisher>
+    
+    <published>2023-10-06T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    <summary>Having a great idea or design is not enough to make your software project succeed. If you want stakeholders to buy into your design and teams to collaborate and contribute to the vision, you also need to communicate effectively. In this practical book, author Jacqui Read shows you how to successfully present your architecture and get stakeholders to jump on board. You&#39;ll learn how to create documentation and diagrams that actually get the message across to the different audiences you&#39;ll face.</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/181" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/181" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/181/epub/"
+          length="12734202" mtime="2024-09-09T05:59:52+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/181/kepub/"
+          length="12740774" mtime="2024-09-09T05:59:52+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Concepts of Programming Languages and Operating Systems</title>
+    <id>urn:uuid:645df23f-f7d4-4503-b83e-c6d7e4a60e8b</id>
+    <updated>2024-08-22T18:10:52+00:00</updated>
+    
+      <author>
+        <name>Jitendra Patel</name>
+      </author>
+    
+    
+    <published>2012-02-14T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/97" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/97" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/97/epub/"
+          length="1195336" mtime="2024-08-22T18:10:52+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Confidence: a Novel: A Novel</title>
+    <id>urn:uuid:28668633-8dd2-42ae-8f3b-3f9f8c56fc6a</id>
+    <updated>2024-08-22T18:24:29+00:00</updated>
+    
+      <author>
+        <name>Rafael Frumkin</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Simon &amp; Schuster</name>
+      </publisher>
+    
+    <published>2023-03-07T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fiction"
+              label="Fiction"/>
+    
+    <summary>&#34;Propulsive, cheeky, eat-the-rich page-turner&#34; —Casey McQuiston, The Washington Post &#34;Theranos but make it gay.&#34; —Electric Literature A Most Anticipated Book of 2023 from Vulture, Elle, LitHub, Electric Literature, BuzzFeed, Our Culture, and Crimereads Best friends (and occasional lovers) Ezra and Orson are teetering on top of the world after founding a company that promises instant enlightenment in this thrilling caper about scams, schemes, and the absurdity of the American Dream.At seventeen, Ezra Green doesn&#39;t have a lot going for him: he&#39;s shorter than average, snaggle-toothed, internet-addicted, and halfway to being legally blind. He&#39;s also on his way to Last Chance Camp, the final stop before juvie. But Ezra&#39;s summer at Last Chance turns life-changing when he meets Orson, brilliant and Adonis-like with a mind for...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/137" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/137" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/137/epub/"
+          length="560888" mtime="2024-08-22T18:24:29+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Consider Phlebas (Culture series)</title>
+    <id>urn:uuid:d6c90020-cd97-4051-a323-b16765b6c202</id>
+    <updated>2024-08-22T18:10:58+00:00</updated>
+    
+      <author>
+        <name>Iain M. Banks</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Little, Brown Book Group</name>
+      </publisher>
+    
+    <published>2008-09-03T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/113" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/113" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/113/epub/"
+          length="590683" mtime="2024-08-22T18:10:58+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>The Courage To Be Disliked: How to free yourself, change your life and achieve real happiness (Courage To series)</title>
+    <id>urn:uuid:e65185a4-95a8-44df-aacc-7ae7d2959032</id>
+    <updated>2024-08-22T18:10:46+00:00</updated>
+    
+      <author>
+        <name>Ichiro Kishimi</name>
+      </author>
+    
+      <author>
+        <name>Fumitake Koga</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Atlantic Books</name>
+      </publisher>
+    
+    <published>2018-01-03T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Self-Help"
+              label="Self-Help"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/68" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/68" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/68/epub/"
+          length="966056" mtime="2024-08-22T18:10:46+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>A Court of Thorns and Roses</title>
+    <id>urn:uuid:5eb8a854-e51a-4709-9fab-cfb2acbb186f</id>
+    <updated>2024-12-22T17:01:32+00:00</updated>
+    
+      <author>
+        <name>Sarah J. Maas</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Bloomsbury Publishing</name>
+      </publisher>
+    
+    <published>2015-12-14T23:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Romance"
+              label="Romance"/>
+    
+    <summary>The first instalment of the GLOBAL PHENOMENON and TikTok sensation, from multi-million selling and #1 Sunday Times bestselling author Sarah J. Maas Maas has established herself as a fantasy fiction titan – TimeHarry Potter magic, Taylor Swift sass, Fifty Shades-level athleticism – The Sunday TimesWith bits of Buffy, Game of Thrones and Outlander, this is a glorious series of total joy – StylistSpiced with slick plotting and atmospheric world-building ... a page-turning delight – Guardian ****** Feyre is a huntress, but when she kills what she thinks is a wolf in the woods, a terrifying creature arrives to demand retribution. Dragged to a treacherous magical land she knows about only from legends, Feyre discovers that her captor, Tamlin, is not...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/254" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/254" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/254/epub/"
+          length="8993453" mtime="2024-12-22T17:01:32+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/254/kepub/"
+          length="7687117" mtime="2024-12-22T17:01:32+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Cracking the Coding Interview, 6th Edition 189 Programming Questions and Solutions</title>
+    <id>urn:uuid:49582d1c-d10a-4bca-aadb-5bd70bdc88ba</id>
+    <updated>2024-10-04T15:48:43+00:00</updated>
+    
+      <author>
+        <name>Gayle Laakmann McDowell</name>
+      </author>
+    
+    
+    <published>101-01-01T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/193" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/193" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/193/epub/"
+          length="1806905" mtime="2024-10-04T15:48:43+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/193/pdf/"
+          length="7191797" mtime="2024-10-04T15:48:43+00:00" type="application/pdf"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/193/kepub/"
+          length="1985284" mtime="2024-10-04T15:48:43+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Cracking the Tech Career</title>
+    <id>urn:uuid:87e67097-4945-421c-8260-0a2f2c5b38b3</id>
+    <updated>2024-10-04T15:48:43+00:00</updated>
+    
+      <author>
+        <name>Gayle Laakmann McDowell</name>
+      </author>
+    
+    
+    <published>2014-09-08T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Technology"
+              label="Technology"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/194" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/194" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/194/pdf/"
+          length="1262125" mtime="2024-10-04T15:48:43+00:00" type="application/pdf"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/194/epub/"
+          length="618478" mtime="2024-10-04T15:48:43+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Crooked Kingdom</title>
+    <id>urn:uuid:63975e50-5894-4300-b47a-90098cd39b46</id>
+    <updated>2026-05-10T12:35:53+00:00</updated>
+    
+      <author>
+        <name>Bardugo| Leigh</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Henry Holt and Co.</name>
+      </publisher>
+    
+    <published>2016-09-27T00:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Adventure"
+              label="Adventure"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="kobo"
+              label="kobo"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Romance"
+              label="Romance"/>
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Young Adult"
+              label="Young Adult"/>
+    
+    <summary>See the Grishaverse come to life on screen with the Netflix series, Shadow and Bone — Season 2 streaming now! Discover what comes next for Kaz, Jesper, Inej, and Wylan in Crooked Kingdom, the spectacular sequel to Six of Crows.When you can&#39;t beat the odds, change the game.Kaz Brekker and his crew have just pulled off a heist so daring even they didn&#39;t think they&#39;d survive. But instead of divvying up a fat reward, they&#39;re right back to fighting for their lives. Double-crossed and badly weakened, the crew is low on resources, allies, and hope. As powerful forces from around the world descend on Ketterdam to root out the secrets of the dangerous drug known as jurda parem, old rivals and new enemies emerge to challenge Kaz&#39;s cunning and test the team&#39;s fragile loyalties. A war will be waged on the city&#39;s dark and twisting streets—a battle for revenge and redemption that will decide the fate of the...</summary>
+    
+    <link type="image/jpeg" href="/opds/cover/312" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/312" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/312/epub/"
+          length="4387173" mtime="2026-05-10T12:35:53+00:00" type="application/epub+zip"/>
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/312/kepub/"
+          length="3929163" mtime="2026-05-10T12:35:53+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Cryptonomicon</title>
+    <id>urn:uuid:a4ffb221-a666-4ac2-a5e2-b8248e9ec63e</id>
+    <updated>2024-08-22T18:11:02+00:00</updated>
+    
+      <author>
+        <name>Neal Stephenson</name>
+      </author>
+    
+    
+      <publisher>
+        <name>HarperCollins Publishers</name>
+      </publisher>
+    
+    <published>2009-03-16T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Science Fiction"
+              label="Science Fiction"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/125" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/125" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/125/epub/"
+          length="1834564" mtime="2024-08-22T18:11:02+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  <entry>
+    <title>A Dance with Dragons (A Song of Ice and Fire, Book 5)</title>
+    <id>urn:uuid:df743a33-7986-446c-8c31-24b59036cb87</id>
+    <updated>2024-08-22T18:10:54+00:00</updated>
+    
+      <author>
+        <name>George R. R. Martin</name>
+      </author>
+    
+    
+      <publisher>
+        <name>Random House Publishing Group</name>
+      </publisher>
+    
+    <published>2011-07-11T22:00:00+00:00</published>
+    
+      <dcterms:language>eng</dcterms:language>
+    
+    
+    <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
+              term="Fantasy"
+              label="Fantasy"/>
+    
+    
+    
+    <link type="image/jpeg" href="/opds/cover/100" rel="http://opds-spec.org/image"/>
+    <link type="image/jpeg" href="/opds/cover/100" rel="http://opds-spec.org/image/thumbnail"/>
+    
+    
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/100/epub/"
+          length="2201319" mtime="2024-08-22T18:10:54+00:00" type="application/epub+zip"/>
+    
+  </entry>
+  
+  
+  
+  
+</feed>

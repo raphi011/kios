@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:uuid:mixed-test</id>
+  <title>Mixed nav + publication</title>
+  <updated>2026-05-11T00:00:00Z</updated>
+  <link rel="self" href="https://example/opds/mixed"
+        type="application/atom+xml;profile=opds-catalog"/>
+  <entry>
+    <id>urn:nav:sub-a</id>
+    <title>Sub-catalog A</title>
+    <link rel="subsection" href="/opds/sub-a"
+          type="application/atom+xml;profile=opds-catalog"/>
+  </entry>
+  <entry>
+    <id>urn:cwa:book:7</id>
+    <title>Inline Book</title>
+    <author><name>A Person</name></author>
+    <updated>2026-05-11T00:00:00Z</updated>
+    <link rel="http://opds-spec.org/acquisition"
+          href="/dl/inline.epub" type="application/epub+zip"/>
+  </entry>
+</feed>

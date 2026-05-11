@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:opds="http://opds-spec.org/2010/catalog">
+  <id>urn:uuid:multi-format-test</id>
+  <title>Multi-format test</title>
+  <updated>2026-05-11T00:00:00Z</updated>
+  <link rel="self" href="https://example/opds/multiformat"
+        type="application/atom+xml;profile=opds-catalog"/>
+  <entry>
+    <id>urn:cwa:book:42</id>
+    <title>Multi-Format Book</title>
+    <author><name>Test Author</name></author>
+    <updated>2026-05-11T00:00:00Z</updated>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/opds/thumb_240_240/42" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image"
+          href="/opds/cover/42" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/acquisition"
+          href="/opds/download/42/epub" type="application/epub+zip"/>
+    <link rel="http://opds-spec.org/acquisition"
+          href="/opds/download/42/pdf"  type="application/pdf"/>
+    <link rel="http://opds-spec.org/acquisition"
+          href="/opds/download/42/cbz"  type="application/x-cbz"/>
+  </entry>
+</feed>

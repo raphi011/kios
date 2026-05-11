@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:dcterms="http://purl.org/dc/terms/">
+  <icon>/static/favicon.ico</icon>
+  <id>urn:uuid:2853dacf-ed79-42f5-8e8a-a7bb3d1ae6a2</id>
+  <updated>2026-05-11T09:01:25+00:00</updated>
+  <link rel="self"
+        href="/opds/books?"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="start"
+        href="/opds"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+  <link rel="up"
+        href="/opds"
+        type="application/atom+xml;profile=opds-catalog;type=feed;kind=navigation"/>
+
+
+
+    <link rel="search"
+      href="/opds/osd"
+      type="application/opensearchdescription+xml"/>
+  <link type="application/atom+xml" rel="search" title="Search" href="/opds/search/{searchTerms}" />
+  <title>Calibre-Web Automated</title>
+  <author>
+    <name>Calibre-Web Automated</name>
+    <uri>https://github.com/crocodilestick/calibre-web-automated</uri>
+  </author>
+
+  
+  
+  
+  <entry>
+    <title>All</title>
+    <id>/opds/books/letter/00</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/00"/>
+  </entry>
+  
+  <entry>
+    <title>.</title>
+    <id>/opds/books/letter/.</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/."/>
+  </entry>
+  
+  <entry>
+    <title>4</title>
+    <id>/opds/books/letter/4</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/4"/>
+  </entry>
+  
+  <entry>
+    <title>8</title>
+    <id>/opds/books/letter/8</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/8"/>
+  </entry>
+  
+  <entry>
+    <title>A</title>
+    <id>/opds/books/letter/A</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/A"/>
+  </entry>
+  
+  <entry>
+    <title>B</title>
+    <id>/opds/books/letter/B</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/B"/>
+  </entry>
+  
+  <entry>
+    <title>C</title>
+    <id>/opds/books/letter/C</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/C"/>
+  </entry>
+  
+  <entry>
+    <title>D</title>
+    <id>/opds/books/letter/D</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/D"/>
+  </entry>
+  
+  <entry>
+    <title>E</title>
+    <id>/opds/books/letter/E</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/E"/>
+  </entry>
+  
+  <entry>
+    <title>F</title>
+    <id>/opds/books/letter/F</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/F"/>
+  </entry>
+  
+  <entry>
+    <title>G</title>
+    <id>/opds/books/letter/G</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/G"/>
+  </entry>
+  
+  <entry>
+    <title>H</title>
+    <id>/opds/books/letter/H</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/H"/>
+  </entry>
+  
+  <entry>
+    <title>I</title>
+    <id>/opds/books/letter/I</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/I"/>
+  </entry>
+  
+  <entry>
+    <title>J</title>
+    <id>/opds/books/letter/J</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/J"/>
+  </entry>
+  
+  <entry>
+    <title>K</title>
+    <id>/opds/books/letter/K</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/K"/>
+  </entry>
+  
+  <entry>
+    <title>L</title>
+    <id>/opds/books/letter/L</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/L"/>
+  </entry>
+  
+  <entry>
+    <title>M</title>
+    <id>/opds/books/letter/M</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/M"/>
+  </entry>
+  
+  <entry>
+    <title>N</title>
+    <id>/opds/books/letter/N</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/N"/>
+  </entry>
+  
+  <entry>
+    <title>O</title>
+    <id>/opds/books/letter/O</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/O"/>
+  </entry>
+  
+  <entry>
+    <title>P</title>
+    <id>/opds/books/letter/P</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/P"/>
+  </entry>
+  
+  <entry>
+    <title>R</title>
+    <id>/opds/books/letter/R</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/R"/>
+  </entry>
+  
+  <entry>
+    <title>S</title>
+    <id>/opds/books/letter/S</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/S"/>
+  </entry>
+  
+  <entry>
+    <title>T</title>
+    <id>/opds/books/letter/T</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/T"/>
+  </entry>
+  
+  <entry>
+    <title>U</title>
+    <id>/opds/books/letter/U</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/U"/>
+  </entry>
+  
+  <entry>
+    <title>V</title>
+    <id>/opds/books/letter/V</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/V"/>
+  </entry>
+  
+  <entry>
+    <title>W</title>
+    <id>/opds/books/letter/W</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/W"/>
+  </entry>
+  
+  <entry>
+    <title>Y</title>
+    <id>/opds/books/letter/Y</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/Y"/>
+  </entry>
+  
+  <entry>
+    <title>Z</title>
+    <id>/opds/books/letter/Z</id>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog" href="/opds/books/letter/Z"/>
+  </entry>
+  
+</feed>
