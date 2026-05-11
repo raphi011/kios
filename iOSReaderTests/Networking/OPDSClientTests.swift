@@ -160,6 +160,40 @@ struct OPDSClientTests {
         #expect(feed.searchDescriptorURL!.absoluteString.hasSuffix("/opds/osd"))
     }
 
+    // MARK: - OpenSearch descriptor
+
+    @Test func parsesOpenSearchDescriptor() async throws {
+        let xml = try Self.loadFixture("cwa-opensearch-description")
+        Self.respond(with: xml, contentType: "application/opensearchdescription+xml")
+        let client = Self.makeClient()
+        let descriptor = try await client.fetchSearchDescriptor(
+            at: URL(string: "https://calibre.example/opds/osd")!
+        )
+        // URL encodes { and } as %7B and %7D, so check for encoded placeholder
+        #expect(descriptor.templateURL.absoluteString.contains("%7BsearchTerms%7D"))
+        let resolved = descriptor.resolve(query: "Dune")
+        #expect(resolved != nil)
+        #expect(resolved!.absoluteString.contains("Dune"))
+    }
+
+    @Test func cachesSearchDescriptor() async throws {
+        let xml = try Self.loadFixture("cwa-opensearch-description")
+        let counter = CounterBox()
+        MockURLProtocol.handler = { req in
+            counter.n += 1
+            let resp = HTTPURLResponse(
+                url: req.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "application/opensearchdescription+xml"]
+            )!
+            return (resp, xml)
+        }
+        let client = Self.makeClient()
+        let url = URL(string: "https://calibre.example/opds/osd")!
+        _ = try await client.fetchSearchDescriptor(at: url)
+        _ = try await client.fetchSearchDescriptor(at: url)
+        #expect(counter.n == 1)
+    }
+
     // MARK: - Cache
 
     @Test func cachesFeedWithinSession() async throws {

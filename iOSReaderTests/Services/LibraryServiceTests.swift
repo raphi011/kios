@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import SwiftData
 @testable import iOSReader
+@testable import Core
 
 @Suite("LibraryService")
 @MainActor
@@ -19,6 +20,10 @@ struct LibraryServiceTests {
                 return pages.removeFirst()
             }
             return feed
+        }
+
+        func fetchSearchDescriptor(at url: URL) async throws -> OpenSearchDescriptor {
+            return OpenSearchDescriptor(templateURL: URL(string: "https://example.com/search?q={searchTerms}")!)
         }
     }
 

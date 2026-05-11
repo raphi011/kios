@@ -5,6 +5,7 @@ import ReadiumShared
 
 protocol OPDSClientProtocol: Sendable {
     func fetchFeed(url: URL) async throws -> OPDSFeed
+    func fetchSearchDescriptor(at url: URL) async throws -> OpenSearchDescriptor
 }
 
 /// OPDS 1.2 client backed by Readium's OPDS1Parser.
@@ -19,6 +20,9 @@ actor OPDSClient: OPDSClientProtocol {
     /// worst case"). If this becomes a problem, swap for NSCache —
     /// one-file change. `invalidateAll()` clears it on sign-out.
     private var feedCache: [URL: OPDSFeed] = [:]
+    /// Session OpenSearch descriptor cache. Lazily fetched per feed, cached
+    /// per URL. Cleared by `invalidateAll()` on sign-out.
+    private var searchDescriptorCache: [URL: OpenSearchDescriptor] = [:]
 
     init(http: Core.HTTPClient) {
         self.http = http
@@ -33,12 +37,25 @@ actor OPDSClient: OPDSClientProtocol {
         return feed
     }
 
+    func fetchSearchDescriptor(at url: URL) async throws -> OpenSearchDescriptor {
+        if let cached = searchDescriptorCache[url] {
+            return cached
+        }
+        let (data, _) = try await http.data(for: URLRequest(url: url))
+        guard let descriptor = Self.parseOpenSearchDescriptor(data: data) else {
+            throw OPDSClientError.notAFeed
+        }
+        searchDescriptorCache[url] = descriptor
+        return descriptor
+    }
+
     func invalidate(_ url: URL) {
         feedCache.removeValue(forKey: url)
     }
 
     func invalidateAll() {
         feedCache.removeAll()
+        searchDescriptorCache.removeAll()
     }
 
     // MARK: - Parsing
@@ -48,6 +65,33 @@ actor OPDSClient: OPDSClientProtocol {
         let parseData = try OPDS1Parser.parse(xmlData: data, url: url, response: response)
         guard let feed = parseData.feed else { throw OPDSClientError.notAFeed }
         return Self.transform(feed, sourceURL: url)
+    }
+
+    private static func parseOpenSearchDescriptor(data: Data) -> OpenSearchDescriptor? {
+        // Minimal XML walk — find the first <Url ... template="..."> with
+        // {searchTerms} in the template. Prefer atom+xml type when multiple
+        // candidates exist (OpenSearch description docs commonly list both
+        // an HTML and an atom+xml endpoint). Avoid pulling a full XML lib.
+        final class Delegate: NSObject, XMLParserDelegate {
+            var found: String?
+            func parser(_ parser: XMLParser, didStartElement elementName: String,
+                        namespaceURI: String?, qualifiedName qName: String?,
+                        attributes attributeDict: [String: String] = [:]) {
+                guard elementName.localizedCaseInsensitiveContains("url"),
+                      let template = attributeDict["template"],
+                      template.contains("{searchTerms}") else { return }
+                let type = attributeDict["type"] ?? ""
+                if found == nil || type.contains("atom+xml") {
+                    found = template
+                }
+            }
+        }
+        let parser = XMLParser(data: data)
+        let delegate = Delegate()
+        parser.delegate = delegate
+        guard parser.parse(), let template = delegate.found,
+              let url = URL(string: template) else { return nil }
+        return OpenSearchDescriptor(templateURL: url)
     }
 
     static func transform(_ feed: ReadiumShared.Feed, sourceURL: URL) -> OPDSFeed {
