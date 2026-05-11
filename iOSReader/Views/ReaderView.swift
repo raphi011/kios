@@ -13,6 +13,7 @@ struct ReaderView: View {
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var book: Book?
     @State private var publication: Publication?
@@ -62,6 +63,14 @@ struct ReaderView: View {
             }
         }
         .task { await load() }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                Task { await flush() }
+            }
+        }
+        .onDisappear {
+            Task { await flush() }
+        }
     }
 
     // MARK: - Private
@@ -138,18 +147,27 @@ struct ReaderView: View {
         }
     }
 
-    private func pushLocator(bookID: UUID, locator: Locator) async {
+    private func currentBook() -> Book? {
         let id = bookID
-        guard let book = try? context.fetch(
+        return try? context.fetch(
             FetchDescriptor<Book>(predicate: #Predicate { $0.id == id })
-        ).first else { return }
+        ).first
+    }
+
+    private func flush() async {
+        guard let sync = env.sync, let book = currentBook() else { return }
+        await sync.flushPendingProgress(for: book)
+    }
+
+    private func pushLocator(bookID: UUID, locator: Locator) async {
+        guard let book = currentBook() else { return }
         let intra = locator.locations.progression ?? 0
         let total = locator.locations.totalProgression ?? 0
-        // Locator uses its own JSON coding (not Encodable); skip push if serialisation fails
+        // Locator uses its own JSON coding (not Encodable); skip buffer if serialisation fails
         // rather than sending an empty/invalid JSON stub to the server.
         guard let json = locator.jsonString else { return }
         // Chapter index is 0 in v1 (best-effort); ProgressMapper handles this.
-        await env.sync?.push(
+        env.sync?.bufferLocator(
             book: book, locatorJSON: json,
             chapter: 0, intraProgression: intra, percentage: total
         )

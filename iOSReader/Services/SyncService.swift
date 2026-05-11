@@ -56,42 +56,64 @@ final class SyncService {
         return .useLocal
     }
 
-    /// Persists local progress AND attempts to push to server. On network
-    /// failure, the local row is marked `pendingUpload = true` so a future
-    /// retry can resend.
-    func push(
+    /// Local-only: upsert ReadingProgress with pendingUpload = true. Cheap;
+    /// called on every page turn so Home always shows current progress and the
+    /// file system survives an app crash.
+    func bufferLocator(
         book: Book,
         locatorJSON: String,
         chapter: Int,
         intraProgression: Double,
         percentage: Double
-    ) async {
-        guard let hash = book.partialMD5 else { return }
+    ) {
         let progressString = ProgressMapper.encodeProgress(
             chapter: chapter, intraProgression: intraProgression
         )
         upsertLocal(
             bookID: book.id,
             locatorJSON: locatorJSON,
+            progressString: progressString,
             percentage: percentage,
             pendingUpload: true
         )
+    }
+
+    /// Network: if the ReadingProgress row for `book` has pendingUpload == true,
+    /// PUT the stored values to kosync. On success flips the flag. On failure
+    /// leaves the flag for the next trigger.
+    func flushPendingProgress(for book: Book) async {
+        guard let hash = book.partialMD5,
+              let row = currentLocalProgress(for: book.id),
+              row.pendingUpload else { return }
         do {
             try await kosync.putProgress(.init(
                 document: hash,
-                progress: progressString,
-                percentage: percentage,
+                progress: row.progressString,
+                percentage: row.percentage,
                 device: deviceName,
                 deviceID: deviceID
             ))
-            upsertLocal(
-                bookID: book.id,
-                locatorJSON: locatorJSON,
-                percentage: percentage,
-                pendingUpload: false
-            )
+            row.pendingUpload = false
+            try? context.save()
         } catch {
-            // Leave pendingUpload = true; foreground retry will resend.
+            // Leave pendingUpload = true; next trigger retries.
+        }
+    }
+
+    /// Foreground retry: flush any pending rows across all books. Called from
+    /// the app's scenePhase = .active transition.
+    func flushAllPending() async {
+        let descriptor = FetchDescriptor<ReadingProgress>(
+            predicate: #Predicate { $0.pendingUpload == true }
+        )
+        guard let rows = try? context.fetch(descriptor) else { return }
+        for row in rows {
+            let bookID = row.bookID
+            let bookDescriptor = FetchDescriptor<Book>(
+                predicate: #Predicate { $0.id == bookID }
+            )
+            guard let book = try? context.fetch(bookDescriptor).first else { continue }
+            await flushPendingProgress(for: book)
         }
     }
 
@@ -107,11 +129,13 @@ final class SyncService {
     private func upsertLocal(
         bookID: UUID,
         locatorJSON: String,
+        progressString: String,
         percentage: Double,
         pendingUpload: Bool
     ) {
         if let existing = currentLocalProgress(for: bookID) {
             existing.locatorJSON = locatorJSON
+            existing.progressString = progressString
             existing.percentage = percentage
             existing.updatedAt = .now
             existing.deviceID = deviceID
@@ -120,6 +144,7 @@ final class SyncService {
             context.insert(ReadingProgress(
                 bookID: bookID,
                 locatorJSON: locatorJSON,
+                progressString: progressString,
                 percentage: percentage,
                 updatedAt: .now,
                 deviceID: deviceID,
