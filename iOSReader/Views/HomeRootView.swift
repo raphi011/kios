@@ -13,6 +13,7 @@ struct HomeRootView: View {
     @Query private var progresses: [ReadingProgress]
 
     @Environment(\.modelContext) private var context
+    @Environment(AppEnvironment.self) private var env
 
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
@@ -30,12 +31,13 @@ struct HomeRootView: View {
                 } else {
                     List {
                         ForEach(books) { book in
-                            NavigationLink {
-                                ReaderView(bookID: book.id)
+                            Button {
+                                env.openReader(book.id)
                             } label: {
                                 HomeBookRow(book: book,
                                             progress: progressByBookID[book.id] ?? 0)
                             }
+                            .buttonStyle(.plain)
                             .listRowInsets(.init(top: 0, leading: 0,
                                                  bottom: 0, trailing: 16))
                             .listRowSeparator(.hidden)
