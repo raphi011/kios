@@ -144,7 +144,7 @@ actor OPDSClient: OPDSClientProtocol {
     private static func makeAcquisitionEntry(
         pub: ReadiumShared.Publication, sourceURL: URL
     ) -> AcquisitionEntry? {
-        let acquisitions: [Acquisition] = pub.links.compactMap { link in
+        let rawAcquisitions: [Acquisition] = pub.links.compactMap { link in
             guard link.rels.contains(where: { acquisitionRels.contains($0.string) }) else {
                 return nil
             }
@@ -153,6 +153,11 @@ actor OPDSClient: OPDSClientProtocol {
                   let format = BookFormat(mimeType: mime) else { return nil }
             return Acquisition(href: url, mimeType: mime, format: format)
         }
+        // CWA sometimes emits the same format under multiple acquisition rels (e.g.
+        // "acquisition" + "acquisition/open-access" both pointing at the same EPUB).
+        // Collapse to one Acquisition per format — first one wins.
+        var seenFormats: Set<BookFormat> = []
+        let acquisitions = rawAcquisitions.filter { seenFormats.insert($0.format).inserted }
         guard !acquisitions.isEmpty else { return nil }
 
         // OPDS1Parser segregates image links into two buckets at parse time:

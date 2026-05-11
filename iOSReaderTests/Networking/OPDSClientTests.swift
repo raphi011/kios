@@ -89,6 +89,11 @@ struct OPDSClientTests {
                 // Sanity: each kept acquisition is one of the formats we model.
                 #expect([BookFormat.epub, .pdf, .cbz].contains(acq.format))
             }
+            // No duplicate formats per entry — picker would show "EPUB" twice
+            // if the parser kept multiple same-format acquisitions.
+            let formats = entry.acquisitions.map(\.format)
+            #expect(formats.count == Set(formats).count,
+                    "acquisitions must be deduped by format")
         }
 
         // Pagination link is always present on a non-terminal page.
