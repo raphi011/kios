@@ -49,7 +49,12 @@ struct AcquisitionEntry: Sendable, Equatable, Identifiable {
     let authors: [String]
     let summary: String?
     let publishedAt: Date?
-    /// All available formats. Always non-empty when present.
+    /// Supported formats only — the parser drops links whose MIME type
+    /// isn't in `BookFormat` (e.g. azw3, mobi, cbr). An entry with zero
+    /// supported acquisitions is dropped entirely upstream, so this array
+    /// is guaranteed non-empty. UI consuming this type sees only formats
+    /// the app can actually open or render a picker for; there is no
+    /// per-entry signal that other formats existed on the server.
     let acquisitions: [Acquisition]
     /// `rel="http://opds-spec.org/image/thumbnail"`, resolved.
     let thumbnailURL: URL?

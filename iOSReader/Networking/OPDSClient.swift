@@ -14,6 +14,10 @@ protocol OPDSClientProtocol: Sendable {
 /// pull-to-refresh in the UI calls `invalidate(_:)` first to force a re-fetch.
 actor OPDSClient: OPDSClientProtocol {
     private let http: Core.HTTPClient
+    /// Session feed cache. Unbounded by design per spec §6 ("each feed is
+    /// ~50 KB and a realistic session loads <100 distinct feeds ≈5 MB
+    /// worst case"). If this becomes a problem, swap for NSCache —
+    /// one-file change. `invalidateAll()` clears it on sign-out.
     private var feedCache: [URL: OPDSFeed] = [:]
 
     init(http: Core.HTTPClient) {
@@ -132,13 +136,11 @@ actor OPDSClient: OPDSClientProtocol {
 
 enum OPDSClientError: Error, LocalizedError {
     case notAFeed
-    case malformedURL(String)
     case unsupportedAcquisition
 
     var errorDescription: String? {
         switch self {
         case .notAFeed: return "Server returned something other than an OPDS feed."
-        case .malformedURL(let s): return "Malformed URL: \(s)"
         case .unsupportedAcquisition: return "Entry has no downloadable acquisition link."
         }
     }
