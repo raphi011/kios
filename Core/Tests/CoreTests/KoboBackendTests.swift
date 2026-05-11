@@ -132,7 +132,7 @@ struct KoboBackendTests {
 
         let backend = KoboBackend(
             client: KoboClient(baseURL: URL(string: "https://cwa/kobo/T")!, http: HTTPClient(session: MockURLProtocol.session())),
-            deviceID: "D", deviceName: "iPhone"
+            deviceID: "D", deviceName: "iPhone", imageURLTemplate: nil
         )
         try await backend.authenticate()       // populates image template
         let entries = try await backend.listLibrary()
@@ -155,6 +155,6 @@ struct KoboBackendTests {
             baseURL: URL(string: "https://cwa/kobo/T")!,
             http: http
         )
-        return KoboBackend(client: kc, deviceID: "D", deviceName: "iPhone")
+        return KoboBackend(client: kc, deviceID: "D", deviceName: "iPhone", imageURLTemplate: nil)
     }
 }

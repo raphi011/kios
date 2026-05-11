@@ -24,10 +24,15 @@ public actor KoboBackend: SyncBackend, CatalogBackend {
 
     private var imageURLTemplate: String?
 
-    public init(client: KoboClient, deviceID: String, deviceName: String) {
+    /// `imageURLTemplate` primes the cover-rendering cache from a previously-
+    /// persisted `/v1/initialization` response so `listLibrary` doesn't need to
+    /// re-authenticate when the template is already known. Pass `nil` to force
+    /// `listLibrary` to call `authenticate()` on the first invocation.
+    public init(client: KoboClient, deviceID: String, deviceName: String, imageURLTemplate: String?) {
         self.client = client
         self.deviceID = deviceID
         self.deviceName = deviceName
+        self.imageURLTemplate = imageURLTemplate
     }
 
     public func authenticate() async throws {
