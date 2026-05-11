@@ -15,11 +15,23 @@ struct ReaderView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var book: Book?
+    @Query private var books: [Book]
+    @Query private var downloads: [Download]
+
     @State private var publication: Publication?
     @State private var initialLocator: Locator?
     @State private var loadError: String?
     @State private var pendingPrompt: PromptInfo?
+
+    init(bookID: UUID) {
+        self.bookID = bookID
+        let id = bookID
+        _books = Query(filter: #Predicate<Book> { $0.id == id })
+        _downloads = Query(filter: #Predicate<Download> { $0.bookID == id })
+    }
+
+    private var book: Book? { books.first }
+    private var download: Download? { downloads.first }
 
     struct PromptInfo: Identifiable {
         let id = "continue-prompt"
@@ -29,40 +41,46 @@ struct ReaderView: View {
 
     var body: some View {
         Group {
-            if let book, let publication {
-                let id = book.id
-                ReaderHost(
-                    publication: publication,
-                    initialLocator: initialLocator,
-                    onLocatorChange: { @Sendable locator in
-                        Task { @MainActor in await pushLocator(bookID: id, locator: locator) }
-                    }
-                )
-                .ignoresSafeArea()
-                .task { await onOpen(book: book) }
-                .alert(item: $pendingPrompt) { info in
-                    Alert(
-                        title: Text("Continue from another device?"),
-                        message: Text(
-                            "\(Int(info.server.percentage * 100))% on '\(info.server.device)'"
-                        ),
-                        primaryButton: .default(Text("Continue")) {
-                            // v1: silently accept. A polished version would
-                            // seek the navigator to info.server. For now we
-                            // dismiss the alert; next locator change will
-                            // overwrite the server state with whatever this
-                            // device shows.
-                        },
-                        secondaryButton: .cancel(Text("Stay here"))
+            if let book {
+                if book.fileURL != nil, let publication {
+                    let id = book.id
+                    ReaderHost(
+                        publication: publication,
+                        initialLocator: initialLocator,
+                        onLocatorChange: { @Sendable locator in
+                            Task { @MainActor in await pushLocator(bookID: id, locator: locator) }
+                        }
                     )
+                    .ignoresSafeArea()
+                    .task { await onOpen(book: book) }
+                    .alert(item: $pendingPrompt) { info in
+                        Alert(
+                            title: Text("Continue from another device?"),
+                            message: Text(
+                                "\(Int(info.server.percentage * 100))% on '\(info.server.device)'"
+                            ),
+                            primaryButton: .default(Text("Continue")) {
+                                // v1: silently accept. A polished version would
+                                // seek the navigator to info.server. For now we
+                                // dismiss the alert; next locator change will
+                                // overwrite the server state with whatever this
+                                // device shows.
+                            },
+                            secondaryButton: .cancel(Text("Stay here"))
+                        )
+                    }
+                } else if book.fileURL == nil {
+                    DownloadingView(book: book, download: download)
+                } else if let loadError {
+                    Text(loadError).foregroundStyle(.orange)
+                } else {
+                    ProgressView("Opening…")
                 }
-            } else if let loadError {
-                Text(loadError).foregroundStyle(.orange)
             } else {
-                ProgressView("Loading…")
+                Text("Book not found").foregroundStyle(.secondary)
             }
         }
-        .task { await load() }
+        .task(id: book?.fileURL) { await loadPublicationIfReady() }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
                 Task { await flush() }
@@ -75,28 +93,14 @@ struct ReaderView: View {
 
     // MARK: - Private
 
-    private func load() async {
+    private func loadPublicationIfReady() async {
+        guard let book, let fileURL = book.fileURL else { return }
         let id = bookID
-        guard let fetched = try? context.fetch(
-            FetchDescriptor<Book>(predicate: #Predicate { $0.id == id })
-        ).first else {
-            loadError = "Book not found"
-            return
-        }
-        book = fetched
-
-        guard let fileURL = fetched.fileURL else {
-            loadError = "Book not downloaded"
-            return
-        }
-
-        // Restore reading position from local progress (graceful: nil on any failure).
         if let progress = try? context.fetch(
             FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
         ).first {
             initialLocator = try? Locator(jsonString: progress.locatorJSON)
         }
-
         do {
             publication = try await openPublication(at: fileURL)
         } catch {
@@ -171,6 +175,78 @@ struct ReaderView: View {
             book: book, locatorJSON: json,
             chapter: 0, intraProgression: intra, percentage: total
         )
+    }
+}
+
+// MARK: - DownloadingView
+
+private struct DownloadingView: View {
+    let book: Book
+    let download: Download?
+
+    @Environment(AppEnvironment.self) private var env
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            VStack(spacing: 8) {
+                Text(book.title)
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+
+                if !book.authors.isEmpty {
+                    Text(book.authors.joined(separator: ", "))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(.horizontal, 24)
+
+            if let download, download.state == .failed {
+                VStack(spacing: 12) {
+                    Text(download.error ?? "Download failed")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+
+                    Button("Retry") {
+                        Task { _ = try? await env.downloads?.download(book: book) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            } else {
+                VStack(spacing: 8) {
+                    if let download, download.totalBytes > 0 {
+                        ProgressView(value: Double(download.bytesReceived),
+                                     total: Double(download.totalBytes))
+                            .progressViewStyle(.linear)
+                            .padding(.horizontal, 32)
+
+                        Text(progressLabel(download))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ProgressView()
+                        Text("Preparing…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+    }
+
+    private func progressLabel(_ download: Download) -> String {
+        let received = ByteCountFormatter.string(fromByteCount: download.bytesReceived,
+                                                  countStyle: .file)
+        let total = ByteCountFormatter.string(fromByteCount: download.totalBytes,
+                                               countStyle: .file)
+        return "\(received) of \(total)"
     }
 }
 
