@@ -61,4 +61,31 @@ struct KoboTypesTests {
         #expect(state.currentBookmark?.progressPercent == nil)
         #expect(state.currentBookmark?.location == nil)
     }
+
+    @Test func contributorsAsStringArray() throws {
+        let json = #"{"Contributors": ["Felienne Hermans", "Jane Doe"]}"#.data(using: .utf8)!
+        let bag = try KoboDecoder.decode(KoboContributorBag.self, from: json)
+        #expect(bag.contributors == ["Felienne Hermans", "Jane Doe"])
+    }
+
+    @Test func contributorsAsObjectArray() throws {
+        let json = #"{"Contributors": [{"Name": "Felienne Hermans", "Role": "Author"}]}"#.data(using: .utf8)!
+        let bag = try KoboDecoder.decode(KoboContributorBag.self, from: json)
+        #expect(bag.contributors == ["Felienne Hermans"])
+    }
+
+    @Test func contributorsAbsent() throws {
+        let json = "{}".data(using: .utf8)!
+        let bag = try KoboDecoder.decode(KoboContributorBag.self, from: json)
+        #expect(bag.contributors == [])
+    }
+}
+
+private struct KoboContributorBag: Decodable {
+    let contributors: [String]
+    enum CodingKeys: String, CodingKey { case contributors = "Contributors" }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        contributors = try c.decodeContributors(forKey: .contributors)
+    }
 }

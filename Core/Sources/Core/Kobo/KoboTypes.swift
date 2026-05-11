@@ -81,3 +81,21 @@ public enum KoboDecoder {
         return try decoder.decode(type, from: data)
     }
 }
+
+private struct KoboContributorObject: Decodable {
+    let name: String
+    enum CodingKeys: String, CodingKey { case name = "Name" }
+}
+
+public extension KeyedDecodingContainer {
+    /// Decodes a `Contributors` field that is either a list of strings or a
+    /// list of `{Name: "..."}` objects. Returns `[]` if absent.
+    func decodeContributors(forKey key: Key) throws -> [String] {
+        guard contains(key) else { return [] }
+        if let strings = try? decode([String].self, forKey: key) {
+            return strings
+        }
+        let objects = try decode([KoboContributorObject].self, forKey: key)
+        return objects.map(\.name)
+    }
+}
