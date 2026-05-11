@@ -125,13 +125,14 @@ struct SyncServiceTests {
             let book = Book(
                 serverID: "id",
                 serverIDProtocol: "kosync",
-                title: "T", authors: [],
+                title: "T",
+                authors: [],
                 opdsHref: URL(string: "https://x")!,
                 acquisitionURL: URL(string: "https://x")!,
                 format: .epub,
-                partialMD5: bookHasHash ? "abc" : nil,
                 koboBookUUID: nil,
-                archived: false
+                archived: false,
+                partialMD5: bookHasHash ? "abc" : nil
             )
             context.insert(book)
             if let p = localPercentage {
@@ -162,13 +163,14 @@ struct SyncServiceBufferFlushTests {
         Book(
             serverID: "id",
             serverIDProtocol: "kosync",
-            title: "T", authors: [],
+            title: "T",
+            authors: [],
             opdsHref: URL(string: "https://x")!,
             acquisitionURL: URL(string: "https://x")!,
             format: .epub,
-            partialMD5: withHash ? "abc" : nil,
             koboBookUUID: nil,
-            archived: false
+            archived: false,
+            partialMD5: withHash ? "abc" : nil
         )
     }
 
@@ -314,22 +316,26 @@ struct SyncServiceBufferFlushTests {
         let book1 = Book(
             serverID: "id1",
             serverIDProtocol: "kosync",
-            title: "T1", authors: [],
+            title: "T1",
+            authors: [],
             opdsHref: URL(string: "https://x")!,
             acquisitionURL: URL(string: "https://x")!,
-            format: .epub, partialMD5: "hash1",
+            format: .epub,
             koboBookUUID: nil,
-            archived: false
+            archived: false,
+            partialMD5: "hash1"
         )
         let book2 = Book(
             serverID: "id2",
             serverIDProtocol: "kosync",
-            title: "T2", authors: [],
+            title: "T2",
+            authors: [],
             opdsHref: URL(string: "https://x")!,
             acquisitionURL: URL(string: "https://x")!,
-            format: .epub, partialMD5: "hash2",
+            format: .epub,
             koboBookUUID: nil,
-            archived: false
+            archived: false,
+            partialMD5: "hash2"
         )
         context.insert(book1)
         context.insert(book2)

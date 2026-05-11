@@ -5,7 +5,8 @@ import Core
 @Model
 final class Book {
     @Attribute(.unique) var id: UUID
-    var serverID: String          // OPDS atom:id (kosync) / Kobo RevisionId
+    /// Backend-assigned identity (OPDS atom:id for kosync, RevisionId for Kobo).
+    var serverID: String
     /// Sync protocol that minted `serverID`. Currently "kosync" or "kobo".
     var serverIDProtocol: String
     var title: String
@@ -41,12 +42,12 @@ final class Book {
         opdsHref: URL?,
         acquisitionURL: URL,
         format: BookFormat,
+        koboBookUUID: String?,
+        archived: Bool,
         filename: String? = nil,
         partialMD5: String? = nil,
-        koboBookUUID: String?,
         thumbnailURL: URL? = nil,
-        addedAt: Date = .now,
-        archived: Bool
+        addedAt: Date = .now
     ) {
         self.id = id
         self.serverID = serverID

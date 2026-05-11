@@ -50,8 +50,8 @@ enum BookActions {
             acquisitionURL: chosen.href,
             format: chosen.format,
             koboBookUUID: nil,
-            thumbnailURL: entry.thumbnailURL,
-            archived: false
+            archived: false,
+            thumbnailURL: entry.thumbnailURL
         )
         context.insert(book)
         try? context.save()

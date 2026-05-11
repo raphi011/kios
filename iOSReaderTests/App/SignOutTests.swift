@@ -24,9 +24,9 @@ struct SignOutTests {
             opdsHref: URL(string: "https://e/a")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
-            filename: "x.epub",
             koboBookUUID: nil,
-            archived: false
+            archived: false,
+            filename: "x.epub"
         )
         let catalogOnly = Book(
             serverID: "catalog-only",
