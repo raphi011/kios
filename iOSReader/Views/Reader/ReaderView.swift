@@ -6,22 +6,28 @@ import ReadiumStreamer
 import ReadiumNavigator
 import Core
 
-// MARK: - ReaderView
-
+/// Immersive reader. Presented as a `fullScreenCover` from `RootView`.
 struct ReaderView: View {
     let bookID: UUID
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
 
     @Query private var books: [Book]
     @Query private var downloads: [Download]
+
+    @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
 
     @State private var publication: Publication?
     @State private var initialLocator: Locator?
     @State private var loadError: String?
     @State private var pendingPrompt: PromptInfo?
+
+    @State private var uiVisible: Bool = false
+    @State private var fontHUD: Int? = nil
+    @State private var currentLocator: Locator?
 
     init(bookID: UUID) {
         self.bookID = bookID
@@ -40,46 +46,14 @@ struct ReaderView: View {
     }
 
     var body: some View {
-        Group {
-            if let book {
-                if book.fileURL != nil, let publication {
-                    let id = book.id
-                    ReaderHost(
-                        publication: publication,
-                        initialLocator: initialLocator,
-                        onLocatorChange: { @Sendable locator in
-                            Task { @MainActor in await pushLocator(bookID: id, locator: locator) }
-                        }
-                    )
-                    .ignoresSafeArea()
-                    .task { await onOpen(book: book) }
-                    .alert(item: $pendingPrompt) { info in
-                        Alert(
-                            title: Text("Continue from another device?"),
-                            message: Text(
-                                "\(Int(info.server.percentage * 100))% on '\(info.server.device)'"
-                            ),
-                            primaryButton: .default(Text("Continue")) {
-                                // v1: silently accept. A polished version would
-                                // seek the navigator to info.server. For now we
-                                // dismiss the alert; next locator change will
-                                // overwrite the server state with whatever this
-                                // device shows.
-                            },
-                            secondaryButton: .cancel(Text("Stay here"))
-                        )
-                    }
-                } else if book.fileURL == nil {
-                    DownloadingView(book: book, download: download)
-                } else if let loadError {
-                    Text(loadError).foregroundStyle(.orange)
-                } else {
-                    ProgressView("Opening…")
-                }
-            } else {
-                Text("Book not found").foregroundStyle(.secondary)
-            }
+        ZStack {
+            content
+            chromeOverlay
+            hudOverlay
         }
+        .ignoresSafeArea()
+        .background(Color.black.ignoresSafeArea())
+        .simultaneousGesture(swipeDownDismissGesture())
         .task(id: book?.fileURL) { await loadPublicationIfReady() }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
@@ -88,10 +62,94 @@ struct ReaderView: View {
         }
         .onDisappear {
             Task { await flush() }
+            env.activeReader = nil
         }
     }
 
-    // MARK: - Private
+    @ViewBuilder
+    private var content: some View {
+        if let book {
+            if book.fileURL != nil, let publication {
+                let id = book.id
+                ReaderHost(
+                    publication: publication,
+                    initialLocator: initialLocator,
+                    fontSizePct: fontSizePct,
+                    statusBarHidden: !uiVisible,
+                    onLocatorChange: { @Sendable locator in
+                        Task { @MainActor in
+                            currentLocator = locator
+                            await pushLocator(bookID: id, locator: locator)
+                        }
+                    },
+                    onCenterTap: { withAnimation(.easeOut(duration: 0.2)) { uiVisible.toggle() } },
+                    onPinchUpdate: { pct in
+                        // Spec: fade-in 0.15s, fade-out 0.3s.
+                        let duration = (pct == nil) ? 0.3 : 0.15
+                        withAnimation(.easeOut(duration: duration)) { fontHUD = pct }
+                    },
+                    onPinchCommit: { pct in
+                        fontSizePct = pct
+                    },
+                    onDismissRequested: { dismiss() }
+                )
+                .task { await onOpen(book: book) }
+                .alert(item: $pendingPrompt) { info in
+                    Alert(
+                        title: Text("Continue from another device?"),
+                        message: Text(
+                            "\(Int(info.server.percentage * 100))% on '\(info.server.device)'"
+                        ),
+                        primaryButton: .default(Text("Continue")) {
+                            // v1: silently accept; next locator change reconciles with the server.
+                        },
+                        secondaryButton: .cancel(Text("Stay here"))
+                    )
+                }
+            } else if book.fileURL == nil {
+                DownloadingView(book: book, download: download)
+            } else if let loadError {
+                Text(loadError).foregroundStyle(.orange).padding()
+            } else {
+                ProgressView("Opening…").tint(.white)
+            }
+        } else {
+            Text("Book not found").foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var chromeOverlay: some View {
+        if uiVisible {
+            VStack(spacing: 0) {
+                ReaderTopBar(title: book?.title ?? "", onClose: { dismiss() })
+                Spacer()
+                ReaderBottomProgressBar(locator: currentLocator)
+            }
+            .transition(.opacity)
+        }
+    }
+
+    @ViewBuilder
+    private var hudOverlay: some View {
+        if let pct = fontHUD {
+            ReaderFontHUD(pct: pct)
+                .transition(.opacity)
+        }
+    }
+
+    private func swipeDownDismissGesture() -> some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onEnded { value in
+                let translation = CGSize(width: value.translation.width,
+                                         height: value.translation.height)
+                let velocity = CGSize(width: value.predictedEndTranslation.width - value.translation.width,
+                                      height: value.predictedEndTranslation.height - value.translation.height)
+                if SwipeDismissPolicy.shouldDismiss(translation: translation, velocity: velocity) {
+                    dismiss()
+                }
+            }
+    }
 
     private func loadPublicationIfReady() async {
         guard let book, let fileURL = book.fileURL else { return }
@@ -109,9 +167,6 @@ struct ReaderView: View {
         }
     }
 
-    /// Returns a multi-line string describing the on-disk state of `url` so
-    /// we can tell from the error UI whether the URL points to a missing file,
-    /// the wrong scheme, or bytes that aren't an EPUB.
     private func fileDiagnostics(at url: URL) -> String {
         var lines: [String] = []
         lines.append("URL: \(url.absoluteString)")
@@ -136,8 +191,6 @@ struct ReaderView: View {
         return lines.joined(separator: "\n")
     }
 
-    /// Opens a Publication from a local file URL using Readium 3.8's streamer.
-    /// Uses CompositePublicationParser with EPUBParser only (v1 supports EPUB).
     private func openPublication(at url: URL) async throws -> Publication {
         let httpClient = DefaultHTTPClient()
         let assetRetriever = AssetRetriever(httpClient: httpClient)
@@ -150,7 +203,6 @@ struct ReaderView: View {
             .mapError { OpenError.asset($0) }
             .get()
 
-        // v1: only EPUB is supported; EPUBParser has a public init.
         let parser = CompositePublicationParser(EPUBParser())
         let opener = PublicationOpener(parser: parser)
 
@@ -192,7 +244,7 @@ struct ReaderView: View {
         do {
             switch try await sync.onOpen(book: book) {
             case .useLocal: break
-            case .applyServer: break  // v1: rely on next locator change
+            case .applyServer: break
             case .promptUser(let local, let server):
                 pendingPrompt = PromptInfo(local: local, server: server)
             }
@@ -217,10 +269,7 @@ struct ReaderView: View {
         guard let book = currentBook() else { return }
         let intra = locator.locations.progression ?? 0
         let total = locator.locations.totalProgression ?? 0
-        // Locator uses its own JSON coding (not Encodable); skip buffer if serialisation fails
-        // rather than sending an empty/invalid JSON stub to the server.
         guard let json = locator.jsonString else { return }
-        // Chapter index is 0 in v1 (best-effort); ProgressMapper handles this.
         env.sync?.bufferLocator(
             book: book, locatorJSON: json,
             chapter: 0, intraProgression: intra, percentage: total
