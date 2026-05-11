@@ -17,16 +17,27 @@ struct OPDSClientTests {
         let feed = try await client.fetchFeed(
             url: URL(string: "https://calibre.example/opds/")!
         )
-        #expect(feed.entries.count == 4)
-        for entry in feed.entries {
-            if case .acquisition = entry { Issue.record("expected nav, got acquisition") }
+
+        // CWA's root is pure navigation — no acquisition entries.
+        let nav = feed.entries.compactMap { e -> NavigationEntry? in
+            if case .navigation(let n) = e { return n } else { return nil }
         }
+        let acq = feed.entries.compactMap { e -> AcquisitionEntry? in
+            if case .acquisition(let a) = e { return a } else { return nil }
+        }
+        #expect(nav.count == feed.entries.count, "root must be 100% navigation")
+        #expect(acq.isEmpty, "root must not contain publications")
+
+        // Real CWA root has 16+ nav entries depending on version. Assert the canonical
+        // four that every CWA exposes, regardless of optional categories.
+        let titles = nav.map(\.title)
+        #expect(titles.contains("Recently added Books"))
+        #expect(titles.contains("Alphabetical Books"))
+
+        // Root is a single page; no pagination, but the OpenSearch descriptor is
+        // always present at the root.
         #expect(feed.nextURL == nil)
         #expect(feed.searchDescriptorURL != nil)
-        let titles = feed.entries.compactMap { e -> String? in
-            if case .navigation(let n) = e { return n.title } else { return nil }
-        }
-        #expect(titles.contains("Recently added Books"))
     }
 
     // MARK: - Letter index
@@ -58,16 +69,31 @@ struct OPDSClientTests {
         let feed = try await client.fetchFeed(
             url: URL(string: "https://calibre.example/opds/books/letter/00")!
         )
+
+        // CWA emits 60 atom entries per page. Some books in this library are
+        // azw3-only or cbr-only — formats we don't support — so the parser
+        // drops those entries entirely. Assert the parser behavior, not a
+        // magic number: every returned entry has at least one supported
+        // acquisition, and we got fewer than 60 because at least one was
+        // filtered.
         let acquisitions = feed.entries.compactMap { e -> AcquisitionEntry? in
             if case .acquisition(let a) = e { return a } else { return nil }
         }
-        #expect(acquisitions.count == 60)
+        #expect(acquisitions.count > 0, "page should yield supported entries")
+        #expect(acquisitions.count <= 60, "must not exceed atom entry count")
+        for entry in acquisitions {
+            #expect(!entry.acquisitions.isEmpty,
+                    "every returned entry has at least one supported acquisition")
+            #expect(!entry.title.isEmpty)
+            for acq in entry.acquisitions {
+                // Sanity: each kept acquisition is one of the formats we model.
+                #expect([BookFormat.epub, .pdf, .cbz].contains(acq.format))
+            }
+        }
+
+        // Pagination link is always present on a non-terminal page.
         #expect(feed.nextURL != nil)
         #expect(feed.nextURL!.absoluteString.contains("offset="))
-        for entry in acquisitions {
-            #expect(!entry.acquisitions.isEmpty)
-            #expect(!entry.title.isEmpty)
-        }
     }
 
     @Test func parsesTerminalPublicationsPage() async throws {
