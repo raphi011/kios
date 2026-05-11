@@ -15,20 +15,16 @@ enum BackendFactory {
         deviceID: String,
         deviceName: String
     ) throws -> (sync: any SyncBackend, catalog: any CatalogBackend) {
-        switch auth.loadActiveProtocol() {
+        let proto = auth.loadActiveProtocol()
+        switch proto {
         case .kosync:
             guard let creds = try auth.load() else {
                 throw BackendFactoryError.missingCredentials(.kosync)
             }
             let http = HTTPClient(credentials: creds.basic)
-            let kosyncClient = KOSyncClient(
-                baseURL: creds.serverURL.appendingPathComponent("kosync"),
-                http: http
-            )
-            let sync = KOSyncBackend(
-                client: kosyncClient,
-                deviceID: deviceID,
-                deviceName: deviceName
+            let sync = makeKOSyncBackend(
+                creds: creds, http: http,
+                deviceID: deviceID, deviceName: deviceName
             )
             let opdsClient = OPDSClient(http: http)
             let catalog = OPDSCatalogAdapter(
@@ -41,21 +37,81 @@ enum BackendFactory {
             guard let creds = try auth.loadKobo() else {
                 throw BackendFactoryError.missingCredentials(.kobo)
             }
-            // Kobo auth is encoded in the URL path (`/kobo/{TOKEN}/`), not
-            // in an Authorization header — so no BasicCredentials here.
-            let http = HTTPClient()
-            let koboClient = KoboClient(baseURL: creds.baseURL, http: http)
-            let backend = KoboBackend(
-                client: koboClient,
-                deviceID: deviceID,
-                deviceName: deviceName,
-                imageURLTemplate: creds.imageURLTemplate
+            let backend = makeKoboBackend(
+                creds: creds, deviceID: deviceID, deviceName: deviceName
             )
             // Same actor instance fills both slots — `KoboBackend` conforms
             // to `SyncBackend` and `CatalogBackend` and shares cached state
             // (e.g. `imageURLTemplate`) between the two roles.
             return (backend, backend)
         }
+    }
+
+    /// Build a `SyncBackend` for an explicit protocol, regardless of the
+    /// active selection. Used by `SyncService` to honor `pendingProtocol`
+    /// at flush time so a buffered write under one protocol still flushes
+    /// via that protocol's backend even after the user switches.
+    static func buildSync(
+        auth: AuthStore,
+        protocol proto: SyncProtocol,
+        deviceID: String,
+        deviceName: String
+    ) throws -> any SyncBackend {
+        switch proto {
+        case .kosync:
+            guard let creds = try auth.load() else {
+                throw BackendFactoryError.missingCredentials(.kosync)
+            }
+            let http = HTTPClient(credentials: creds.basic)
+            return makeKOSyncBackend(
+                creds: creds, http: http,
+                deviceID: deviceID, deviceName: deviceName
+            )
+
+        case .kobo:
+            guard let creds = try auth.loadKobo() else {
+                throw BackendFactoryError.missingCredentials(.kobo)
+            }
+            return makeKoboBackend(
+                creds: creds, deviceID: deviceID, deviceName: deviceName
+            )
+        }
+    }
+
+    // MARK: - private
+
+    private static func makeKOSyncBackend(
+        creds: ServerCredentials,
+        http: HTTPClient,
+        deviceID: String,
+        deviceName: String
+    ) -> KOSyncBackend {
+        let kosyncClient = KOSyncClient(
+            baseURL: creds.serverURL.appendingPathComponent("kosync"),
+            http: http
+        )
+        return KOSyncBackend(
+            client: kosyncClient,
+            deviceID: deviceID,
+            deviceName: deviceName
+        )
+    }
+
+    private static func makeKoboBackend(
+        creds: KoboCredentials,
+        deviceID: String,
+        deviceName: String
+    ) -> KoboBackend {
+        // Kobo auth is encoded in the URL path (`/kobo/{TOKEN}/`), not
+        // in an Authorization header — so no BasicCredentials here.
+        let http = HTTPClient()
+        let koboClient = KoboClient(baseURL: creds.baseURL, http: http)
+        return KoboBackend(
+            client: koboClient,
+            deviceID: deviceID,
+            deviceName: deviceName,
+            imageURLTemplate: creds.imageURLTemplate
+        )
     }
 }
 

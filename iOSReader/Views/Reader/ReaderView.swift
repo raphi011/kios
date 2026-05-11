@@ -42,7 +42,7 @@ struct ReaderView: View {
     struct PromptInfo: Identifiable {
         let id = "continue-prompt"
         let local: Double
-        let server: ProgressDownload
+        let server: CanonicalProgress
     }
 
     var body: some View {
@@ -100,7 +100,7 @@ struct ReaderView: View {
                     Alert(
                         title: Text("Continue from another device?"),
                         message: Text(
-                            "\(Int(info.server.percentage * 100))% on '\(info.server.device)'"
+                            "\(Int(info.server.percentage * 100))% on '\(info.server.deviceName)'"
                         ),
                         primaryButton: .default(Text("Continue")) {
                             // v1: silently accept; next locator change reconciles with the server.
@@ -269,12 +269,10 @@ struct ReaderView: View {
 
     private func pushLocator(bookID: UUID, locator: Locator) async {
         guard let book = currentBook() else { return }
-        let intra = locator.locations.progression ?? 0
         let total = locator.locations.totalProgression ?? 0
         guard let json = locator.jsonString else { return }
         env.sync?.bufferLocator(
-            book: book, locatorJSON: json,
-            chapter: 0, intraProgression: intra, percentage: total
+            book: book, locatorJSON: json, percentage: total
         )
     }
 }

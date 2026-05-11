@@ -73,14 +73,26 @@ final class AppEnvironment {
         let http = HTTPClient(credentials: creds.basic)
         let opds = OPDSClient(http: http)
         self.opds = opds
-        let kosync = KOSyncClient(
-            baseURL: creds.serverURL.appendingPathComponent("kosync"),
-            http: http
-        )
 
+        // Capture the authStore by reference so the closure picks up live
+        // credentials at each call (e.g. a flush after the user updates
+        // settings re-reads from the same AuthStore instance).
+        let auth = self.authStore
+        let device = self.deviceID
+        let name = UIDevice.current.name
         self.sync = SyncService(
-            kosync: kosync, context: modelContext,
-            deviceID: deviceID, deviceName: UIDevice.current.name
+            backendForProtocol: { proto in
+                try BackendFactory.buildSync(
+                    auth: auth,
+                    protocol: proto,
+                    deviceID: device,
+                    deviceName: name
+                )
+            },
+            context: modelContext,
+            activeProtocol: authStore.loadActiveProtocol(),
+            deviceID: deviceID,
+            deviceName: name
         )
 
         if let existing = self.downloads {
