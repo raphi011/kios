@@ -39,7 +39,11 @@ public enum BackendError: Error, Sendable, Equatable {
     case rateLimited(retryAfter: TimeInterval?)
     case network(URLErrorCode)
 
-    /// Wrapper avoiding URLError's non-Equatable conformance.
+    /// Type-distinct wrapper around `URLError`'s numeric code. Deliberately
+    /// drops `URLError.userInfo` (failingURL, localizedDescription) at the
+    /// boundary so backend-agnostic callers can't depend on transport-layer
+    /// specifics. Concrete backends should log the original `URLError` before
+    /// wrapping into `.network(...)`.
     public struct URLErrorCode: Sendable, Equatable {
         public let rawValue: Int
         public init(_ urlError: URLError) { self.rawValue = urlError.code.rawValue }
