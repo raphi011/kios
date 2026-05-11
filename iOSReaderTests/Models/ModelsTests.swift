@@ -15,11 +15,14 @@ struct ModelsTests {
 
         let book = Book(
             serverID: "urn:uuid:abc",
+            serverIDProtocol: "kosync",
             title: "Dune",
             authors: ["Frank Herbert"],
             opdsHref: URL(string: "https://example/opds/abc")!,
             acquisitionURL: URL(string: "https://example/dl/abc.epub")!,
-            format: .epub
+            format: .epub,
+            koboBookUUID: nil,
+            archived: false
         )
         context.insert(book)
         try context.save()

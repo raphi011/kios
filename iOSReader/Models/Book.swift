@@ -5,10 +5,13 @@ import Core
 @Model
 final class Book {
     @Attribute(.unique) var id: UUID
-    var serverID: String          // OPDS atom:id
+    var serverID: String          // OPDS atom:id (kosync) / Kobo RevisionId
+    /// Sync protocol that minted `serverID`. Currently "kosync" or "kobo".
+    var serverIDProtocol: String
     var title: String
     var authors: [String]
-    var opdsHref: URL             // detail/entry link
+    /// OPDS detail/entry link. Nil for Kobo books, which lack an OPDS entry.
+    var opdsHref: URL?
     var acquisitionURL: URL       // direct download
     var format: BookFormat
     /// Filename within `AppPaths.booksDirectory`. nil until downloaded.
@@ -18,27 +21,36 @@ final class Book {
     /// invalidates any absolute file URL stored across launches.
     var filename: String?
     var partialMD5: String?       // populated after download
+    /// Kobo book identifier (UUID string). Populated for books minted by the
+    /// Kobo sync backend; nil for kosync books.
+    var koboBookUUID: String?
     /// OPDS thumbnail URL captured at download time so Home can render a cover
     /// without re-fetching the catalog entry. AuthenticatedAsyncImage caches
     /// the bytes via ImageMemoryCache + URLCache.shared.
     var thumbnailURL: URL?
     var addedAt: Date
+    /// Soft-delete flag used by Kobo (which models archive instead of delete).
+    var archived: Bool
 
     init(
         id: UUID = UUID(),
         serverID: String,
+        serverIDProtocol: String,
         title: String,
         authors: [String],
-        opdsHref: URL,
+        opdsHref: URL?,
         acquisitionURL: URL,
         format: BookFormat,
         filename: String? = nil,
         partialMD5: String? = nil,
+        koboBookUUID: String?,
         thumbnailURL: URL? = nil,
-        addedAt: Date = .now
+        addedAt: Date = .now,
+        archived: Bool
     ) {
         self.id = id
         self.serverID = serverID
+        self.serverIDProtocol = serverIDProtocol
         self.title = title
         self.authors = authors
         self.opdsHref = opdsHref
@@ -46,8 +58,10 @@ final class Book {
         self.format = format
         self.filename = filename
         self.partialMD5 = partialMD5
+        self.koboBookUUID = koboBookUUID
         self.thumbnailURL = thumbnailURL
         self.addedAt = addedAt
+        self.archived = archived
     }
 
     /// Resolved absolute file URL, recomputed each access from the live
@@ -56,5 +70,11 @@ final class Book {
     /// stored properties).
     var fileURL: URL? {
         filename.map { AppPaths.booksDirectory.appendingPathComponent($0) }
+    }
+
+    /// Canonical sync-layer identity for this book, used to talk to a
+    /// `SyncBackend` without exposing protocol-specific fields.
+    var identity: BookIdentity {
+        BookIdentity(partialMD5: partialMD5, koboBookUUID: koboBookUUID)
     }
 }

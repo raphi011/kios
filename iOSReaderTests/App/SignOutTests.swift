@@ -18,20 +18,26 @@ struct SignOutTests {
 
         let downloaded = Book(
             serverID: "downloaded",
+            serverIDProtocol: "kosync",
             title: "Downloaded",
             authors: ["A"],
             opdsHref: URL(string: "https://e/a")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
-            filename: "x.epub"
+            filename: "x.epub",
+            koboBookUUID: nil,
+            archived: false
         )
         let catalogOnly = Book(
             serverID: "catalog-only",
+            serverIDProtocol: "kosync",
             title: "Catalog only",
             authors: ["B"],
             opdsHref: URL(string: "https://e/b")!,
             acquisitionURL: URL(string: "https://e/b")!,
-            format: .epub
+            format: .epub,
+            koboBookUUID: nil,
+            archived: false
         )
         ctx.insert(downloaded)
         ctx.insert(catalogOnly)

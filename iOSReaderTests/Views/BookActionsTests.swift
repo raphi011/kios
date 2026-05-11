@@ -15,13 +15,16 @@ struct BookActionsTests {
         let ctx = ModelContext(container)
         let book = Book(
             serverID: "urn:cwa:book:42",
+            serverIDProtocol: "kosync",
             title: "Persistent",
             authors: ["A"],
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
             filename: "x.epub",
-            partialMD5: "abc"
+            partialMD5: "abc",
+            koboBookUUID: nil,
+            archived: false
         )
         ctx.insert(book)
         try ctx.save()
@@ -50,11 +53,14 @@ struct BookActionsTests {
         let ctx = ModelContext(container)
         let book = Book(
             serverID: "urn:cwa:book:99",
+            serverIDProtocol: "kosync",
             title: "PDF Book",
             authors: [],
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/a")!,
-            format: .pdf
+            format: .pdf,
+            koboBookUUID: nil,
+            archived: false
         )
         ctx.insert(book)
         try ctx.save()
@@ -73,21 +79,27 @@ struct BookActionsTests {
         let ctx = ModelContext(container)
         let epubBook = Book(
             serverID: "urn:cwa:book:7",
+            serverIDProtocol: "kosync",
             title: "Dual Format",
             authors: ["B"],
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
-            filename: "x.epub"
+            filename: "x.epub",
+            koboBookUUID: nil,
+            archived: false
         )
         let pdfBook = Book(
             serverID: "urn:cwa:book:7",
+            serverIDProtocol: "kosync",
             title: "Dual Format",
             authors: ["B"],
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/b")!,
             format: .pdf,
-            filename: "x.pdf"
+            filename: "x.pdf",
+            koboBookUUID: nil,
+            archived: false
         )
         ctx.insert(epubBook)
         ctx.insert(pdfBook)

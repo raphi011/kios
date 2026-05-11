@@ -43,12 +43,15 @@ enum BookActions {
         }
         let book = Book(
             serverID: entry.serverID,
+            serverIDProtocol: "kosync",
             title: entry.title,
             authors: entry.authors,
             opdsHref: chosen.href,
             acquisitionURL: chosen.href,
             format: chosen.format,
-            thumbnailURL: entry.thumbnailURL
+            koboBookUUID: nil,
+            thumbnailURL: entry.thumbnailURL,
+            archived: false
         )
         context.insert(book)
         try? context.save()
