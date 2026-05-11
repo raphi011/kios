@@ -20,6 +20,7 @@ final class AppEnvironment {
     private(set) var library: LibraryService?
     private(set) var sync: SyncService?
     private(set) var downloads: DownloadService?
+    private(set) var opds: OPDSClient?
 
     private let booksDirectory: URL
     private let deviceID: String
@@ -62,6 +63,7 @@ final class AppEnvironment {
         guard let creds = try authStore.load() else {
             self.library = nil
             self.sync = nil
+            self.opds = nil
             // Note: we do NOT nil out `downloads`. Once created, it persists
             // for the life of the process so its background URLSession isn't
             // recreated. If credentials are cleared, the session simply has
@@ -71,6 +73,7 @@ final class AppEnvironment {
 
         let http = HTTPClient(credentials: creds.basic)
         let opds = OPDSClient(http: http)
+        self.opds = opds
         let kosync = KOSyncClient(
             baseURL: creds.serverURL.appendingPathComponent("kosync"),
             http: http
