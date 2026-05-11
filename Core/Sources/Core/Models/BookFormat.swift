@@ -1,11 +1,11 @@
 import Foundation
 
-enum BookFormat: String, Codable, Sendable, CaseIterable {
+public enum BookFormat: String, Codable, Sendable, CaseIterable {
     case epub
     case pdf
     case cbz
 
-    init?(mimeType: String) {
+    public init?(mimeType: String) {
         switch mimeType.lowercased() {
         case "application/epub+zip": self = .epub
         case "application/pdf":       self = .pdf
@@ -14,5 +14,5 @@ enum BookFormat: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    var fileExtension: String { rawValue }
+    public var fileExtension: String { rawValue }
 }

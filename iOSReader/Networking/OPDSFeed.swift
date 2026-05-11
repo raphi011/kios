@@ -1,4 +1,5 @@
 import Foundation
+import Core
 
 /// A parsed OPDS 1.2 feed. Entries are a sum type because a single feed can mix
 /// navigation links (subsections) with acquisition entries (publications).

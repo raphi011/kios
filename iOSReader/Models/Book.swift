@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import Core
 
 @Model
 final class Book {

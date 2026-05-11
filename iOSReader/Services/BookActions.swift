@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import Core
 
 /// Static helpers for finding and creating Book rows. v1 supports one row per
 /// (serverID, format) combo — so a book downloaded in EPUB + PDF appears as
