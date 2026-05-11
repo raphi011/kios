@@ -104,8 +104,36 @@ struct ReaderView: View {
         do {
             publication = try await openPublication(at: fileURL)
         } catch {
-            loadError = "Failed to open: \(error.localizedDescription)"
+            let diagnostics = fileDiagnostics(at: fileURL)
+            loadError = "Failed to open:\n\((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)\n\n\(diagnostics)"
         }
+    }
+
+    /// Returns a multi-line string describing the on-disk state of `url` so
+    /// we can tell from the error UI whether the URL points to a missing file,
+    /// the wrong scheme, or bytes that aren't an EPUB.
+    private func fileDiagnostics(at url: URL) -> String {
+        var lines: [String] = []
+        lines.append("URL: \(url.absoluteString)")
+        lines.append("Scheme: \(url.scheme ?? "<none>")")
+        lines.append("Path: \(url.path)")
+        let fm = FileManager.default
+        let exists = fm.fileExists(atPath: url.path)
+        lines.append("Exists: \(exists)")
+        if exists {
+            if let attrs = try? fm.attributesOfItem(atPath: url.path),
+               let size = attrs[.size] as? Int {
+                lines.append("Size: \(size) bytes")
+            }
+            if let handle = try? FileHandle(forReadingFrom: url) {
+                defer { try? handle.close() }
+                let head = handle.readData(ofLength: 4)
+                lines.append("Head: \(head.map { String(format: "%02x", $0) }.joined())")
+            } else {
+                lines.append("Head: <unreadable>")
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// Opens a Publication from a local file URL using Readium 3.8's streamer.
@@ -141,9 +169,20 @@ struct ReaderView: View {
             case .invalidFileURL(let url):
                 return "Readium rejected the file URL: \(url.absoluteString)"
             case .asset(let inner):
-                return "Asset retrieval failed: \(inner.localizedDescription)"
+                return "Asset retrieval failed: \(Self.describe(inner))"
             case .publication(let inner):
                 return "Publication open failed: \(inner.localizedDescription)"
+            }
+        }
+
+        private static func describe(_ error: AssetRetrieveURLError) -> String {
+            switch error {
+            case .schemeNotSupported(let scheme):
+                return "scheme '\(scheme.rawValue)' not supported"
+            case .formatNotSupported:
+                return "format not recognized (sniffer found no specifications — wrong extension / corrupted file / missing file)"
+            case .reading(let inner):
+                return "read error: \(inner.localizedDescription)"
             }
         }
     }

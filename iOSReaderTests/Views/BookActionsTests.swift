@@ -20,7 +20,7 @@ struct BookActionsTests {
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
-            fileURL: URL(fileURLWithPath: "/tmp/x.epub"),
+            filename: "x.epub",
             partialMD5: "abc"
         )
         ctx.insert(book)
@@ -78,7 +78,7 @@ struct BookActionsTests {
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
-            fileURL: URL(fileURLWithPath: "/tmp/x.epub")
+            filename: "x.epub"
         )
         let pdfBook = Book(
             serverID: "urn:cwa:book:7",
@@ -87,7 +87,7 @@ struct BookActionsTests {
             opdsHref: URL(string: "https://e/h")!,
             acquisitionURL: URL(string: "https://e/b")!,
             format: .pdf,
-            fileURL: URL(fileURLWithPath: "/tmp/x.pdf")
+            filename: "x.pdf"
         )
         ctx.insert(epubBook)
         ctx.insert(pdfBook)

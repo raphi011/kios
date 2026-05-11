@@ -57,7 +57,7 @@ struct BookDetailView: View {
         if let url = book.fileURL {
             try? FileManager.default.removeItem(at: url)
         }
-        book.fileURL = nil
+        book.filename = nil
         book.partialMD5 = nil
 
         let id = book.id

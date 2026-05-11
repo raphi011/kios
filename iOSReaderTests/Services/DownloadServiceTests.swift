@@ -17,46 +17,28 @@ struct DownloadServiceTests {
     }
 
     @Test func createsBooksDirectoryOnInit() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        // Pre-condition: directory does not exist.
-        #expect(FileManager.default.fileExists(atPath: dir.path) == false)
-
         _ = DownloadService(
             context: try makeContext(),
-            booksDirectory: dir,
             credentials: .init(username: "u", password: "p")
         )
 
         var isDir: ObjCBool = false
-        #expect(FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir))
+        let exists = FileManager.default.fileExists(atPath: AppPaths.booksDirectory.path, isDirectory: &isDir)
+        #expect(exists)
         #expect(isDir.boolValue)
-
-        try? FileManager.default.removeItem(at: dir)
     }
 
     @Test func initWithExistingDirectoryDoesNotFail() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-
-        // Should not throw / crash.
+        // Should not throw / crash when the directory already exists.
         _ = DownloadService(
             context: try makeContext(),
-            booksDirectory: dir,
             credentials: .init(username: "u", password: "p")
         )
     }
 
     @Test func updatesCredentials() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-
         let service = DownloadService(
             context: try makeContext(),
-            booksDirectory: dir,
             credentials: .init(username: "u1", password: "p1")
         )
         // Just exercise the method — this is a smoke test guarding against

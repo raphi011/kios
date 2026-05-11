@@ -37,6 +37,7 @@ enum BookActions {
             existing.authors = entry.authors
             existing.acquisitionURL = chosen.href
             existing.opdsHref = chosen.href
+            existing.thumbnailURL = entry.thumbnailURL
             return existing
         }
         let book = Book(
@@ -45,7 +46,8 @@ enum BookActions {
             authors: entry.authors,
             opdsHref: chosen.href,
             acquisitionURL: chosen.href,
-            format: chosen.format
+            format: chosen.format,
+            thumbnailURL: entry.thumbnailURL
         )
         context.insert(book)
         try? context.save()

@@ -1,8 +1,9 @@
 import SwiftUI
 import SwiftData
+import Core
 
 struct HomeRootView: View {
-    @Query(filter: #Predicate<Book> { $0.fileURL != nil },
+    @Query(filter: #Predicate<Book> { $0.filename != nil },
            sort: \Book.title)
     private var books: [Book]
 
@@ -35,6 +36,9 @@ struct HomeRootView: View {
                                 HomeBookRow(book: book,
                                             progress: progressByBookID[book.id] ?? 0)
                             }
+                            .listRowInsets(.init(top: 0, leading: 0,
+                                                 bottom: 0, trailing: 16))
+                            .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     delete(book)
@@ -44,6 +48,7 @@ struct HomeRootView: View {
                             }
                         }
                     }
+                    .listRowSpacing(0)
                 }
             }
             .navigationTitle("Home")
@@ -74,8 +79,11 @@ private struct HomeBookRow: View {
     let book: Book
     let progress: Double
 
+    @Environment(AppEnvironment.self) private var env
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
+            thumbnail
             VStack(alignment: .leading, spacing: 4) {
                 Text(book.title).font(.headline).lineLimit(2)
                 if !book.authors.isEmpty {
@@ -99,7 +107,42 @@ private struct HomeBookRow: View {
             }
             Spacer()
         }
-        .padding(.vertical, 2)
+    }
+
+    /// Cover thumbnail. Hardcoded 2:3 dimensions matching the Apple Books /
+    /// Kindle / Libby pattern — the cover anchors the row height rather than
+    /// trying to derive its size from sibling text. `scaledToFill + clipped`
+    /// fills the rounded rect even if a particular cover deviates slightly
+    /// from 2:3.
+    @ViewBuilder
+    private var thumbnail: some View {
+        Group {
+            if let creds = try? env.authStore.load() {
+                AuthenticatedAsyncImage(
+                    url: book.thumbnailURL,
+                    http: Core.HTTPClient(credentials: creds.basic)
+                ) {
+                    placeholder
+                }
+                .scaledToFill()
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: 56, height: 84)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(Color.secondary.opacity(0.15))
+            .overlay {
+                Image(systemName: "book.closed")
+                    .resizable().scaledToFit()
+                    .padding(10)
+                    .foregroundStyle(.secondary)
+            }
     }
 }
 

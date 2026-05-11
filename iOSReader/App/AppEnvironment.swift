@@ -21,7 +21,6 @@ final class AppEnvironment {
     private(set) var downloads: DownloadService?
     private(set) var opds: OPDSClient?
 
-    private let booksDirectory: URL
     private let deviceID: String
 
     init() throws {
@@ -31,11 +30,8 @@ final class AppEnvironment {
         self.modelContext = ModelContext(self.modelContainer)
         self.authStore = AuthStore()
 
-        let appSupport = try FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask, appropriateFor: nil, create: true
-        )
-        self.booksDirectory = appSupport.appendingPathComponent("ios-reader/books")
+        // Touch the books directory so it's created before any download runs.
+        _ = AppPaths.booksDirectory
 
         // Stable per-install device ID, persisted to the Keychain.
         // Keychain items survive app reinstall on the same device (unlike
@@ -89,8 +85,7 @@ final class AppEnvironment {
             existing.update(credentials: creds.basic)
         } else {
             self.downloads = DownloadService(
-                context: modelContext, booksDirectory: booksDirectory,
-                credentials: creds.basic
+                context: modelContext, credentials: creds.basic
             )
         }
     }
@@ -113,7 +108,7 @@ final class AppEnvironment {
 
         // Delete catalog-only Book rows (no local file).
         if let books = try? context.fetch(FetchDescriptor<Book>()) {
-            for book in books where book.fileURL == nil {
+            for book in books where book.filename == nil {
                 context.delete(book)
             }
         }

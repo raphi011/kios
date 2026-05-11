@@ -114,7 +114,7 @@ struct FeedView: View {
     private func act(entry: AcquisitionEntry, format: BookFormat) {
         if let existing = BookActions.findBook(serverID: entry.serverID,
                                                format: format, context: modelContext),
-           existing.fileURL != nil {
+           existing.filename != nil {
             path.append(OpenReaderRoute(bookID: existing.id))
             return
         }
@@ -132,14 +132,14 @@ struct FeedView: View {
     private func buttonLabel(entry: AcquisitionEntry, acq: Acquisition) -> String {
         let downloaded = BookActions.findBook(
             serverID: entry.serverID, format: acq.format, context: modelContext
-        )?.fileURL != nil
+        )?.filename != nil
         let verb = downloaded ? "Open" : "Download"
         return "\(verb) \(acq.format.rawValue.uppercased())"
     }
 
     private func downloadedFormats(for entry: AcquisitionEntry) -> Set<BookFormat> {
         let books = BookActions.findAllBooks(serverID: entry.serverID, context: modelContext)
-        return Set(books.compactMap { $0.fileURL != nil ? $0.format : nil })
+        return Set(books.compactMap { $0.filename != nil ? $0.format : nil })
     }
 }
 

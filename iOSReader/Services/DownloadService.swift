@@ -9,10 +9,6 @@ import Core
 final class DownloadService: NSObject {
     private let context: ModelContext
 
-    // `booksDirectory` is an immutable Sendable value, so delegate methods
-    // (which run on the session's delegate queue, not @MainActor) can read
-    // it directly without a Task bounce.
-    nonisolated let booksDirectory: URL
     private var credentials: BasicCredentials
 
     private lazy var session: URLSession = {
@@ -42,14 +38,13 @@ final class DownloadService: NSObject {
     private var bookByTask: [Int: UUID] = [:]
     private var continuations: [UUID: CheckedContinuation<URL, Swift.Error>] = [:]
 
-    init(context: ModelContext, booksDirectory: URL, credentials: BasicCredentials) {
+    init(context: ModelContext, credentials: BasicCredentials) {
         self.context = context
-        self.booksDirectory = booksDirectory
         self.credentials = credentials
         super.init()
-        try? FileManager.default.createDirectory(
-            at: booksDirectory, withIntermediateDirectories: true
-        )
+        // AppPaths.booksDirectory creates the directory on first access; touch
+        // it now so subsequent moveItem calls don't race the mkdir.
+        _ = AppPaths.booksDirectory
     }
 
     // MARK: - Public API
@@ -126,7 +121,10 @@ final class DownloadService: NSObject {
                 predicate: #Predicate { $0.id == bookID }
             )
             if let book = try? context.fetch(descriptor).first {
-                book.fileURL = dest
+                // Persist only the filename — `AppPaths.booksDirectory` resolves
+                // it to an absolute URL on each read, immune to container-UUID
+                // changes across reinstalls/redeploys.
+                book.filename = dest.lastPathComponent
                 book.partialMD5 = hash
             }
             upsertDownload(bookID: bookID, state: .completed)
@@ -167,7 +165,7 @@ extension DownloadService: URLSessionDownloadDelegate {
         // queue, before we bounce anything to @MainActor.
         let mime = (downloadTask.response as? HTTPURLResponse)?
             .value(forHTTPHeaderField: "Content-Type")
-        let dest = Self.makeDestURL(in: booksDirectory, mime: mime)
+        let dest = Self.makeDestURL(mime: mime)
         let moveResult = Result<URL, Swift.Error> {
             try FileManager.default.moveItem(at: location, to: dest)
             return dest
@@ -209,9 +207,9 @@ extension DownloadService: URLSessionDownloadDelegate {
 
     // MARK: - Helpers
 
-    private nonisolated static func makeDestURL(in directory: URL, mime: String?) -> URL {
+    private nonisolated static func makeDestURL(mime: String?) -> URL {
         let format = mime.flatMap(BookFormat.init(mimeType:)) ?? .epub
-        return directory.appendingPathComponent(
+        return AppPaths.booksDirectory.appendingPathComponent(
             "\(UUID().uuidString).\(format.fileExtension)"
         )
     }

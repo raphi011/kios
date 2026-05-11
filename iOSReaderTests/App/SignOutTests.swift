@@ -23,7 +23,7 @@ struct SignOutTests {
             opdsHref: URL(string: "https://e/a")!,
             acquisitionURL: URL(string: "https://e/a")!,
             format: .epub,
-            fileURL: URL(fileURLWithPath: "/tmp/x.epub")
+            filename: "x.epub"
         )
         let catalogOnly = Book(
             serverID: "catalog-only",
