@@ -41,34 +41,35 @@ final class LibraryService: LibraryServiceProtocol {
     func refresh() async throws {
         var url: URL? = rootURL.appendingPathComponent("opds/")
         while let nextURL = url {
-            let catalog = try await opds.fetchCatalog(url: nextURL)
-            try mergeCatalog(catalog)
-            url = catalog.nextURL
+            let feed = try await opds.fetchFeed(url: nextURL)
+            try mergeFeed(feed)
+            url = feed.nextURL
         }
         rebuildItems()
     }
 
     // MARK: - private
 
-    private func mergeCatalog(_ catalog: OPDSCatalog) throws {
-        for entry in catalog.entries {
+    private func mergeFeed(_ feed: OPDSFeed) throws {
+        for case let .acquisition(entry) in feed.entries {
             let serverID = entry.serverID
             let descriptor = FetchDescriptor<Book>(
                 predicate: #Predicate { $0.serverID == serverID }
             )
+            let first = entry.acquisitions[0]
             if let existing = try context.fetch(descriptor).first {
                 existing.title = entry.title
                 existing.authors = entry.authors
-                existing.acquisitionURL = entry.acquisitionURL
-                existing.format = entry.format
+                existing.acquisitionURL = first.href
+                existing.format = first.format
             } else {
                 context.insert(Book(
                     serverID: serverID,
                     title: entry.title,
                     authors: entry.authors,
-                    opdsHref: entry.detailURL ?? entry.acquisitionURL,
-                    acquisitionURL: entry.acquisitionURL,
-                    format: entry.format
+                    opdsHref: first.href,
+                    acquisitionURL: first.href,
+                    format: first.format
                 ))
             }
         }

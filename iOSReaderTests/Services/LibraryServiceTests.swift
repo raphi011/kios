@@ -8,17 +8,17 @@ import SwiftData
 struct LibraryServiceTests {
 
     final class MockOPDS: OPDSClientProtocol {
-        var catalog: OPDSCatalog!
+        var feed: OPDSFeed!
         // Allow chaining: pages returned in order, then nil for "no next".
-        var pages: [OPDSCatalog] = []
+        var pages: [OPDSFeed] = []
         var fetchCallCount = 0
 
-        func fetchCatalog(url: URL) async throws -> OPDSCatalog {
+        func fetchFeed(url: URL) async throws -> OPDSFeed {
             fetchCallCount += 1
             if !pages.isEmpty {
                 return pages.removeFirst()
             }
-            return catalog
+            return feed
         }
     }
 
@@ -30,20 +30,38 @@ struct LibraryServiceTests {
         return ModelContext(container)
     }
 
+    private static func makeAcqEntry(
+        serverID: String, title: String, authors: [String],
+        acquisitionURL: URL, format: BookFormat
+    ) -> OPDSFeed.Entry {
+        let acq = Acquisition(href: acquisitionURL, mimeType: format == .epub ? "application/epub+zip" : "application/pdf", format: format)
+        let entry = AcquisitionEntry(
+            serverID: serverID,
+            title: title,
+            authors: authors,
+            summary: nil,
+            publishedAt: nil,
+            acquisitions: [acq],
+            thumbnailURL: nil,
+            coverURL: nil
+        )
+        return .acquisition(entry)
+    }
+
     @Test func upsertsAndProducesItems() async throws {
         let context = try makeContext()
         let opds = MockOPDS()
-        opds.catalog = OPDSCatalog(
+        opds.feed = OPDSFeed(
             title: "T",
             entries: [
-                OPDSEntry(
+                Self.makeAcqEntry(
                     serverID: "id1", title: "Dune", authors: ["FH"],
-                    detailURL: nil,
                     acquisitionURL: URL(string: "https://x/dune.epub")!,
                     format: .epub
                 )
             ],
-            nextURL: nil
+            nextURL: nil,
+            searchDescriptorURL: nil
         )
         let service = LibraryService(
             opds: opds, context: context,
@@ -58,17 +76,17 @@ struct LibraryServiceTests {
     @Test func updatesExistingBookInsteadOfDuplicating() async throws {
         let context = try makeContext()
         let opds = MockOPDS()
-        opds.catalog = OPDSCatalog(
+        opds.feed = OPDSFeed(
             title: "T",
             entries: [
-                OPDSEntry(
+                Self.makeAcqEntry(
                     serverID: "id1", title: "Dune (rev 1)", authors: ["FH"],
-                    detailURL: nil,
                     acquisitionURL: URL(string: "https://x/dune.epub")!,
                     format: .epub
                 )
             ],
-            nextURL: nil
+            nextURL: nil,
+            searchDescriptorURL: nil
         )
         let service = LibraryService(
             opds: opds, context: context,
@@ -79,17 +97,17 @@ struct LibraryServiceTests {
         #expect(service.items[0].title == "Dune (rev 1)")
 
         // Second refresh with updated title.
-        opds.catalog = OPDSCatalog(
+        opds.feed = OPDSFeed(
             title: "T",
             entries: [
-                OPDSEntry(
+                Self.makeAcqEntry(
                     serverID: "id1", title: "Dune (rev 2)", authors: ["FH"],
-                    detailURL: nil,
                     acquisitionURL: URL(string: "https://x/dune.epub")!,
                     format: .epub
                 )
             ],
-            nextURL: nil
+            nextURL: nil,
+            searchDescriptorURL: nil
         )
         try await service.refresh()
         #expect(service.items.count == 1)            // still one row
@@ -99,25 +117,29 @@ struct LibraryServiceTests {
     @Test func followsPaginationToCompletion() async throws {
         let context = try makeContext()
         let opds = MockOPDS()
-        let page1 = OPDSCatalog(
+        let page1 = OPDSFeed(
             title: "p1",
             entries: [
-                OPDSEntry(serverID: "a", title: "A", authors: [],
-                          detailURL: nil,
-                          acquisitionURL: URL(string: "https://x/a.epub")!,
-                          format: .epub)
+                Self.makeAcqEntry(
+                    serverID: "a", title: "A", authors: [],
+                    acquisitionURL: URL(string: "https://x/a.epub")!,
+                    format: .epub
+                )
             ],
-            nextURL: URL(string: "https://example/opds/page2")
+            nextURL: URL(string: "https://example/opds/page2"),
+            searchDescriptorURL: nil
         )
-        let page2 = OPDSCatalog(
+        let page2 = OPDSFeed(
             title: "p2",
             entries: [
-                OPDSEntry(serverID: "b", title: "B", authors: [],
-                          detailURL: nil,
-                          acquisitionURL: URL(string: "https://x/b.epub")!,
-                          format: .epub)
+                Self.makeAcqEntry(
+                    serverID: "b", title: "B", authors: [],
+                    acquisitionURL: URL(string: "https://x/b.epub")!,
+                    format: .epub
+                )
             ],
-            nextURL: nil
+            nextURL: nil,
+            searchDescriptorURL: nil
         )
         opds.pages = [page1, page2]
         let service = LibraryService(
@@ -132,15 +154,17 @@ struct LibraryServiceTests {
     @Test func reflectsDownloadedStateAfterFlagsSet() async throws {
         let context = try makeContext()
         let opds = MockOPDS()
-        opds.catalog = OPDSCatalog(
+        opds.feed = OPDSFeed(
             title: "T",
             entries: [
-                OPDSEntry(serverID: "id1", title: "Dune", authors: [],
-                          detailURL: nil,
-                          acquisitionURL: URL(string: "https://x/dune.epub")!,
-                          format: .epub)
+                Self.makeAcqEntry(
+                    serverID: "id1", title: "Dune", authors: [],
+                    acquisitionURL: URL(string: "https://x/dune.epub")!,
+                    format: .epub
+                )
             ],
-            nextURL: nil
+            nextURL: nil,
+            searchDescriptorURL: nil
         )
         let service = LibraryService(
             opds: opds, context: context,

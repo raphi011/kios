@@ -710,8 +710,8 @@
     <link type="image/jpeg" href="/opds/cover/189" rel="http://opds-spec.org/image/thumbnail"/>
     
     
-    <link rel="http://opds-spec.org/acquisition" href="/opds/download/189/azw3/"
-          length="507584" mtime="2024-09-20T19:35:15+00:00" type="application/x-mobi8-ebook"/>
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/189/epub/"
+          length="507584" mtime="2024-09-20T19:35:15+00:00" type="application/epub+zip"/>
     
   </entry>
   
@@ -740,8 +740,8 @@
     <link type="image/jpeg" href="/opds/cover/202" rel="http://opds-spec.org/image/thumbnail"/>
     
     
-    <link rel="http://opds-spec.org/acquisition" href="/opds/download/202/cbr/"
-          length="181074276" mtime="2024-10-14T17:04:59+00:00" type="application/x-cbr"/>
+    <link rel="http://opds-spec.org/acquisition" href="/opds/download/202/cbz/"
+          length="181074276" mtime="2024-10-14T17:04:59+00:00" type="application/x-cbz"/>
     
   </entry>
   
