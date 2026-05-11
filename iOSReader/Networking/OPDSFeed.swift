@@ -26,7 +26,9 @@ struct OPDSFeed: Sendable, Equatable {
 
 /// An OPDS navigation entry — a link to another feed (subsection, category, shelf).
 struct NavigationEntry: Sendable, Equatable {
-    /// `atom:id` of the entry. Used for SwiftUI identity.
+    /// Stable identity for SwiftUI. Derived from the target URL string —
+    /// `atom:id` is unreliable on CWA (often blank) and `link.title` collides
+    /// when a feed has two subsections with the same display title.
     let id: String
     /// Display title. CWA's synthetic letter-index entry with id "/opds/books/letter/00"
     /// has the literal title "00"; we rewrite this to "All" at parse time.
@@ -57,7 +59,7 @@ struct AcquisitionEntry: Sendable, Equatable, Identifiable {
 
 /// One acquisition link on an entry (one format).
 struct Acquisition: Sendable, Equatable, Identifiable {
-    var id: URL { href }
+    var id: BookFormat { format }
 
     let href: URL
     let mimeType: String
