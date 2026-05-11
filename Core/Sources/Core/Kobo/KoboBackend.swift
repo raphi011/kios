@@ -57,10 +57,56 @@ public struct KoboBackend: SyncBackend {
     }
 
     public func pushProgress(_ p: CanonicalProgress, for id: BookIdentity) async throws {
-        // Real body lands in Task 5.3. Throw rather than fatalError so the
-        // type honors the SyncBackend.throws contract: an accidental caller
-        // gets an actionable error, not a process crash.
-        throw BackendError.serverShapeUnexpected(detail: "KoboBackend.pushProgress not yet implemented")
+        guard let uuid = id.koboBookUUID else {
+            throw BackendError.identityMissing(field: "koboBookUUID")
+        }
+        let bookmark = try buildBookmark(from: p)
+        // v1 status threshold: >=99% maps to Finished, else Reading. The
+        // canonical progress doesn't carry a separate completion flag, so
+        // tail-end ProgressPercent is the only signal we have.
+        let update = KoboStateUpdate(readingStates: [
+            .init(
+                currentBookmark: bookmark,
+                statusInfo: .init(status: p.percentage >= 0.99 ? .finished : .reading),
+                statistics: nil
+            )
+        ])
+        try await client.pushState(bookUUID: uuid, update: update)
+    }
+
+    /// Decodes the canonical Readium-style locator JSON back into a Kobo
+    /// bookmark. Falls back to percentage-only when the locator is missing
+    /// or malformed: a percentage-only update is still useful for cross-
+    /// device progress, while preserving the cssSelector requires a well-
+    /// formed locator we can trust.
+    private func buildBookmark(from p: CanonicalProgress) throws -> KoboStateUpdate.State.Bookmark {
+        let totalProgression = p.percentage
+        guard let json = p.locatorJSON,
+              let data = json.data(using: .utf8),
+              let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .init(
+                progressPercent: totalProgression * 100,
+                contentSourceProgressPercent: totalProgression * 100,
+                location: nil
+            )
+        }
+        let href = dict["href"] as? String ?? ""
+        let locations = dict["locations"] as? [String: Any] ?? [:]
+        let progression = locations["progression"] as? Double ?? totalProgression
+        let cssSelector = locations["cssSelector"] as? String
+        // KoboProgressMapper.escapeCSS escapes `.` → `\.` when forming the
+        // cssSelector. Reverse that here so the koboSpan ID round-trips.
+        // The leading `#` is the CSS id selector and must be stripped.
+        let koboSpan: String? = {
+            guard let sel = cssSelector, sel.hasPrefix("#") else { return nil }
+            return String(sel.dropFirst()).replacingOccurrences(of: #"\."#, with: ".")
+        }()
+        return KoboProgressMapper.toKoboBookmark(
+            href: href,
+            koboSpanId: koboSpan,
+            progression: progression,
+            totalProgression: totalProgression
+        )
     }
 }
 

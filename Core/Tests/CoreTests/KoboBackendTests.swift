@@ -59,6 +59,41 @@ struct KoboBackendTests {
         }
     }
 
+    @Test func pushProgressSendsExpectedBody() async throws {
+        // Capture body outside the handler — URLProtocol delivers PUT bodies
+        // via httpBodyStream, so the request must be drained inside the
+        // handler (see MockURLProtocol.readBodyStream()).
+        nonisolated(unsafe) var sentBody: Data?
+        MockURLProtocol.handler = { req in
+            sentBody = req.readBodyStream()
+            return (
+                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(#"{"RequestResult":"Success","UpdateResults":[]}"#.utf8)
+            )
+        }
+        let backend = makeBackend()
+        let id = BookIdentity(partialMD5: nil, koboBookUUID: "u1")
+        let locatorJSON = KoboProgressMapper.toLocator(
+            source: "f_0035.xhtml",
+            type: "KoboSpan",
+            value: "kobo.10.1",
+            progressPercent: 45,
+            totalPercent: 16
+        )
+        let p = CanonicalProgress(
+            percentage: 0.16,
+            locatorJSON: locatorJSON,
+            timestamp: Date(),
+            deviceID: "D",
+            deviceName: "iPhone"
+        )
+        try await backend.pushProgress(p, for: id)
+        let body = String(data: sentBody ?? Data(), encoding: .utf8) ?? ""
+        #expect(body.contains("\"ReadingStates\""))
+        #expect(body.contains("\"ProgressPercent\":45"))
+        #expect(body.contains("\"Value\":\"kobo.10.1\""))
+    }
+
     // MARK: helpers
     private func makeBackend() -> KoboBackend {
         let http = HTTPClient(session: MockURLProtocol.session())
