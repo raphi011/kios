@@ -7,7 +7,6 @@ struct BookDetailView: View {
     enum Source: Equatable {
         case entry(AcquisitionEntry)
         case book(Book)
-        case legacy(UUID)
     }
 
     let source: Source
@@ -27,38 +26,7 @@ struct BookDetailView: View {
         self.source = .book(book)
     }
 
-    /// Legacy. Deleted in Task 14 along with LibraryView.
-    /// LibraryView still calls this; resolves to `.book(...)` inside the body
-    /// via findBookByLocalID. Returns a "not found" view if the id no longer
-    /// resolves.
-    // TODO(Task 14): delete with LibraryView
-    init(bookID: UUID) {
-        self.source = .legacy(bookID)
-    }
-
     var body: some View {
-        Group {
-            switch source {
-            case .legacy(let id):
-                if let book = Self.findBookByLocalID(id, context: context) {
-                    detail(forResolvedBook: book, sourceAcquisitions: [
-                        Acquisition(href: book.acquisitionURL, mimeType: "", format: book.format)
-                    ])
-                } else {
-                    Text("Book not found").foregroundStyle(.secondary)
-                }
-            case .entry, .book:
-                detail(forResolvedBook: localBook,
-                       sourceAcquisitions: acquisitions)
-            }
-        }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    @ViewBuilder
-    private func detail(forResolvedBook resolvedBook: Book?,
-                        sourceAcquisitions: [Acquisition]) -> some View {
         Form {
             Section("Title") { Text(title) }
             if !authors.isEmpty {
@@ -66,10 +34,11 @@ struct BookDetailView: View {
                     ForEach(authors, id: \.self) { Text($0) }
                 }
             }
-            formatSection(acquisitions: sourceAcquisitions)
-            actionSection(resolvedBook: resolvedBook,
-                          sourceAcquisitions: sourceAcquisitions)
+            formatSection(acquisitions: acquisitions)
+            actionSection(resolvedBook: localBook, sourceAcquisitions: acquisitions)
         }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Derived
@@ -78,7 +47,6 @@ struct BookDetailView: View {
         switch source {
         case .book(let b): return b
         case .entry(let e): return Self.findBook(serverID: e.serverID, context: context)
-        case .legacy(let id): return Self.findBookByLocalID(id, context: context)
         }
     }
 
@@ -86,8 +54,6 @@ struct BookDetailView: View {
         switch source {
         case .book(let b): return b.title
         case .entry(let e): return e.title
-        case .legacy(let id):
-            return Self.findBookByLocalID(id, context: context)?.title ?? ""
         }
     }
 
@@ -95,8 +61,6 @@ struct BookDetailView: View {
         switch source {
         case .book(let b): return b.authors
         case .entry(let e): return e.authors
-        case .legacy(let id):
-            return Self.findBookByLocalID(id, context: context)?.authors ?? []
         }
     }
 
@@ -105,11 +69,6 @@ struct BookDetailView: View {
         case .entry(let e): return e.acquisitions
         case .book(let b):
             return [Acquisition(href: b.acquisitionURL, mimeType: "", format: b.format)]
-        case .legacy(let id):
-            if let book = Self.findBookByLocalID(id, context: context) {
-                return [Acquisition(href: book.acquisitionURL, mimeType: "", format: book.format)]
-            }
-            return []
         }
     }
 
@@ -204,13 +163,6 @@ struct BookDetailView: View {
         let id = serverID
         let descriptor = FetchDescriptor<Book>(
             predicate: #Predicate { $0.serverID == id }
-        )
-        return try? context.fetch(descriptor).first
-    }
-
-    static func findBookByLocalID(_ id: UUID, context: ModelContext) -> Book? {
-        let descriptor = FetchDescriptor<Book>(
-            predicate: #Predicate { $0.id == id }
         )
         return try? context.fetch(descriptor).first
     }

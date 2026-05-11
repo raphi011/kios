@@ -17,7 +17,6 @@ final class AppEnvironment {
     let authStore: AuthStore
 
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
-    private(set) var library: LibraryService?
     private(set) var sync: SyncService?
     private(set) var downloads: DownloadService?
     private(set) var opds: OPDSClient?
@@ -61,7 +60,6 @@ final class AppEnvironment {
     /// after the user saves credentials in SettingsView.
     func bootIfCredentialsPresent() throws {
         guard let creds = try authStore.load() else {
-            self.library = nil
             self.sync = nil
             self.opds = nil
             // Note: we do NOT nil out `downloads`. Once created, it persists
@@ -79,9 +77,6 @@ final class AppEnvironment {
             http: http
         )
 
-        self.library = LibraryService(
-            opds: opds, context: modelContext, rootURL: creds.serverURL
-        )
         self.sync = SyncService(
             kosync: kosync, context: modelContext,
             deviceID: deviceID, deviceName: UIDevice.current.name
