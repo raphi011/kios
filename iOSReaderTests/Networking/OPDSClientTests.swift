@@ -194,6 +194,24 @@ struct OPDSClientTests {
         #expect(counter.n == 1)
     }
 
+    @Test func descriptorParseFailureThrowsDedicatedError() async throws {
+        // OpenSearch description doc with a <Url> that lacks {searchTerms}.
+        let xml = Data("""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+          <ShortName>No template</ShortName>
+          <Url type="application/atom+xml" template="https://example.com/static-search"/>
+        </OpenSearchDescription>
+        """.utf8)
+        Self.respond(with: xml, contentType: "application/opensearchdescription+xml")
+        let client = Self.makeClient()
+        await #expect(throws: OPDSClientError.invalidOpenSearchDescriptor) {
+            _ = try await client.fetchSearchDescriptor(
+                at: URL(string: "https://example.com/opds/osd")!
+            )
+        }
+    }
+
     // MARK: - Cache
 
     @Test func cachesFeedWithinSession() async throws {

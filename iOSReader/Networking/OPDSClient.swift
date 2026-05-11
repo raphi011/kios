@@ -43,7 +43,7 @@ actor OPDSClient: OPDSClientProtocol {
         }
         let (data, _) = try await http.data(for: URLRequest(url: url))
         guard let descriptor = Self.parseOpenSearchDescriptor(data: data) else {
-            throw OPDSClientError.notAFeed
+            throw OPDSClientError.invalidOpenSearchDescriptor
         }
         searchDescriptorCache[url] = descriptor
         return descriptor
@@ -77,7 +77,7 @@ actor OPDSClient: OPDSClientProtocol {
             func parser(_ parser: XMLParser, didStartElement elementName: String,
                         namespaceURI: String?, qualifiedName qName: String?,
                         attributes attributeDict: [String: String] = [:]) {
-                guard elementName.localizedCaseInsensitiveContains("url"),
+                guard elementName.caseInsensitiveCompare("Url") == .orderedSame,
                       let template = attributeDict["template"],
                       template.contains("{searchTerms}") else { return }
                 let type = attributeDict["type"] ?? ""
@@ -180,12 +180,17 @@ actor OPDSClient: OPDSClientProtocol {
 
 enum OPDSClientError: Error, LocalizedError {
     case notAFeed
+    case invalidOpenSearchDescriptor
     case unsupportedAcquisition
 
     var errorDescription: String? {
         switch self {
-        case .notAFeed: return "Server returned something other than an OPDS feed."
-        case .unsupportedAcquisition: return "Entry has no downloadable acquisition link."
+        case .notAFeed:
+            return "Server returned something other than an OPDS feed."
+        case .invalidOpenSearchDescriptor:
+            return "Server returned an invalid OpenSearch description."
+        case .unsupportedAcquisition:
+            return "Entry has no downloadable acquisition link."
         }
     }
 }
