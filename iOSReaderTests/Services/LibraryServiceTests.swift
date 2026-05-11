@@ -25,6 +25,9 @@ struct LibraryServiceTests {
         func fetchSearchDescriptor(at url: URL) async throws -> OpenSearchDescriptor {
             return OpenSearchDescriptor(templateURL: URL(string: "https://example.com/search?q={searchTerms}")!)
         }
+
+        func invalidate(_ url: URL) async {}
+        func invalidateAll() async {}
     }
 
     private func makeContext() throws -> ModelContext {

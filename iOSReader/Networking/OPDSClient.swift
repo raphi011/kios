@@ -6,6 +6,8 @@ import ReadiumShared
 protocol OPDSClientProtocol: Sendable {
     func fetchFeed(url: URL) async throws -> OPDSFeed
     func fetchSearchDescriptor(at url: URL) async throws -> OpenSearchDescriptor
+    func invalidate(_ url: URL) async
+    func invalidateAll() async
 }
 
 /// OPDS 1.2 client backed by Readium's OPDS1Parser.
