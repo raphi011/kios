@@ -22,4 +22,18 @@ struct SyncBackendTypesTests {
         #expect(p.percentage == 0.42)
         #expect(p.locatorJSON == #"{"href":"a"}"#)
     }
+
+    @Test func syncBackendProtocolCallable() async throws {
+        let backend: any SyncBackend = FakeSyncBackend()
+        try await backend.authenticate()
+        let id = BookIdentity(partialMD5: "abc", koboBookUUID: nil)
+        let progress = try await backend.fetchProgress(for: id)
+        #expect(progress == nil)
+    }
+}
+
+private struct FakeSyncBackend: SyncBackend {
+    func authenticate() async throws {}
+    func fetchProgress(for id: BookIdentity) async throws -> CanonicalProgress? { nil }
+    func pushProgress(_ p: CanonicalProgress, for id: BookIdentity) async throws {}
 }

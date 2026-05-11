@@ -50,3 +50,9 @@ public enum BackendError: Error, Sendable, Equatable {
         public init(rawValue: Int) { self.rawValue = rawValue }
     }
 }
+
+public protocol SyncBackend: Sendable {
+    func authenticate() async throws
+    func fetchProgress(for id: BookIdentity) async throws -> CanonicalProgress?
+    func pushProgress(_ p: CanonicalProgress, for id: BookIdentity) async throws
+}
