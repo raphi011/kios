@@ -206,15 +206,20 @@ public struct KoboSyncEntryOrSkip: Decodable, Sendable {
             entry = nil
             return
         }
+        // Entitlement and reading-state bodies are wrapped in `try?` so a
+        // single malformed entry degrades to nil rather than failing the
+        // whole sync-array decode. This is the tolerance contract the
+        // wrapper exists to provide.
         switch key.stringValue {
         case "NewEntitlement":
-            entry = .newEntitlement(try container.decode(KoboEntitlement.self, forKey: key))
+            entry = (try? container.decode(KoboEntitlement.self, forKey: key))
+                .map(KoboSyncEntry.newEntitlement)
         case "ChangedEntitlement":
-            entry = .changedEntitlement(try container.decode(KoboEntitlement.self, forKey: key))
+            entry = (try? container.decode(KoboEntitlement.self, forKey: key))
+                .map(KoboSyncEntry.changedEntitlement)
         case "ChangedReadingState":
-            entry = .changedReadingState(
-                try container.decode(ChangedReadingStateWrapper.self, forKey: key).readingState
-            )
+            entry = (try? container.decode(ChangedReadingStateWrapper.self, forKey: key).readingState)
+                .map(KoboSyncEntry.changedReadingState)
         case "NewTag":      entry = .newTag
         case "ChangedTag":  entry = .changedTag
         case "DeletedTag":  entry = .deletedTag

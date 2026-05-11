@@ -86,6 +86,67 @@ struct KoboTypesTests {
         #expect(bag.contributors == [])
     }
 
+    @Test func syncEntryParsesNewEntitlementWithFullMetadata() throws {
+        let json = #"""
+        [{
+          "NewEntitlement": {
+            "BookEntitlement": {
+              "Id":"u1","CrossRevisionId":"u1","RevisionId":"u1",
+              "Accessibility":"Full","Status":"Active","IsRemoved":false,
+              "Created":"2026-05-01T00:00:00Z","LastModified":"2026-05-11T00:00:00Z"
+            },
+            "BookMetadata": {
+              "EntitlementId":"u1","Title":"Test Book",
+              "Contributors":[{"Name":"Felienne Hermans","Role":"Author"}],
+              "CoverImageId":"cov1","Language":"en",
+              "DownloadUrls":[
+                {"Format":"KEPUB","Url":"https://cwa/d/1/kepub","Size":1024,"Platform":"Generic"}
+              ]
+            },
+            "ReadingState": {
+              "EntitlementId":"u1","Created":"x","LastModified":"x","PriorityTimestamp":"x",
+              "StatusInfo":{"LastModified":"x","Status":"ReadyToRead","TimesStartedReading":0},
+              "Statistics":{"LastModified":"x"},
+              "CurrentBookmark":{"LastModified":"x"}
+            }
+          }
+        }]
+        """#.data(using: .utf8)!
+
+        let entries = try KoboDecoder.decode([KoboSyncEntryOrSkip].self, from: json).compactMap { $0.entry }
+        #expect(entries.count == 1)
+        guard case .newEntitlement(let ent) = entries[0] else {
+            Issue.record("expected newEntitlement"); return
+        }
+        #expect(ent.bookEntitlement.id == "u1")
+        #expect(ent.bookMetadata.title == "Test Book")
+        #expect(ent.bookMetadata.contributors == ["Felienne Hermans"])
+        #expect(ent.bookMetadata.downloadUrls.first?.format == "KEPUB")
+        #expect(ent.bookMetadata.downloadUrls.first?.url.absoluteString == "https://cwa/d/1/kepub")
+        #expect(ent.readingState?.entitlementId == "u1")
+    }
+
+    @Test func syncEntryParsingTolerantOfMalformedEntitlement() throws {
+        // An entitlement whose BookMetadata is missing the required `Title`
+        // field should drop *only that entry*, not break the whole array.
+        let json = #"""
+        [
+          { "NewEntitlement": {
+              "BookEntitlement":{"Id":"u1","CrossRevisionId":"u1","RevisionId":"u1","Accessibility":"Full","Status":"Active","IsRemoved":false,"Created":"x","LastModified":"x"},
+              "BookMetadata":{"EntitlementId":"u1"},
+              "ReadingState":null
+          }},
+          { "DeletedTag": { "Tag": { "Id": "t1", "LastModified": "x" } } }
+        ]
+        """#.data(using: .utf8)!
+
+        let entries = try KoboDecoder.decode([KoboSyncEntryOrSkip].self, from: json).compactMap { $0.entry }
+        #expect(entries.count == 1)
+        if case .deletedTag = entries[0] {} else {
+            Issue.record("expected deletedTag (malformed entitlement should drop)")
+        }
+    }
+
     @Test func syncEntryParsingSkipsStrayStringEntry() throws {
         let json = #"""
         [
