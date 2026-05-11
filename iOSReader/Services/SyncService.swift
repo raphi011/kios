@@ -66,7 +66,7 @@ final class SyncService {
         intraProgression: Double,
         percentage: Double
     ) {
-        let progressString = ProgressMapper.encodeProgress(
+        let progressString = KOSyncProgressMapper.encodeProgress(
             chapter: chapter, intraProgression: intraProgression
         )
         upsertLocal(

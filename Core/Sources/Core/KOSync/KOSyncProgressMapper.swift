@@ -1,14 +1,17 @@
 import Foundation
 
-/// Translates between our internal progress representation and the kosync
-/// `progress` string. We use `"<chapter-index>:<intra-progression>"` (e.g.
-/// `"5:0.4231"`). KOReader uses xpointers like
-/// `/body/DocFragment[N]/body/p[12]/text().42`; we extract the DocFragment
-/// index for chapter-level seeking and accept the loss of intra-chapter
-/// precision (callers rely on `percentage` for the global location).
+/// kosync-specific progress mapper. Translates between our internal progress
+/// representation and the kosync `progress` string. We use
+/// `"<chapter-index>:<intra-progression>"` (e.g. `"5:0.4231"`). KOReader uses
+/// xpointers like `/body/DocFragment[N]/body/p[12]/text().42`; we extract the
+/// DocFragment index for chapter-level seeking and accept the loss of
+/// intra-chapter precision (callers rely on `percentage` for the global
+/// location).
+///
+/// A parallel `KoboProgressMapper` handles the Kobo wire format.
 ///
 /// See `docs/research.md` §2.1 for the wire-format context.
-public enum ProgressMapper {
+public enum KOSyncProgressMapper {
 
     public enum Error: Swift.Error, Equatable, Sendable {
         case unparsable(String)
