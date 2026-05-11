@@ -12,26 +12,33 @@ struct RootView: View {
     @State private var selectedTab: Int = 0
 
     var body: some View {
-        // First-run gate: if there is no OPDSClient (no credentials), force Settings.
-        if env.opds == nil {
-            NavigationStack { SettingsView() }
-        } else {
-            TabView(selection: $selectedTab) {
-                HomeRootView()
-                    .tabItem { Label("Home", systemImage: "house") }
-                    .tag(0)
-                BrowseRootView()
-                    .tabItem { Label("Browse", systemImage: "books.vertical") }
-                    .tag(1)
+        @Bindable var env = env
+
+        Group {
+            // First-run gate: if there is no OPDSClient (no credentials), force Settings.
+            if env.opds == nil {
                 NavigationStack { SettingsView() }
-                    .tabItem { Label("Settings", systemImage: "gearshape") }
-                    .tag(2)
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
-                    Task { await env.sync?.flushAllPending() }
+            } else {
+                TabView(selection: $selectedTab) {
+                    HomeRootView()
+                        .tabItem { Label("Home", systemImage: "house") }
+                        .tag(0)
+                    BrowseRootView()
+                        .tabItem { Label("Browse", systemImage: "books.vertical") }
+                        .tag(1)
+                    NavigationStack { SettingsView() }
+                        .tabItem { Label("Settings", systemImage: "gearshape") }
+                        .tag(2)
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        Task { await env.sync?.flushAllPending() }
+                    }
                 }
             }
+        }
+        .fullScreenCover(item: $env.activeReader) { route in
+            ReaderView(bookID: route.id)
         }
     }
 }
