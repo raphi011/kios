@@ -32,8 +32,11 @@ public struct KoboCredentials: Sendable, Equatable {
     }
 }
 
-/// Persists the user's server URL + username in `UserDefaults` and the
-/// password in `KeychainStore`. Single-server in v1.
+/// Persists the user's sync credentials and active protocol selection.
+/// Secrets (passwords, the Kobo base URL whose path encodes an auth token)
+/// live in `KeychainStore`; preferences and non-secret caches (URLs,
+/// usernames, activeProtocol, imageURLTemplate) live in `UserDefaults`.
+/// Single-server in v1.
 public final class AuthStore: Sendable {
     private let keychain: KeychainStore
     // UserDefaults lacks a formal Sendable conformance in Swift 6, but its
