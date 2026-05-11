@@ -94,6 +94,57 @@ struct KoboBackendTests {
         #expect(body.contains("\"Value\":\"kobo.10.1\""))
     }
 
+    @Test func listLibraryFromSync() async throws {
+        nonisolated(unsafe) var callCount = 0
+        MockURLProtocol.handler = { req in
+            callCount += 1
+            if req.url?.path.hasSuffix("/v1/library/sync") == true {
+                let body = #"""
+                [{
+                  "NewEntitlement": {
+                    "BookEntitlement": {
+                      "Id":"u1","CrossRevisionId":"u1","RevisionId":"u1","Accessibility":"Full",
+                      "Status":"Active","IsRemoved":false,"Created":"x","LastModified":"x"
+                    },
+                    "BookMetadata": {
+                      "EntitlementId":"u1","Title":"Test","Contributors":["Author One"],
+                      "CoverImageId":"cov1",
+                      "DownloadUrls":[{"Format":"KEPUB","Url":"https://cwa/download/1/kepub","Size":100,"Platform":"Generic"}]
+                    },
+                    "ReadingState": {
+                      "EntitlementId":"u1","Created":"x","LastModified":"x","PriorityTimestamp":"x",
+                      "StatusInfo":{"LastModified":"x","Status":"ReadyToRead","TimesStartedReading":0},
+                      "Statistics":{"LastModified":"x"},
+                      "CurrentBookmark":{"LastModified":"x"}
+                    }
+                  }
+                }]
+                """#
+                return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil,
+                                        headerFields: ["x-kobo-synctoken": "T", "x-kobo-sync": "None"])!,
+                        body.data(using: .utf8)!)
+            }
+            // Initialization
+            let body = #"{ "Resources": { "image_url_template": "https://cwa/{ImageId}/{width}/{height}/false/image.jpg" } }"#
+            return (HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                    body.data(using: .utf8)!)
+        }
+
+        let backend = KoboBackend(
+            client: KoboClient(baseURL: URL(string: "https://cwa/kobo/T")!, http: HTTPClient(session: MockURLProtocol.session())),
+            deviceID: "D", deviceName: "iPhone"
+        )
+        try await backend.authenticate()       // populates image template
+        let entries = try await backend.listLibrary()
+        #expect(entries.count == 1)
+        #expect(entries[0].title == "Test")
+        #expect(entries[0].authors == ["Author One"])
+        #expect(entries[0].identity.koboBookUUID == "u1")
+        #expect(entries[0].format == .epub)
+        #expect(entries[0].downloadURL.absoluteString == "https://cwa/download/1/kepub")
+        #expect(entries[0].thumbnailURL?.absoluteString == "https://cwa/cov1/1200/1600/false/image.jpg")
+    }
+
     // MARK: helpers
     private func makeBackend() -> KoboBackend {
         let http = HTTPClient(session: MockURLProtocol.session())

@@ -12,10 +12,13 @@ import Foundation
 /// blueprint doesn't tell us — so we tag fetched progress with a sentinel
 /// `deviceID = "kobo-peer"`. LWW reconciliation only cares that this is
 /// *not* our own deviceID; the human-facing label stays generic ("Kobo").
-public struct KoboBackend: SyncBackend {
+public final class KoboBackend: SyncBackend, CatalogBackend, @unchecked Sendable {
     public let client: KoboClient
     public let deviceID: String
     public let deviceName: String
+
+    private var imageURLTemplate: String?
+    private var syncToken: String?
 
     public init(client: KoboClient, deviceID: String, deviceName: String) {
         self.client = client
@@ -24,7 +27,8 @@ public struct KoboBackend: SyncBackend {
     }
 
     public func authenticate() async throws {
-        _ = try await client.initialization()
+        let res = try await client.initialization()
+        self.imageURLTemplate = res.imageURLTemplate
     }
 
     public func fetchProgress(for id: BookIdentity) async throws -> CanonicalProgress? {
@@ -106,6 +110,58 @@ public struct KoboBackend: SyncBackend {
             koboSpanId: koboSpan,
             progression: progression,
             totalProgression: totalProgression
+        )
+    }
+
+    // MARK: - CatalogBackend
+
+    public func listLibrary() async throws -> [CatalogEntry] {
+        if imageURLTemplate == nil {
+            try await authenticate()
+        }
+        let result = try await client.librarySync(syncToken: nil)
+        self.syncToken = result.nextSyncToken
+
+        var entries: [CatalogEntry] = []
+        for entry in result.entries {
+            switch entry {
+            case .newEntitlement(let e), .changedEntitlement(let e):
+                guard let mapped = mapEntitlement(e) else { continue }
+                entries.append(mapped)
+            default:
+                break
+            }
+        }
+        return entries
+    }
+
+    public func resolveDownload(for entry: CatalogEntry) async throws -> URL {
+        // CWA's download URLs are direct GETs; nothing to resolve.
+        entry.downloadURL
+    }
+
+    private func mapEntitlement(_ e: KoboEntitlement) -> CatalogEntry? {
+        let bm = e.bookMetadata
+        let kepub = bm.downloadUrls.first { $0.format == "KEPUB" }
+        let chosen = kepub ?? bm.downloadUrls.first { $0.format == "EPUB" || $0.format == "EPUB3" || $0.format == "EPUB3FL" }
+        guard let download = chosen else { return nil }
+
+        let thumb: URL? = {
+            guard let template = imageURLTemplate, let coverId = bm.coverImageId else { return nil }
+            return URL(string: template
+                .replacingOccurrences(of: "{ImageId}", with: coverId)
+                .replacingOccurrences(of: "{width}", with: "1200")
+                .replacingOccurrences(of: "{height}", with: "1600"))
+        }()
+
+        return CatalogEntry(
+            serverID: bm.entitlementId,
+            title: bm.title,
+            authors: bm.contributors,
+            identity: BookIdentity(partialMD5: nil, koboBookUUID: bm.entitlementId),
+            downloadURL: download.url,
+            format: .epub,
+            thumbnailURL: thumb
         )
     }
 }
