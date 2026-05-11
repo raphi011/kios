@@ -1,6 +1,6 @@
 import Testing
 @testable import iOSReader
-@testable import Core
+import Core
 
 @Suite("BookFormat")
 struct BookFormatTests {
