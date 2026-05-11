@@ -21,6 +21,11 @@ final class AppEnvironment {
     private(set) var downloads: DownloadService?
     private(set) var opds: OPDSClient?
 
+    /// Set when a reader is open. Drives the app-wide `.fullScreenCover` in
+    /// `RootView`. Hoisted above `TabView` so both Home and Browse can present
+    /// without double-stacking modals.
+    var activeReader: ReaderRoute?
+
     private let deviceID: String
 
     init() throws {
@@ -113,5 +118,11 @@ final class AppEnvironment {
             }
         }
         try? context.save()
+    }
+
+    /// Opens the reader for `bookID`. No-op when a reader is already open.
+    func openReader(_ bookID: UUID) {
+        guard activeReader == nil else { return }
+        activeReader = ReaderRoute(id: bookID)
     }
 }
