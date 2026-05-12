@@ -191,4 +191,35 @@ final class AppEnvironment {
             activeProtocol: authStore.loadActiveProtocol()
         )
     }
+
+    /// Refreshes `book.acquisitionURL` via the active protocol's catalog
+    /// backend. For Kobo, the listLibrary response embeds pre-signed CDN URLs
+    /// that expire in minutes — re-resolving the entry returns a fresh URL.
+    /// KoboBackend's `resolveDownload` is a pass-through today; CWA-side TTL
+    /// handling can swap in a fresh URL later without touching call sites.
+    /// Silently no-ops on failure so the caller's download attempt can still
+    /// proceed with the stale URL and surface a real download error rather
+    /// than blocking on the refresh.
+    func refreshAcquisitionURL(for book: Book) async {
+        do {
+            let name = UIDevice.current.name
+            let (_, catalog) = try BackendFactory.build(
+                auth: authStore, deviceID: deviceID, deviceName: name
+            )
+            let entry = CatalogEntry(
+                serverID: book.serverID,
+                title: book.title,
+                authors: book.authors,
+                identity: book.identity,
+                downloadURL: book.acquisitionURL,
+                format: book.format,
+                thumbnailURL: book.thumbnailURL
+            )
+            let fresh = try await catalog.resolveDownload(for: entry)
+            book.acquisitionURL = fresh
+            try? modelContext.save()
+        } catch {
+            // Stale URL — let the download attempt anyway.
+        }
+    }
 }

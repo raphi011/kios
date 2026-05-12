@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UIKit
 import Core
 
 /// Unified catalog view across sync protocols. Backed by the local
@@ -12,7 +11,6 @@ struct LibraryRootView: View {
            sort: \Book.title)
     private var books: [Book]
 
-    @Environment(\.modelContext) private var context
     @Environment(AppEnvironment.self) private var env
 
     @State private var isRefreshing: Bool = false
@@ -75,42 +73,11 @@ struct LibraryRootView: View {
         // captured at listLibrary time may have expired.
         Task {
             if book.serverIDProtocol == SyncProtocol.kobo.rawValue {
-                await refreshKoboDownloadURL(for: book)
+                await env.refreshAcquisitionURL(for: book)
             }
             _ = try? await env.downloads?.download(book: book)
         }
         env.openReader(book.id)
-    }
-
-    /// Re-resolves `book.acquisitionURL` via the catalog backend. Kobo serves
-    /// pre-signed CDN URLs with a finite TTL, and the URL captured at
-    /// listLibrary time may have expired by the time the user taps. The
-    /// current `KoboBackend.resolveDownload` is a pass-through, so today this
-    /// is future-proofing for the CWA-side refresh hook. Errors are swallowed
-    /// on purpose — if resolution fails we let the download attempt the stale
-    /// URL and surface a real download error rather than blocking on the
-    /// refresh.
-    private func refreshKoboDownloadURL(for book: Book) async {
-        do {
-            let name = await UIDevice.current.name
-            let (_, catalog) = try BackendFactory.build(
-                auth: env.authStore, deviceID: env.deviceID, deviceName: name
-            )
-            let entry = CatalogEntry(
-                serverID: book.serverID,
-                title: book.title,
-                authors: book.authors,
-                identity: book.identity,
-                downloadURL: book.acquisitionURL,
-                format: book.format,
-                thumbnailURL: book.thumbnailURL
-            )
-            let fresh = try await catalog.resolveDownload(for: entry)
-            book.acquisitionURL = fresh
-            try? context.save()
-        } catch {
-            // Intentional fall-through — see doc comment above.
-        }
     }
 }
 
