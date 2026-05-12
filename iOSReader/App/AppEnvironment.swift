@@ -162,4 +162,21 @@ final class AppEnvironment {
         guard activeReader == nil else { return }
         activeReader = ReaderRoute(id: bookID)
     }
+
+    /// Pulls a fresh catalog snapshot for the active protocol and reconciles
+    /// it against the local Book store. Throws if credentials are absent or
+    /// the network call fails. Used by `LibraryRootView`'s pull-to-refresh
+    /// and by `SettingsView` after every successful Test & Save.
+    func refreshLibrary() async throws {
+        let name = UIDevice.current.name
+        let (_, catalog) = try BackendFactory.build(
+            auth: authStore,
+            deviceID: deviceID,
+            deviceName: name
+        )
+        try await library.refresh(
+            using: catalog,
+            activeProtocol: authStore.loadActiveProtocol()
+        )
+    }
 }

@@ -194,9 +194,10 @@ struct SettingsView: View {
             )
             env.authStore.saveActiveProtocol(.kosync)
             try env.bootIfCredentialsPresent()
-            if protocolIsChanging {
-                try await refreshLibrary(for: .kosync)
-            }
+            // Always refresh on save (not just on protocol switch) so re-saving
+            // with the same credentials still pulls server-side library
+            // changes into the local store.
+            try await env.refreshLibrary()
             // Sync the baseline AFTER the refresh succeeds — if refresh throws,
             // we leave `originalProtocol` as-is so the user still sees the
             // confirmation on a retry rather than silently switching.
@@ -226,9 +227,7 @@ struct SettingsView: View {
             )
             env.authStore.saveActiveProtocol(.kobo)
             try env.bootIfCredentialsPresent()
-            if protocolIsChanging {
-                try await refreshLibrary(for: .kobo)
-            }
+            try await env.refreshLibrary()
             originalProtocol = .kobo
             status = .ok
         } catch HTTPError.unauthorized {
@@ -240,17 +239,4 @@ struct SettingsView: View {
         }
     }
 
-    /// Build a fresh backend pair against the just-saved credentials and run
-    /// `LibraryService.refresh`. We read the active protocol via the
-    /// `BackendFactory` (which calls `loadActiveProtocol()`) — `saveActiveProtocol`
-    /// has already been called on the auth store at this point.
-    private func refreshLibrary(for proto: SyncProtocol) async throws {
-        let device = UIDevice.current.name
-        let (_, catalog) = try BackendFactory.build(
-            auth: env.authStore,
-            deviceID: env.deviceID,
-            deviceName: device
-        )
-        try await env.library.refresh(using: catalog, activeProtocol: proto)
-    }
 }
