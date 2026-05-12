@@ -23,9 +23,6 @@ final class KEPUBSpanResolver {
         return KoboSpanParser.span(at: progression, in: spans)
     }
 
-    /// `nonisolated` so the ZIP read does not hop through the main actor.
-    /// `Archive` itself is an actor in ReadiumZIPFoundation v3 — its work runs
-    /// on its own executor.
     private nonisolated static func readSpans(
         bookFileURL: URL,
         chapterHref: String
@@ -33,7 +30,7 @@ final class KEPUBSpanResolver {
         do {
             let archive = try await Archive(url: bookFileURL, accessMode: .read)
             let entries = try await archive.entries()
-            guard let entry = entries.first(where: { $0.path.hasSuffix(chapterHref) }) else {
+            guard let entry = entries.first(where: { entryMatches($0.path, chapterHref: chapterHref) }) else {
                 return nil
             }
             var bytes = Data()
@@ -44,5 +41,9 @@ final class KEPUBSpanResolver {
         } catch {
             return nil
         }
+    }
+
+    private nonisolated static func entryMatches(_ path: String, chapterHref: String) -> Bool {
+        path == chapterHref || path.hasSuffix("/" + chapterHref)
     }
 }

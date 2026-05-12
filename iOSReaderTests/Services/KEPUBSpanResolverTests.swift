@@ -9,6 +9,7 @@ struct KEPUBSpanResolverTests {
 
     @Test func resolvesFirstSpanAtZeroProgression() async throws {
         let env = try await Env.make()
+        defer { env.cleanup() }
         let id = await env.resolver.resolve(
             bookFileURL: env.bookURL,
             chapterHref: "OEBPS/text/chapter1.xhtml",
@@ -19,28 +20,29 @@ struct KEPUBSpanResolverTests {
 
     @Test func resolvesMiddleSpanAtHalfProgression() async throws {
         let env = try await Env.make()
+        defer { env.cleanup() }
         let id = await env.resolver.resolve(
             bookFileURL: env.bookURL,
             chapterHref: "OEBPS/text/chapter1.xhtml",
             progression: 0.5
         )
-        // 10 spans, floor(0.5 * 10) = 5 → spans[5] = "kobo.3.2"
         #expect(id == "kobo.3.2")
     }
 
     @Test func resolvesLastSpanAtOneProgression() async throws {
         let env = try await Env.make()
+        defer { env.cleanup() }
         let id = await env.resolver.resolve(
             bookFileURL: env.bookURL,
             chapterHref: "OEBPS/text/chapter1.xhtml",
             progression: 1.0
         )
-        // floor(1.0 * 10) = 10 → clamped to spans.count - 1 = 9
         #expect(id == "kobo.5.2")
     }
 
     @Test func returnsNilForChapterWithoutKoboSpans() async throws {
         let env = try await Env.make()
+        defer { env.cleanup() }
         let id = await env.resolver.resolve(
             bookFileURL: env.bookURL,
             chapterHref: "OEBPS/text/plain.xhtml",
@@ -51,6 +53,7 @@ struct KEPUBSpanResolverTests {
 
     @Test func returnsNilForMissingChapter() async throws {
         let env = try await Env.make()
+        defer { env.cleanup() }
         let id = await env.resolver.resolve(
             bookFileURL: env.bookURL,
             chapterHref: "OEBPS/text/does-not-exist.xhtml",
@@ -59,11 +62,9 @@ struct KEPUBSpanResolverTests {
         #expect(id == nil)
     }
 
-    /// After the first call caches the parsed spans for the chapter, deleting
-    /// the underlying .epub must not affect the second call — the second call
-    /// returns from the in-memory cache without touching the filesystem.
     @Test func cachedSpansSurviveFileDeletion() async throws {
         let env = try await Env.make()
+        defer { env.cleanup() }
         let first = await env.resolver.resolve(
             bookFileURL: env.bookURL,
             chapterHref: "OEBPS/text/chapter1.xhtml",
@@ -87,6 +88,7 @@ struct KEPUBSpanResolverTests {
     struct Env {
         let resolver: KEPUBSpanResolver
         let bookURL: URL
+        let tmpDir: URL
 
         static func make() async throws -> Env {
             let tmpDir = FileManager.default.temporaryDirectory
@@ -98,7 +100,11 @@ struct KEPUBSpanResolverTests {
             try await Self.addText(archive, path: "OEBPS/text/chapter1.xhtml", text: Self.tenSpanChapter)
             try await Self.addText(archive, path: "OEBPS/text/plain.xhtml", text: Self.plainChapter)
 
-            return Env(resolver: KEPUBSpanResolver(), bookURL: bookURL)
+            return Env(resolver: KEPUBSpanResolver(), bookURL: bookURL, tmpDir: tmpDir)
+        }
+
+        func cleanup() {
+            try? FileManager.default.removeItem(at: tmpDir)
         }
 
         private static func addText(_ archive: Archive, path: String, text: String) async throws {
@@ -116,9 +122,6 @@ struct KEPUBSpanResolverTests {
             )
         }
 
-        /// 10 koboSpans in document order: kobo.1.1, 1.2, 2.1, 2.2, 3.1, 3.2,
-        /// 4.1, 4.2, 5.1, 5.2. progression 0.5 → spans[5] = kobo.3.2.
-        /// progression 1.0 → clamps to spans[9] = kobo.5.2.
         static let tenSpanChapter: String = """
         <?xml version="1.0" encoding="UTF-8"?>
         <html xmlns="http://www.w3.org/1999/xhtml">
