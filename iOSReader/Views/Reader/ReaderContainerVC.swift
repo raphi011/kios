@@ -25,6 +25,11 @@ final class ReaderContainerVC: UIViewController {
     private let initialLocator: Locator?
     private var navigator: EPUBNavigatorViewController?
     private var inputHandlers: ReaderInputHandlers?
+    /// Retained so its `.tap` / `.click` / `.key` observer closures stay alive.
+    /// Readium 3.9 made the adapter's observer closures capture `self` weakly
+    /// (PR #757), so dropping the instance after `bind(to:)` deinits the
+    /// adapter and auto-unbinds — silently breaking edge-tap page turns.
+    private var directionalNavigationAdapter: DirectionalNavigationAdapter?
     /// `Locator.jsonString` of the most recently applied jump. Used to dedupe
     /// repeated `applyPendingJump` calls from SwiftUI re-renders so we don't
     /// replay the same navigation on every `updateUIViewController` pass.
@@ -131,9 +136,11 @@ final class ReaderContainerVC: UIViewController {
     private func installInputObservers() {
         guard let nav = navigator else { return }
 
-        DirectionalNavigationAdapter(
+        let dna = DirectionalNavigationAdapter(
             pointerPolicy: .init(types: [.mouse, .touch])
-        ).bind(to: nav)
+        )
+        dna.bind(to: nav)
+        directionalNavigationAdapter = dna
 
         nav.addObserver(.activate { [weak self] _ in
             self?.onCenterTap?()
