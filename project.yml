@@ -19,7 +19,7 @@ settings:
 packages:
   Readium:
     url: https://github.com/readium/swift-toolkit.git
-    from: "3.0.0"
+    from: "3.9.0"
   Core:
     path: Core
   ZIPFoundation:

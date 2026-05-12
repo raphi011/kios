@@ -70,7 +70,7 @@ final class ReaderContainerVC: UIViewController {
     /// SwiftUI's repeated `updateUIViewController` invocations.
     func applyPendingJump(_ locator: Locator?) {
         guard let locator,
-              let json = locator.jsonString,
+              let json = try? locator.jsonString(),
               json != lastAppliedJumpJSON
         else { return }
         lastAppliedJumpJSON = json
@@ -206,14 +206,12 @@ extension ReaderContainerVC: EPUBNavigatorDelegate {
     private func enrichWithVisibleSelector(_ locator: Locator) async -> Locator {
         guard let nav = navigator,
               let visible = await nav.firstVisibleElementLocator(),
-              let selector = visible.locations["cssSelector"] as? String,
+              let selector = visible.locations["cssSelector"]?.string,
               selector.hasPrefix("#kobo") else {
             return locator
         }
         return locator.copy(locations: { locations in
-            var other = locations.otherLocations
-            other["cssSelector"] = selector
-            locations.otherLocations = other
+            locations.otherLocations["cssSelector"] = .string(selector)
         })
     }
 }

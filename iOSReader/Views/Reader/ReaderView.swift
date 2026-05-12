@@ -138,7 +138,7 @@ struct ReaderView: View {
                         message: Text(relativeReadMessage(for: info.server)),
                         primaryButton: .default(Text("Continue")) {
                             if let json = info.server.locatorJSON,
-                               let locator = try? Locator(jsonString: json) {
+                               let locator = try? Locator(legacyJSONString: json) {
                                 pendingJump = locator
                             }
                         },
@@ -206,7 +206,7 @@ struct ReaderView: View {
         if let progress = try? context.fetch(
             FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
         ).first {
-            initialLocator = try? Locator(jsonString: progress.locatorJSON)
+            initialLocator = try? Locator(legacyJSONString: progress.locatorJSON)
         }
         do {
             let pub = try await openPublication(at: fileURL)
@@ -411,7 +411,7 @@ struct ReaderView: View {
             case .applyServer(let progress):
                 guard !userHasNavigated,
                       let json = progress.locatorJSON,
-                      let locator = try? Locator(jsonString: json) else { return }
+                      let locator = try? Locator(legacyJSONString: json) else { return }
                 pendingJump = locator
             case .promptUser(let local, let server):
                 guard !userHasNavigated else { return }
@@ -460,7 +460,7 @@ struct ReaderView: View {
         userHasNavigated = true
         guard let book = currentBook() else { return }
         let total = locator.locations.totalProgression ?? 0
-        guard let json = locator.jsonString else { return }
+        guard let json = try? locator.jsonString() else { return }
         env.sync?.bufferLocator(
             book: book, locatorJSON: json, percentage: total
         )
