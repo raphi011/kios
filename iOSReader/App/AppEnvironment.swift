@@ -37,7 +37,13 @@ final class AppEnvironment {
         self.modelContainer = try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self
         )
-        self.modelContext = ModelContext(self.modelContainer)
+        // Use the container's mainContext (the same one `.modelContainer(...)`
+        // wires `@Query` to in views). Constructing a parallel `ModelContext`
+        // here would create a second cache on the same store — service writes
+        // and @Query reads would land in different in-memory snapshots, and
+        // the mainContext's autosave can overwrite service writes with its
+        // stale view of the same row.
+        self.modelContext = self.modelContainer.mainContext
         self.authStore = AuthStore()
         self.library = LibraryService(context: self.modelContext)
 
