@@ -2759,6 +2759,117 @@ git commit -m "docs(sync): record smoke test results for multi-protocol sync"
 
 ---
 
+## Smoke test checklist (Task 10.2 execution)
+
+> **Prepared 2026-05-12 by assistant — execution pending.** The "no backwards compatibility" decision dropped Tasks 6.3/6.4 (SchemaV1 snapshot + AppMigrationPlan + SchemaBackfill); smoke test #3 (V1→V2 migration) is therefore **N/A** for this build. Run the remaining four scenarios and record pass/fail + observations inline below each block.
+
+### Pre-flight
+
+- [ ] Branch `feat/v1` at HEAD `a702f49` (or descendant). Verify with `git log -1 --oneline`.
+- [ ] `make test-core` → **91 tests** passing.
+- [ ] `make test-ios` → **82 tests** passing.
+- [ ] Simulator: iPhone 17 (or whatever's available; iPhone 16 not installed locally). Erase any prior install with stale SwiftData store: `xcrun simctl erase <UDID>` — the BC waiver means there's no in-place migration from a Phase-5-era schema.
+- [ ] CWA reachable: `curl -fsS https://cwa.example.com/opds/` should return XML.
+- [ ] Kobo token retrievable from cluster:
+      ```bash
+      kubectl exec -n calibre-web deploy/calibre-web -- \
+        sqlite3 /config/app.db \
+        "SELECT auth_token FROM remote_auth_token WHERE token_type=1 LIMIT 1;"
+      ```
+      The Kobo sync URL is `https://cwa.example.com/kobo/<TOKEN>/`.
+
+### Smoke 1 — fresh kosync install
+
+1. Erase simulator → install app fresh.
+2. Settings → protocol picker `KOReader Sync` → enter `https://cwa.example.com` + CWA username + password.
+3. Tap **Test & Save**. Expect green "Connected".
+4. Library should populate from `/opds/`. Confirm cover thumbnails render.
+5. Tap a book → it downloads → tap again to open in reader.
+6. Page through 3-4 pages.
+7. Cluster check — `progress` should appear server-side:
+   ```bash
+   kubectl exec -n calibre-web deploy/calibre-web -- \
+     sqlite3 /config/app.db \
+     "SELECT document, percentage, device FROM kosync_progress ORDER BY timestamp DESC LIMIT 5;"
+   ```
+   Expect a row matching the book's partialMD5 with the device name = `UIDevice.current.name`. The `progress` column should look like `"0:0.XXXX"` (Task 7.5 wire-format fix — chapter pinned to 0, intra from Readium locator).
+
+- [ ] **Pass** / [ ] **Fail** — Notes: _________________
+
+### Smoke 2 — fresh Kobo install
+
+1. Erase simulator → install app fresh.
+2. Settings → protocol picker `Kobo Sync` → paste `https://cwa.example.com/kobo/<TOKEN>/` (no username/password).
+3. Tap **Test & Save**. Expect green "Connected".
+4. Library should populate (KEPUB books appear with metadata).
+5. **Known v1 limitation**: KEPUB isn't readable in the app's reader. Verify the library list renders books with covers + titles + authors; tapping a book should fail gracefully (or fallback to download → opener TBD).
+6. Cluster check — Kobo state should appear server-side:
+   ```bash
+   kubectl exec -n calibre-web deploy/calibre-web -- \
+     sqlite3 /config/app.db \
+     "SELECT krs.book_id, kb.progress_percent, kb.location_value
+      FROM kobo_bookmark kb JOIN kobo_reading_state krs ON kb.kobo_reading_state_id = krs.id
+      ORDER BY kb.last_modified DESC LIMIT 5;"
+   ```
+   For this test, expect **no rows** initially (the app can't push Kobo progress yet without a working KEPUB reader). The catalog-fetch alone is the verification target.
+
+- [ ] **Pass** / [ ] **Fail** — Notes: _________________
+
+### Smoke 3 — V1 → V2 migration
+
+**N/A.** Skipped per the "no backwards compatibility" decision early in Phase 6. The schema mechanically requires erasing the existing simulator install before first launch on the V2 schema; there is no in-place migration path from Phase-5 data.
+
+### Smoke 4 — real Kobo ↔ iPhone
+
+**Hardware-gated.** Requires a physical Kobo e-reader paired to the same CWA. The 1% precision claim ("within 1 sentence (KEPUB) or ~2% (plain EPUB)") needs a real Kobo to validate.
+
+If a physical Kobo is unavailable, this test is deferred to a follow-up session.
+
+1. On the real Kobo, read 10% into a book via the Kobo's own native reader (NOT KOReader).
+2. Wait for the Kobo to sync with CWA (usually triggered by a sleep/wake or manual sync).
+3. Open the same book on iPhone in this app, Kobo Sync mode.
+4. Expect a "Continue from another device?" prompt with the right percentage (~10%).
+5. Accept; reader should land within 1 sentence (if KEPUB) or ~2% (if plain EPUB).
+
+- [ ] **Pass** / [ ] **Fail** / [ ] **Deferred — no hardware** — Notes: _________________
+
+### Smoke 5 — protocol pinning
+
+This is the load-bearing guarantee from Task 7.4. Verify the protocol-switch UX preserves in-flight writes via the original backend.
+
+1. In kosync mode (Smoke 1 state), open a book and page through 2-3 pages — this buffers a write under kosync.
+2. **Without backgrounding**, navigate to Settings → switch picker to Kobo Sync → paste the kobo URL.
+3. Tap Test & Save. The confirmation dialog should appear ("Switch to Kobo Sync?"). Accept.
+4. Wait 30 seconds (background flush trigger).
+5. Cluster check — kosync row for the book should be **updated** (the buffered write flushed via the pinned kosync backend, NOT misrouted to Kobo):
+   ```bash
+   kubectl exec -n calibre-web deploy/calibre-web -- \
+     sqlite3 /config/app.db \
+     "SELECT document, percentage, device, timestamp FROM kosync_progress ORDER BY timestamp DESC LIMIT 3;"
+   ```
+6. Cross-check — kobo state for the same book should be **unchanged** (or absent) since the pinned protocol was kosync:
+   ```bash
+   kubectl exec -n calibre-web deploy/calibre-web -- \
+     sqlite3 /config/app.db \
+     "SELECT book_id, last_modified FROM kobo_reading_state ORDER BY last_modified DESC LIMIT 3;"
+   ```
+
+- [ ] **Pass** / [ ] **Fail** — Notes: _________________
+
+### Wrap-up
+
+After smoke tests:
+
+- [ ] Append a `## Smoke test results 2026-05-XX` section here with concrete pass/fail per item + any anomalies observed.
+- [ ] If anything failed, file follow-up issues; do NOT amend prior commits — record gaps as separate fixes.
+- [ ] If all green, commit:
+      ```bash
+      git add docs/superpowers/plans/2026-05-11-multi-protocol-sync.md
+      git commit -m "docs(sync): record smoke test results for multi-protocol sync"
+      ```
+
+---
+
 ## Self-review notes
 
 - Spec coverage: Phase 1–5 cover the protocol abstraction and Kobo wire types (spec §Architecture + §Kobo Client surface). Phase 6 covers SwiftData V2 + migrations (spec §SwiftData model changes). Phase 7 covers BackendFactory and SyncService refactor (spec §Conflict resolution, §protocol pinning). Phase 8 covers mode-switch matching (spec §Mode-switch matching). Phase 9 covers Settings UX (spec §Settings UX). Phase 10 covers docs + smoke (spec §Testing strategy layer 3).
