@@ -49,6 +49,48 @@ struct KoboBackendTests {
         #expect(p?.locatorJSON?.contains(#"#kobo\\.10\\.1"#) == true)
     }
 
+    @Test func fetchProgressUsesDeviceIdWhenServerReturnsIt() async throws {
+        MockURLProtocol.handler = { req in
+            let body = #"""
+            [{
+              "EntitlementId":"u1","Created":"x","LastModified":"x","PriorityTimestamp":"x",
+              "StatusInfo":{"LastModified":"x","Status":"Reading","TimesStartedReading":1},
+              "Statistics":{"LastModified":"x"},
+              "CurrentBookmark":{"LastModified":"x","ProgressPercent":50.0,"DeviceId":"peer-device-id"}
+            }]
+            """#
+            return (
+                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(body.utf8)
+            )
+        }
+        let backend = makeBackend()
+        let id = BookIdentity(partialMD5: nil, koboBookUUID: "u1")
+        let p = try await backend.fetchProgress(for: id)
+        #expect(p?.deviceID == "peer-device-id")
+    }
+
+    @Test func fetchProgressFallsBackToKoboPeerWhenDeviceIdMissing() async throws {
+        MockURLProtocol.handler = { req in
+            let body = #"""
+            [{
+              "EntitlementId":"u1","Created":"x","LastModified":"x","PriorityTimestamp":"x",
+              "StatusInfo":{"LastModified":"x","Status":"Reading","TimesStartedReading":1},
+              "Statistics":{"LastModified":"x"},
+              "CurrentBookmark":{"LastModified":"x","ProgressPercent":50.0}
+            }]
+            """#
+            return (
+                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                Data(body.utf8)
+            )
+        }
+        let backend = makeBackend()
+        let id = BookIdentity(partialMD5: nil, koboBookUUID: "u1")
+        let p = try await backend.fetchProgress(for: id)
+        #expect(p?.deviceID == "kobo-peer")
+    }
+
     @Test func fetchProgressMissingIdentityThrows() async throws {
         let backend = makeBackend()
         do {
@@ -131,7 +173,7 @@ struct KoboBackendTests {
         }
 
         let backend = KoboBackend(
-            client: KoboClient(baseURL: URL(string: "https://cwa/kobo/T")!, http: HTTPClient(session: MockURLProtocol.session())),
+            client: KoboClient(baseURL: URL(string: "https://cwa/kobo/T")!, http: HTTPClient(session: MockURLProtocol.session()), deviceID: "D"),
             deviceID: "D", deviceName: "iPhone", imageURLTemplate: nil
         )
         try await backend.authenticate()       // populates image template
@@ -153,7 +195,8 @@ struct KoboBackendTests {
         let http = HTTPClient(session: MockURLProtocol.session())
         let kc = KoboClient(
             baseURL: URL(string: "https://cwa/kobo/T")!,
-            http: http
+            http: http,
+            deviceID: "D"
         )
         return KoboBackend(client: kc, deviceID: "D", deviceName: "iPhone", imageURLTemplate: nil)
     }

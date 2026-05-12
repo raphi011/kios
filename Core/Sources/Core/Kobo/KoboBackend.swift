@@ -60,11 +60,13 @@ public actor KoboBackend: SyncBackend, CatalogBackend {
         // parse: LWW reconciliation must treat "age unknown" as "oldest
         // possible" so it never beats a real local write.
         let timestamp = isoDate(state.lastModified) ?? .distantPast
+        // Echo the bookmark's `DeviceId` when the (patched) CWA returns it;
+        // stock CWA omits the field and every peer write looks anonymous.
         return CanonicalProgress(
             percentage: percentage,
             locatorJSON: locatorJSON,
             timestamp: timestamp,
-            deviceID: "kobo-peer",
+            deviceID: bookmark.deviceId ?? "kobo-peer",
             deviceName: "Kobo"
         )
     }

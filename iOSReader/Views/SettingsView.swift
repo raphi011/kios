@@ -216,7 +216,7 @@ struct SettingsView: View {
             return
         }
         let http = HTTPClient()  // Kobo auth is in the URL path, not headers
-        let kc = KoboClient(baseURL: url, http: http)
+        let kc = KoboClient(baseURL: url, http: http, deviceID: env.deviceID)
         do {
             let res = try await kc.initialization()
             // res.imageURLTemplate is non-optional in the type; if the response

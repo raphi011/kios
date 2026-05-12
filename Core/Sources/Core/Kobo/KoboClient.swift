@@ -19,10 +19,18 @@ public struct KoboInitResources: Sendable, Codable {
 public struct KoboClient: Sendable {
     public let baseURL: URL
     public let http: HTTPClient
+    /// Stable per-install device identifier sent as `x-kobo-deviceid` on every
+    /// request. A patched CWA stores it on the bookmark so subsequent fetches
+    /// can identify which device wrote the state — replaces the hardcoded
+    /// `"kobo-peer"` fallback in `KoboBackend.fetchProgress` once the server
+    /// echoes the field back. Old CWA versions ignore the header; behavior
+    /// degrades gracefully to the previous "every peer is anonymous" model.
+    public let deviceID: String
 
-    public init(baseURL: URL, http: HTTPClient) {
+    public init(baseURL: URL, http: HTTPClient, deviceID: String) {
         self.baseURL = baseURL
         self.http = http
+        self.deviceID = deviceID
     }
 
     /// `GET /v1/initialization` — returns the Resources block (image URL
@@ -31,6 +39,7 @@ public struct KoboClient: Sendable {
         let url = baseURL.appendingPathComponent("v1/initialization")
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
+        req.setValue(deviceID, forHTTPHeaderField: "x-kobo-deviceid")
         let (data, _) = try await http.data(for: req)
         struct Envelope: Decodable {
             let resources: KoboInitResources
@@ -75,6 +84,7 @@ public extension KoboClient {
             let url = baseURL.appendingPathComponent("v1/library/sync")
             var req = URLRequest(url: url)
             req.httpMethod = "GET"
+            req.setValue(deviceID, forHTTPHeaderField: "x-kobo-deviceid")
             if let token { req.setValue(token, forHTTPHeaderField: "x-kobo-synctoken") }
             let (data, response) = try await http.data(for: req)
             guard let httpResp = response as? HTTPURLResponse else {
@@ -106,6 +116,7 @@ public extension KoboClient {
         let url = baseURL.appendingPathComponent("v1/library/\(bookUUID)/state")
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
+        req.setValue(deviceID, forHTTPHeaderField: "x-kobo-deviceid")
         do {
             let (data, _) = try await http.data(for: req)
             let states = try KoboDecoder.decode([KoboReadingState].self, from: data)
@@ -124,6 +135,7 @@ public extension KoboClient {
         var req = URLRequest(url: url)
         req.httpMethod = "PUT"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(deviceID, forHTTPHeaderField: "x-kobo-deviceid")
         req.httpBody = try JSONEncoder().encode(update)
         _ = try await http.data(for: req)
     }

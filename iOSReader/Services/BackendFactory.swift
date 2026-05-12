@@ -105,7 +105,7 @@ enum BackendFactory {
         // Kobo auth is encoded in the URL path (`/kobo/{TOKEN}/`), not
         // in an Authorization header — so no BasicCredentials here.
         let http = HTTPClient()
-        let koboClient = KoboClient(baseURL: creds.baseURL, http: http)
+        let koboClient = KoboClient(baseURL: creds.baseURL, http: http, deviceID: deviceID)
         return KoboBackend(
             client: koboClient,
             deviceID: deviceID,

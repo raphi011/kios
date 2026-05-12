@@ -109,6 +109,34 @@ struct KoboClientTests {
         #expect(state?.currentBookmark?.progressPercent == 42.0)
     }
 
+    @Test func sendsXKoboDeviceIdOnEveryCall() async throws {
+        var capturedHeaders: [String?] = []
+        MockURLProtocol.handler = { req in
+            capturedHeaders.append(req.value(forHTTPHeaderField: "x-kobo-deviceid"))
+            let body: String
+            if req.url?.path.hasSuffix("/v1/initialization") == true {
+                body = #"{ "Resources": { "image_url_template": "x" } }"#
+            } else if req.url?.path.hasSuffix("/v1/library/sync") == true {
+                body = "[]"
+            } else if req.httpMethod == "PUT" {
+                body = #"{ "RequestResult": "Success", "UpdateResults": [] }"#
+            } else {
+                body = #"[{"EntitlementId":"u","Created":"x","LastModified":"x","PriorityTimestamp":"x"}]"#
+            }
+            return (
+                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                body.data(using: .utf8)!
+            )
+        }
+        let client = makeClient()
+        _ = try await client.initialization()
+        _ = try await client.librarySync(syncToken: nil)
+        _ = try await client.fetchState(bookUUID: "uuid")
+        try await client.pushState(bookUUID: "uuid", update: KoboStateUpdate(readingStates: []))
+        #expect(capturedHeaders.count == 4)
+        #expect(capturedHeaders.allSatisfy { $0 == "test-device" })
+    }
+
     @Test func fetchStateReturnsNilOn404() async throws {
         MockURLProtocol.handler = { req in
             (HTTPURLResponse(url: req.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!, Data())
@@ -159,6 +187,6 @@ struct KoboClientTests {
     private func makeClient() -> KoboClient {
         let http = HTTPClient(session: MockURLProtocol.session())
         let base = URL(string: "https://cwa/kobo/TOKEN")!
-        return KoboClient(baseURL: base, http: http)
+        return KoboClient(baseURL: base, http: http, deviceID: "test-device")
     }
 }

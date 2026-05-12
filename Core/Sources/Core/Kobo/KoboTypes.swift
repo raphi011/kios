@@ -19,12 +19,17 @@ public struct KoboCurrentBookmark: Codable, Sendable, Equatable {
     public let progressPercent: Double?
     public let contentSourceProgressPercent: Double?
     public let location: KoboLocation?
+    /// Identity of the device that last wrote this bookmark. Echoed back from
+    /// the `x-kobo-deviceid` header on PUT by the patched CWA fork; nil from
+    /// stock CWA or older fork builds.
+    public let deviceId: String?
 
     enum CodingKeys: String, CodingKey {
         case lastModified = "LastModified"
         case progressPercent = "ProgressPercent"
         case contentSourceProgressPercent = "ContentSourceProgressPercent"
         case location = "Location"
+        case deviceId = "DeviceId"
     }
 }
 
