@@ -21,14 +21,20 @@ struct ReaderView: View {
     @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
 
     @State private var publication: Publication?
-    @State private var openResolution: OpenResolution = .pending
+    @State private var initialLocator: Locator?
     @State private var loadError: String?
     @State private var pendingPrompt: PromptInfo?
 
-    enum OpenResolution {
-        case pending
-        case resolved(Locator?)
-    }
+    /// Drops the navigator's first `locationDidChange` after mount. That
+    /// emission is a load artifact ("I've finished initial layout at
+    /// `initialLocator`") and carries no new user intent — buffering it
+    /// races `resolveOpen` and could push the stale local position over a
+    /// peer's newer write on the server.
+    @State private var initialEmissionSeen: Bool = false
+    /// Set on the first real (post-initial-load) emission. Suppresses any
+    /// late-arriving `.applyServer` / `.promptUser` resolution that would
+    /// yank the user out of the position they're already reading at.
+    @State private var userHasNavigated: Bool = false
 
     @State private var uiVisible: Bool = false
     @State private var fontHUD: Int? = nil
@@ -96,8 +102,7 @@ struct ReaderView: View {
     @ViewBuilder
     private var content: some View {
         if let book {
-            if book.fileURL != nil, let publication,
-               case let .resolved(initialLocator) = openResolution {
+            if book.fileURL != nil, let publication {
                 let id = book.id
                 ReaderHost(
                     publication: publication,
@@ -122,24 +127,25 @@ struct ReaderView: View {
                     },
                     onDismissRequested: { dismiss() }
                 )
+                .alert(item: $pendingPrompt) { info in
+                    Alert(
+                        title: Text("Continue from another device?"),
+                        message: Text(relativeReadMessage(for: info.server)),
+                        primaryButton: .default(Text("Continue")) {
+                            if let json = info.server.locatorJSON,
+                               let locator = try? Locator(jsonString: json) {
+                                pendingJump = locator
+                            }
+                        },
+                        secondaryButton: .cancel(Text("Stay here"))
+                    )
+                }
             } else if book.fileURL == nil {
                 DownloadingView(book: book, download: download)
             } else if let loadError {
                 Text(loadError).foregroundStyle(.orange).padding()
             } else {
                 ProgressView("Opening…").tint(.white)
-                    .alert(item: $pendingPrompt) { info in
-                        Alert(
-                            title: Text("Continue from another device?"),
-                            message: Text(relativeReadMessage(for: info.server)),
-                            primaryButton: .default(Text("Continue")) {
-                                openResolution = .resolved(parseLocator(info.server.locatorJSON) ?? localLocator())
-                            },
-                            secondaryButton: .cancel(Text("Stay here")) {
-                                openResolution = .resolved(localLocator())
-                            }
-                        )
-                    }
             }
         } else {
             Text("Book not found").foregroundStyle(.secondary)
@@ -191,6 +197,12 @@ struct ReaderView: View {
 
     private func loadPublicationIfReady() async {
         guard let book, let fileURL = book.fileURL else { return }
+        let id = bookID
+        if let progress = try? context.fetch(
+            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
+        ).first {
+            initialLocator = try? Locator(jsonString: progress.locatorJSON)
+        }
         do {
             let pub = try await openPublication(at: fileURL)
             publication = pub
@@ -343,41 +355,28 @@ struct ReaderView: View {
         }
     }
 
-    /// Decide which locator the navigator should boot at. Must complete before
-    /// `ReaderHost` mounts — the navigator's first `locationDidChange` would
-    /// otherwise buffer the local position and a subsequent flush could
-    /// overwrite a peer's newer write on the server.
+    /// Runs in parallel with publication-loading. Network-bound, so the reader
+    /// is already on screen by the time this returns. Late-arriving prompts /
+    /// silent jumps are suppressed once `userHasNavigated` is true so they
+    /// can't yank a user mid-read.
     private func resolveOpen() async {
-        guard let book, let sync = env.sync else {
-            openResolution = .resolved(localLocator())
-            return
-        }
+        guard let book, let sync = env.sync else { return }
         do {
             switch try await sync.onOpen(book: book) {
             case .useLocal:
-                openResolution = .resolved(localLocator())
+                break
             case .applyServer(let progress):
-                openResolution = .resolved(parseLocator(progress.locatorJSON) ?? localLocator())
+                guard !userHasNavigated,
+                      let json = progress.locatorJSON,
+                      let locator = try? Locator(jsonString: json) else { return }
+                pendingJump = locator
             case .promptUser(let local, let server):
+                guard !userHasNavigated else { return }
                 pendingPrompt = PromptInfo(local: local, server: server)
             }
         } catch {
-            openResolution = .resolved(localLocator())
+            // Best-effort; ignore failures.
         }
-    }
-
-    private func localLocator() -> Locator? {
-        guard let book else { return nil }
-        let id = book.id
-        guard let progress = try? context.fetch(
-            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
-        ).first else { return nil }
-        return try? Locator(jsonString: progress.locatorJSON)
-    }
-
-    private func parseLocator(_ json: String?) -> Locator? {
-        guard let json else { return nil }
-        return try? Locator(jsonString: json)
     }
 
     private func currentBook() -> Book? {
@@ -407,6 +406,11 @@ struct ReaderView: View {
     }
 
     private func pushLocator(bookID: UUID, locator: Locator) async {
+        if !initialEmissionSeen {
+            initialEmissionSeen = true
+            return
+        }
+        userHasNavigated = true
         guard let book = currentBook() else { return }
         let total = locator.locations.totalProgression ?? 0
         guard let json = locator.jsonString else { return }
