@@ -64,9 +64,18 @@ final class AppEnvironment {
     }
 
     /// Construct (or rebuild) the credentialled services. Called on init and
-    /// after the user saves credentials in SettingsView.
+    /// after the user saves credentials in SettingsView. Dispatches on the
+    /// active sync protocol — kosync needs OPDS + Basic-auth downloads;
+    /// kobo needs neither (catalog is via KoboBackend, downloads are not
+    /// supported in v1).
     func bootIfCredentialsPresent() throws {
-        guard let creds = try authStore.load() else {
+        let activeProtocol = authStore.loadActiveProtocol()
+        let hasCredentials: Bool
+        switch activeProtocol {
+        case .kosync: hasCredentials = (try? authStore.load()) != nil
+        case .kobo:   hasCredentials = (try? authStore.loadKobo()) != nil
+        }
+        guard hasCredentials else {
             self.sync = nil
             self.opds = nil
             // Note: we do NOT nil out `downloads`. Once created, it persists
@@ -75,10 +84,6 @@ final class AppEnvironment {
             // no in-flight work; on next save we update the credentials.
             return
         }
-
-        let http = HTTPClient(credentials: creds.basic)
-        let opds = OPDSClient(http: http)
-        self.opds = opds
 
         // Capture the authStore by reference so the closure picks up live
         // credentials at each call (e.g. a flush after the user updates
@@ -96,20 +101,34 @@ final class AppEnvironment {
                 )
             },
             context: modelContext,
-            activeProtocol: authStore.loadActiveProtocol(),
+            activeProtocol: activeProtocol,
             deviceID: deviceID,
             deviceName: name
         )
 
-        if let existing = self.downloads {
-            // Reuse the existing DownloadService so we don't re-create its
-            // background URLSession — Apple throws NSGenericException if a
-            // background session with the same identifier already exists.
-            existing.update(credentials: creds.basic)
-        } else {
-            self.downloads = DownloadService(
-                context: modelContext, credentials: creds.basic
-            )
+        switch activeProtocol {
+        case .kosync:
+            // Only kosync has an OPDS catalog and Basic-auth downloads.
+            // Force-unwrap is safe — `hasCredentials` guard above proved it.
+            let creds = try authStore.load()!
+            let http = HTTPClient(credentials: creds.basic)
+            self.opds = OPDSClient(http: http)
+            if let existing = self.downloads {
+                // Reuse to avoid re-creating the background URLSession —
+                // Apple throws NSGenericException if a session with the same
+                // identifier already exists.
+                existing.update(credentials: creds.basic)
+            } else {
+                self.downloads = DownloadService(
+                    context: modelContext, credentials: creds.basic
+                )
+            }
+        case .kobo:
+            // Kobo catalog is served by KoboBackend (acquired via SyncService's
+            // backend closure); no parallel OPDSClient needed. Downloads from
+            // Kobo's pre-signed URLs are deferred to a future v1.x — KEPUB
+            // isn't readable in-app today anyway.
+            self.opds = nil
         }
     }
 

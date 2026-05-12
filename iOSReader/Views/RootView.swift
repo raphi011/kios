@@ -15,17 +15,21 @@ struct RootView: View {
         @Bindable var env = env
 
         Group {
-            // First-run gate: if there is no OPDSClient (no credentials), force Settings.
-            if env.opds == nil {
+            // First-run gate: any active-protocol credentials present rebuilds
+            // SyncService. Browse is OPDS-specific and only shows in kosync mode;
+            // Kobo's catalog flows through SyncService/KoboBackend, not OPDS.
+            if env.sync == nil {
                 NavigationStack { SettingsView() }
             } else {
                 TabView(selection: $selectedTab) {
                     HomeRootView()
                         .tabItem { Label("Home", systemImage: "house") }
                         .tag(0)
-                    BrowseRootView()
-                        .tabItem { Label("Browse", systemImage: "books.vertical") }
-                        .tag(1)
+                    if env.opds != nil {
+                        BrowseRootView()
+                            .tabItem { Label("Browse", systemImage: "books.vertical") }
+                            .tag(1)
+                    }
                     NavigationStack { SettingsView() }
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(2)
