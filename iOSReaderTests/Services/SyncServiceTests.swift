@@ -63,9 +63,16 @@ struct SyncServiceTests {
     }
 
     @Test func promptsWhenServerSubstantiallyAhead() async throws {
-        let server = Self.makeProgress(deviceID: "other", pct: 0.50)
+        // Newer server timestamp, same chapter, large progression delta.
+        let server = Self.makeProgress(
+            deviceID: "other", pct: 0.50,
+            timestamp: Self.newer,
+            locatorJSON: Self.locatorJSON(chapter: "A", progression: 0.50)
+        )
         let env = try Env.make(
-            serverProgress: server, deviceID: "us", localPercentage: 0.10
+            serverProgress: server, deviceID: "us", localPercentage: 0.10,
+            localTimestamp: Self.older,
+            localLocatorJSON: Self.locatorJSON(chapter: "A", progression: 0.10)
         )
         let action = try await env.sync.onOpen(book: env.book)
         if case .promptUser(let local, let s) = action {
@@ -77,10 +84,16 @@ struct SyncServiceTests {
     }
 
     @Test func appliesSilentlyWhenServerSlightlyAhead() async throws {
-        // 10.5% vs 10.0% — within 1% threshold, but server > local.
-        let server = Self.makeProgress(deviceID: "other", pct: 0.105)
+        // Newer server timestamp, same chapter, tiny progression delta.
+        let server = Self.makeProgress(
+            deviceID: "other", pct: 0.105,
+            timestamp: Self.newer,
+            locatorJSON: Self.locatorJSON(chapter: "A", progression: 0.105)
+        )
         let env = try Env.make(
-            serverProgress: server, deviceID: "us", localPercentage: 0.10
+            serverProgress: server, deviceID: "us", localPercentage: 0.10,
+            localTimestamp: Self.older,
+            localLocatorJSON: Self.locatorJSON(chapter: "A", progression: 0.10)
         )
         let action = try await env.sync.onOpen(book: env.book)
         if case .applyServer(let s) = action {
@@ -91,24 +104,107 @@ struct SyncServiceTests {
     }
 
     @Test func returnsUseLocalWhenServerIsBehind() async throws {
-        let server = Self.makeProgress(deviceID: "other", pct: 0.05)
+        // Older server timestamp — LWW gate trumps every other signal.
+        let server = Self.makeProgress(
+            deviceID: "other", pct: 0.05,
+            timestamp: Self.older,
+            locatorJSON: Self.locatorJSON(chapter: "A", progression: 0.05)
+        )
         let env = try Env.make(
-            serverProgress: server, deviceID: "us", localPercentage: 0.10
+            serverProgress: server, deviceID: "us", localPercentage: 0.10,
+            localTimestamp: Self.newer,
+            localLocatorJSON: Self.locatorJSON(chapter: "A", progression: 0.10)
         )
         let action = try await env.sync.onOpen(book: env.book)
         #expect(action == .useLocal)
     }
 
+    @Test func promptsWhenChapterDiffersRegardlessOfPercentage() async throws {
+        // Reproduces the smoke-test bug: Kobo device push dropped
+        // ContentSourceProgressPercent → iOS reads server.percentage = 0.0.
+        // Old percentage-only LWW concluded "server is behind"; the
+        // chapter-aware path correctly surfaces the structural change.
+        let server = Self.makeProgress(
+            deviceID: "other", pct: 0.0,
+            timestamp: Self.newer,
+            locatorJSON: Self.locatorJSON(chapter: "B", progression: 0.80)
+        )
+        let env = try Env.make(
+            serverProgress: server, deviceID: "us", localPercentage: 0.50,
+            localTimestamp: Self.older,
+            localLocatorJSON: Self.locatorJSON(chapter: "A", progression: 0.30)
+        )
+        let action = try await env.sync.onOpen(book: env.book)
+        if case .promptUser(let local, _) = action {
+            #expect(local == 0.50)
+        } else {
+            Issue.record("expected .promptUser, got \(action)")
+        }
+    }
+
+    @Test func returnsUseLocalWhenServerTimestampOlderEvenIfChapterDiffers() async throws {
+        // Timestamp wins over chapter. An older server write doesn't
+        // override a newer local position regardless of structural diff.
+        let server = Self.makeProgress(
+            deviceID: "other", pct: 0.99,
+            timestamp: Self.older,
+            locatorJSON: Self.locatorJSON(chapter: "Z", progression: 0.99)
+        )
+        let env = try Env.make(
+            serverProgress: server, deviceID: "us", localPercentage: 0.10,
+            localTimestamp: Self.newer,
+            localLocatorJSON: Self.locatorJSON(chapter: "A", progression: 0.10)
+        )
+        let action = try await env.sync.onOpen(book: env.book)
+        #expect(action == .useLocal)
+    }
+
+    @Test func fallsBackToPercentageWhenLocatorMissing() async throws {
+        // Neither side has a parseable locator JSON: fall back to the v1
+        // percentage-only path so behavior doesn't regress.
+        let server = Self.makeProgress(
+            deviceID: "other", pct: 0.50,
+            timestamp: Self.newer,
+            locatorJSON: nil
+        )
+        let env = try Env.make(
+            serverProgress: server, deviceID: "us", localPercentage: 0.10,
+            localTimestamp: Self.older,
+            localLocatorJSON: "{}"
+        )
+        let action = try await env.sync.onOpen(book: env.book)
+        if case .promptUser = action {} else {
+            Issue.record("expected .promptUser via percentage fallback, got \(action)")
+        }
+    }
+
     // MARK: helpers
 
-    private static func makeProgress(deviceID: String, pct: Double) -> CanonicalProgress {
+    private static let older = Date(timeIntervalSince1970: 1_000_000)
+    private static let newer = Date(timeIntervalSince1970: 2_000_000)
+
+    private static func makeProgress(
+        deviceID: String,
+        pct: Double,
+        timestamp: Date = Date(timeIntervalSince1970: 0),
+        locatorJSON: String? = nil
+    ) -> CanonicalProgress {
         CanonicalProgress(
             percentage: pct,
-            locatorJSON: nil,
-            timestamp: Date(timeIntervalSince1970: 0),
+            locatorJSON: locatorJSON,
+            timestamp: timestamp,
             deviceID: deviceID,
             deviceName: "Boox"
         )
+    }
+
+    static func locatorJSON(chapter: String, progression: Double) -> String {
+        let dict: [String: Any] = [
+            "href": chapter,
+            "locations": ["progression": progression]
+        ]
+        let data = try! JSONSerialization.data(withJSONObject: dict)
+        return String(data: data, encoding: .utf8)!
     }
 
     struct Env {
@@ -120,6 +216,8 @@ struct SyncServiceTests {
             serverProgress: CanonicalProgress?,
             deviceID: String = "us",
             localPercentage: Double? = nil,
+            localTimestamp: Date = .now,
+            localLocatorJSON: String = "{}",
             bookHasHash: Bool = true
         ) throws -> Env {
             let container = try ModelContainer(
@@ -153,12 +251,12 @@ struct SyncServiceTests {
             if let p = localPercentage {
                 context.insert(ReadingProgress(
                     bookID: book.id,
-                    locatorJSON: "{}",
+                    locatorJSON: localLocatorJSON,
                     koSyncProgressString: nil,
                     koboLocationSource: nil,
                     koboLocationValue: nil,
                     percentage: p,
-                    updatedAt: .now,
+                    updatedAt: localTimestamp,
                     deviceID: deviceID,
                     pendingUpload: false,
                     pendingProtocol: nil

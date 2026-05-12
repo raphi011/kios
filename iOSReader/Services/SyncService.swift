@@ -44,10 +44,13 @@ final class SyncService {
         case promptUser(local: Double, server: CanonicalProgress)
     }
 
-    /// Decide based on local + server progress. Server progress is fetched
-    /// via the active protocol's backend. Returns `.useLocal` if there's no
-    /// server record, or if server progress is from this device (i.e., we
-    /// wrote it).
+    /// Decide based on local + server progress. The comparison runs on
+    /// timestamp + chapter + within-chapter progression. Whole-book percentage
+    /// is the fallback when nothing better is parseable. This is necessary
+    /// because real Kobo devices sometimes omit `ContentSourceProgressPercent`
+    /// (whole-book) when they don't have a confident estimate — relying on
+    /// percentage alone collapses every signal into one number and loses
+    /// precision on cross-device handoffs.
     func onOpen(book: Book) async throws -> OnOpenAction {
         let backend = try backendForProtocol(activeProtocol)
         guard let server = try await backend.fetchProgress(for: book.identity) else {
@@ -57,15 +60,59 @@ final class SyncService {
         if server.deviceID == deviceID { return .useLocal }
 
         let localPercentage = local?.percentage ?? 0
-        let delta = server.percentage - localPercentage
+        let localTimestamp = local?.updatedAt ?? .distantPast
 
-        if delta > Self.promptThreshold {
+        // LWW gate. Same-or-older server is never authoritative, regardless
+        // of what its chapter or percentage might suggest.
+        if server.timestamp <= localTimestamp { return .useLocal }
+
+        let serverLoc = Self.parseChapterAndProgression(from: server.locatorJSON)
+        let localLoc = Self.parseChapterAndProgression(from: local?.locatorJSON)
+
+        // Different chapter on a newer server write is always significant —
+        // this is the path Kobo devices hit when their state-update drops
+        // ContentSourceProgressPercent. The chapter signal alone tells us
+        // the peer moved.
+        if let sCh = serverLoc.chapter, let lCh = localLoc.chapter, sCh != lCh {
+            return .promptUser(local: localPercentage, server: server)
+        }
+
+        // Same chapter (or chapter info unavailable on one side): compare
+        // within-chapter progression. Threshold is symmetric — a peer
+        // scrolling backwards within the same chapter also counts.
+        if let sP = serverLoc.progression, let lP = localLoc.progression {
+            if abs(sP - lP) > Self.promptThreshold {
+                return .promptUser(local: localPercentage, server: server)
+            }
+            return .applyServer(progress: server)
+        }
+
+        // Neither locator was parseable — fall through to whole-book
+        // percentage as a last resort. Matches the v1 behavior so nothing
+        // regresses for kosync (which always carries a locator) or for
+        // books that were never opened locally.
+        let pctDelta = server.percentage - localPercentage
+        if pctDelta > Self.promptThreshold {
             return .promptUser(local: localPercentage, server: server)
         }
         if server.percentage > localPercentage {
             return .applyServer(progress: server)
         }
         return .useLocal
+    }
+
+    private static func parseChapterAndProgression(
+        from json: String?
+    ) -> (chapter: String?, progression: Double?) {
+        guard let json,
+              let data = json.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data),
+              let dict = parsed as? [String: Any]
+        else { return (nil, nil) }
+        let chapter = dict["href"] as? String
+        let locations = dict["locations"] as? [String: Any]
+        let progression = locations?["progression"] as? Double
+        return (chapter, progression)
     }
 
     /// Local-only: upsert `ReadingProgress` with `pendingUpload = true` and
