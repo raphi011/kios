@@ -291,6 +291,23 @@ public struct KoboStateUpdate: Encodable, Sendable {
             self.statusInfo = statusInfo
             self.statistics = statistics
         }
+
+        /// CWA's Kobo blueprint rejects state-update bodies that omit any of
+        /// `CurrentBookmark`, `StatusInfo`, or `Statistics` — Flask returns a
+        /// generic HTTP 400 before the route handler runs. Swift's default
+        /// Encodable synthesis drops nil Optionals, which trips that check
+        /// (typically on Statistics, which we don't populate). Force-encode
+        /// every key, emitting `null` for nils, so the server sees the full
+        /// envelope it expects.
+        public func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            if let v = currentBookmark { try c.encode(v, forKey: .currentBookmark) }
+            else { try c.encodeNil(forKey: .currentBookmark) }
+            if let v = statusInfo { try c.encode(v, forKey: .statusInfo) }
+            else { try c.encodeNil(forKey: .statusInfo) }
+            if let v = statistics { try c.encode(v, forKey: .statistics) }
+            else { try c.encodeNil(forKey: .statistics) }
+        }
     }
 
     public init(readingStates: [State]) { self.readingStates = readingStates }

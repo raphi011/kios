@@ -31,10 +31,16 @@ public enum KoboProgressMapper {
         progression: Double,
         totalProgression: Double
     ) -> KoboStateUpdate.State.Bookmark {
-        let location: KoboLocation? = {
-            guard let id = koboSpanId, !id.isEmpty else { return nil }
-            return KoboLocation(value: id, type: "KoboSpan", source: href)
-        }()
+        // CWA's Kobo blueprint rejects bookmarks without a Location (Flask 400
+        // before the route handler). When we don't have a real koboSpan id —
+        // Readium emits locators without `cssSelector` for normal page-turns
+        // and scrubs — fall back to a deterministic placeholder. The
+        // percentages still carry the precise progress; a real Kobo device
+        // reading this back will land in the right chapter and the local
+        // re-open path on iOS falls back to `progression` when the selector
+        // doesn't resolve to a real element.
+        let id = koboSpanId.flatMap { $0.isEmpty ? nil : $0 } ?? "kobo.0.0"
+        let location = KoboLocation(value: id, type: "KoboSpan", source: href)
         return .init(
             progressPercent: progression * 100,
             contentSourceProgressPercent: totalProgression * 100,

@@ -44,11 +44,17 @@ struct KoboProgressMapperTests {
     }
 
     @Test func readiumToKoboWithoutSpan() {
+        // CWA's Kobo blueprint rejects bookmarks without a Location, so the
+        // mapper synthesizes a placeholder. The chapter `Source` is preserved
+        // (real Kobo devices can still land in the right chapter) and the
+        // percentages are exact.
         let bm = KoboProgressMapper.toKoboBookmark(
             href: "f_0035.xhtml", koboSpanId: nil,
             progression: 0.10, totalProgression: 0.05
         )
-        #expect(bm.location == nil)
+        #expect(bm.location?.value == "kobo.0.0")
+        #expect(bm.location?.type == "KoboSpan")
+        #expect(bm.location?.source == "f_0035.xhtml")
         #expect(bm.progressPercent == 10.0)
     }
 
