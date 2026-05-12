@@ -30,3 +30,6 @@ iOSReader.xcodeproj/
 ## Misc
 *.log
 *.tmp
+
+## Claude Code / AI tooling local state
+.claude/

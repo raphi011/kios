@@ -59,7 +59,7 @@ You're reading on iOS, swap to a Kobo:
 
 **Kobo's whole-book percentage can look off.** The Kobo device and iOS compute "you've read 35% of the book" differently. After a handoff you might see iOS say 50% and the Kobo say 35% even though you're on the same paragraph. The *chapter* is correct; the *percentage* is just an approximation that doesn't quite match across devices. This is a Kobo firmware quirk — out of our control.
 
-**Span landing might be a paragraph off.** When iOS pushes a position to the Kobo, it picks the in-chapter anchor by linearly interpolating: 50% through the chapter → 50th of however many anchors there are. Chapters with uneven text density (e.g. images, code blocks, poems) might land a paragraph or two before or after the exact iOS spot. Swipe one page and you'll be at the right place.
+**Span landing.** For most KEPUBs, iOS asks Readium for the actual paragraph you're currently looking at and pushes that to the server, so the Kobo device lands on the same paragraph. For non-KEPUB books (plain EPUBs without Kobo-specific markup), or unusual cases where the visible content isn't a tagged paragraph, iOS falls back to a linear-interpolation estimate that can be a paragraph or two off — swipe one page and you'll be at the right place.
 
 **The prompt re-fires if you declined.** Tapping "Stay here" doesn't make iOS forget the server's position. If you close the book and reopen it without making any changes, you'll see the same prompt again (because the server is still ahead). The only way to silence it is to read forward past the server's position, or accept the server's position with Continue.
 
