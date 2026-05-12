@@ -21,9 +21,14 @@ struct ReaderView: View {
     @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
 
     @State private var publication: Publication?
-    @State private var initialLocator: Locator?
+    @State private var openResolution: OpenResolution = .pending
     @State private var loadError: String?
     @State private var pendingPrompt: PromptInfo?
+
+    enum OpenResolution {
+        case pending
+        case resolved(Locator?)
+    }
 
     @State private var uiVisible: Bool = false
     @State private var fontHUD: Int? = nil
@@ -72,7 +77,11 @@ struct ReaderView: View {
         }
         .background(Color(.systemBackground).ignoresSafeArea())
         .simultaneousGesture(swipeDownDismissGesture())
-        .task(id: book?.fileURL) { await loadPublicationIfReady() }
+        .task(id: book?.fileURL) {
+            async let p: Void = loadPublicationIfReady()
+            async let r: Void = resolveOpen()
+            _ = await (p, r)
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
                 Task { await flush() }
@@ -87,7 +96,8 @@ struct ReaderView: View {
     @ViewBuilder
     private var content: some View {
         if let book {
-            if book.fileURL != nil, let publication {
+            if book.fileURL != nil, let publication,
+               case let .resolved(initialLocator) = openResolution {
                 let id = book.id
                 ReaderHost(
                     publication: publication,
@@ -112,29 +122,24 @@ struct ReaderView: View {
                     },
                     onDismissRequested: { dismiss() }
                 )
-                .task { await onOpen(book: book) }
-                .alert(item: $pendingPrompt) { info in
-                    Alert(
-                        title: Text("Continue from another device?"),
-                        message: Text(relativeReadMessage(for: info.server)),
-                        primaryButton: .default(Text("Continue")) {
-                            // Hand the server's locator to the navigator. The
-                            // resulting locationDidChange will round-trip back
-                            // through pushLocator and reconcile to the server.
-                            if let json = info.server.locatorJSON,
-                               let locator = try? Locator(jsonString: json) {
-                                pendingJump = locator
-                            }
-                        },
-                        secondaryButton: .cancel(Text("Stay here"))
-                    )
-                }
             } else if book.fileURL == nil {
                 DownloadingView(book: book, download: download)
             } else if let loadError {
                 Text(loadError).foregroundStyle(.orange).padding()
             } else {
                 ProgressView("Opening…").tint(.white)
+                    .alert(item: $pendingPrompt) { info in
+                        Alert(
+                            title: Text("Continue from another device?"),
+                            message: Text(relativeReadMessage(for: info.server)),
+                            primaryButton: .default(Text("Continue")) {
+                                openResolution = .resolved(parseLocator(info.server.locatorJSON) ?? localLocator())
+                            },
+                            secondaryButton: .cancel(Text("Stay here")) {
+                                openResolution = .resolved(localLocator())
+                            }
+                        )
+                    }
             }
         } else {
             Text("Book not found").foregroundStyle(.secondary)
@@ -186,12 +191,6 @@ struct ReaderView: View {
 
     private func loadPublicationIfReady() async {
         guard let book, let fileURL = book.fileURL else { return }
-        let id = bookID
-        if let progress = try? context.fetch(
-            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
-        ).first {
-            initialLocator = try? Locator(jsonString: progress.locatorJSON)
-        }
         do {
             let pub = try await openPublication(at: fileURL)
             publication = pub
@@ -344,18 +343,41 @@ struct ReaderView: View {
         }
     }
 
-    private func onOpen(book: Book) async {
-        guard let sync = env.sync else { return }
+    /// Decide which locator the navigator should boot at. Must complete before
+    /// `ReaderHost` mounts — the navigator's first `locationDidChange` would
+    /// otherwise buffer the local position and a subsequent flush could
+    /// overwrite a peer's newer write on the server.
+    private func resolveOpen() async {
+        guard let book, let sync = env.sync else {
+            openResolution = .resolved(localLocator())
+            return
+        }
         do {
             switch try await sync.onOpen(book: book) {
-            case .useLocal: break
-            case .applyServer: break
+            case .useLocal:
+                openResolution = .resolved(localLocator())
+            case .applyServer(let progress):
+                openResolution = .resolved(parseLocator(progress.locatorJSON) ?? localLocator())
             case .promptUser(let local, let server):
                 pendingPrompt = PromptInfo(local: local, server: server)
             }
         } catch {
-            // Best-effort onOpen; ignore failures.
+            openResolution = .resolved(localLocator())
         }
+    }
+
+    private func localLocator() -> Locator? {
+        guard let book else { return nil }
+        let id = book.id
+        guard let progress = try? context.fetch(
+            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
+        ).first else { return nil }
+        return try? Locator(jsonString: progress.locatorJSON)
+    }
+
+    private func parseLocator(_ json: String?) -> Locator? {
+        guard let json else { return nil }
+        return try? Locator(jsonString: json)
     }
 
     private func currentBook() -> Book? {
