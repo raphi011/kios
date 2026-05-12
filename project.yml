@@ -22,6 +22,9 @@ packages:
     from: "3.0.0"
   Core:
     path: Core
+  ZIPFoundation:
+    url: https://github.com/readium/ZIPFoundation.git
+    from: "3.0.1"
 
 targets:
   iOSReader:
@@ -54,6 +57,8 @@ targets:
         product: ReadiumNavigator
       - package: Readium
         product: ReadiumOPDS
+      - package: ZIPFoundation
+        product: ReadiumZIPFoundation
     scheme:
       testTargets:
         - iOSReaderTests
