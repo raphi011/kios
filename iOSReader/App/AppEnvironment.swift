@@ -66,8 +66,9 @@ final class AppEnvironment {
     /// Construct (or rebuild) the credentialled services. Called on init and
     /// after the user saves credentials in SettingsView. Dispatches on the
     /// active sync protocol — kosync needs OPDS + Basic-auth downloads;
-    /// kobo needs neither (catalog is via KoboBackend, downloads are not
-    /// supported in v1).
+    /// kobo skips OPDS (catalog is via KoboBackend) but still needs a
+    /// DownloadService — constructed with nil credentials so the per-request
+    /// Authorization header is omitted (Kobo serves pre-signed CDN URLs).
     func bootIfCredentialsPresent() throws {
         let activeProtocol = authStore.loadActiveProtocol()
         let hasCredentials: Bool
@@ -125,9 +126,20 @@ final class AppEnvironment {
             }
         case .kobo:
             // Kobo catalog is served by KoboBackend (acquired via SyncService's
-            // backend closure); no parallel OPDSClient needed. Downloads from
-            // Kobo's pre-signed URLs are deferred to a future v1.x — KEPUB
-            // isn't readable in-app today anyway.
+            // backend closure); no parallel OPDSClient needed. Downloads run
+            // through the same DownloadService — constructed with nil
+            // credentials so no Authorization header is attached to the
+            // pre-signed CDN URLs Kobo hands out.
+            if let existing = self.downloads {
+                // Reuse to avoid re-creating the background URLSession —
+                // Apple throws NSGenericException if a session with the same
+                // identifier already exists.
+                existing.update(credentials: nil)
+            } else {
+                self.downloads = DownloadService(
+                    context: modelContext, credentials: nil
+                )
+            }
             self.opds = nil
         }
     }

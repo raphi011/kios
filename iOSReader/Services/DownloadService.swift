@@ -9,23 +9,33 @@ import Core
 final class DownloadService: NSObject {
     private let context: ModelContext
 
-    private var credentials: BasicCredentials
+    private var credentials: BasicCredentials?
 
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.background(
             withIdentifier: "me.iosreader.downloads"
         )
         config.sessionSendsLaunchEvents = true
-        // Belt-and-braces: set auth in httpAdditionalHeaders so that downloads
-        // completed during a background-relaunch (where the system re-creates
-        // the session and replays events) carry the correct credential.
-        // httpAdditionalHeaders is frozen at session-construction time, so this
-        // captures the credentials that exist at the time of the first
-        // download(book:) call. Per-task headers (set in download(book:)) also
-        // remain in place for all foreground-initiated downloads.
-        config.httpAdditionalHeaders = [
-            "Authorization": credentials.authorizationHeader
-        ]
+        // Belt-and-braces: when credentials are present, set auth in
+        // httpAdditionalHeaders so downloads completed during a
+        // background-relaunch (where the system re-creates the session and
+        // replays events) carry the correct credential. httpAdditionalHeaders
+        // is frozen at session-construction time, so this captures the
+        // credentials that exist at the time of the first download(book:) call.
+        // Per-task headers (set in download(book:)) also remain in place for
+        // all foreground-initiated downloads.
+        //
+        // In Kobo mode `credentials` is nil — the catalog hands us pre-signed
+        // CDN URLs whose signature would be rejected if we attached an
+        // Authorization header, so we deliberately leave the header off. We
+        // never recreate the URLSession when credentials flip between nil and
+        // non-nil: constructing a background session with an identifier that
+        // already exists in-process throws NSGenericException.
+        if let credentials {
+            config.httpAdditionalHeaders = [
+                "Authorization": credentials.authorizationHeader
+            ]
+        }
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }()
 
@@ -38,7 +48,7 @@ final class DownloadService: NSObject {
     private var bookByTask: [Int: UUID] = [:]
     private var continuations: [UUID: CheckedContinuation<URL, Swift.Error>] = [:]
 
-    init(context: ModelContext, credentials: BasicCredentials) {
+    init(context: ModelContext, credentials: BasicCredentials?) {
         self.context = context
         self.credentials = credentials
         super.init()
@@ -56,7 +66,12 @@ final class DownloadService: NSObject {
         let url = book.acquisitionURL
         return try await withCheckedThrowingContinuation { cont in
             var req = URLRequest(url: url)
-            req.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
+            // Kobo mode (credentials == nil) intentionally sends no
+            // Authorization header — the URL is a pre-signed CDN link and any
+            // header we attach invalidates the signature.
+            if let credentials {
+                req.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization")
+            }
             let task = session.downloadTask(with: req)
             bookByTask[task.taskIdentifier] = bookID
             continuations[bookID] = cont
@@ -73,7 +88,11 @@ final class DownloadService: NSObject {
     /// (i.e., the credentials at the time of the first `download(book:)` call
     /// in this process). If the user changes credentials mid-flight, any
     /// already-running downloads continue with the old creds.
-    func update(credentials new: BasicCredentials) {
+    ///
+    /// Passing `nil` switches subsequent foreground downloads to send no
+    /// Authorization header — used when the active sync protocol is Kobo,
+    /// whose CDN URLs are pre-signed.
+    func update(credentials new: BasicCredentials?) {
         self.credentials = new
     }
 

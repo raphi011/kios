@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import Core
 
 /// Unified catalog view across sync protocols. Backed by the local
@@ -14,7 +15,6 @@ struct LibraryRootView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppEnvironment.self) private var env
 
-    @State private var unsupportedKoboAlert: Bool = false
     @State private var isRefreshing: Bool = false
 
     var body: some View {
@@ -61,12 +61,6 @@ struct LibraryRootView: View {
                     .accessibilityLabel("Refresh library")
                 }
             }
-            .alert("Kobo reading not yet supported",
-                   isPresented: $unsupportedKoboAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("This book is from a Kobo sync. The reader doesn't open KEPUB in v1 — the library list is populated for cross-device sync verification only.")
-            }
         }
     }
 
@@ -75,15 +69,48 @@ struct LibraryRootView: View {
             env.openReader(book.id)
             return
         }
-        // Catalog-only — try to download.
-        if book.serverIDProtocol == SyncProtocol.kobo.rawValue {
-            unsupportedKoboAlert = true
-            return
+        // Catalog-only — kick off a download. The reader shows a downloading
+        // state until the file lands. For Kobo we first try to refresh the
+        // pre-signed CDN URL through the catalog backend, since the one we
+        // captured at listLibrary time may have expired.
+        Task {
+            if book.serverIDProtocol == SyncProtocol.kobo.rawValue {
+                await refreshKoboDownloadURL(for: book)
+            }
+            _ = try? await env.downloads?.download(book: book)
         }
-        // kosync path — kick off download and open the reader. The reader
-        // shows a downloading state until the file lands.
-        Task { _ = try? await env.downloads?.download(book: book) }
         env.openReader(book.id)
+    }
+
+    /// Re-resolves `book.acquisitionURL` via the catalog backend. Kobo serves
+    /// pre-signed CDN URLs with a finite TTL, and the URL captured at
+    /// listLibrary time may have expired by the time the user taps. The
+    /// current `KoboBackend.resolveDownload` is a pass-through, so today this
+    /// is future-proofing for the CWA-side refresh hook. Errors are swallowed
+    /// on purpose — if resolution fails we let the download attempt the stale
+    /// URL and surface a real download error rather than blocking on the
+    /// refresh.
+    private func refreshKoboDownloadURL(for book: Book) async {
+        do {
+            let name = await UIDevice.current.name
+            let (_, catalog) = try BackendFactory.build(
+                auth: env.authStore, deviceID: env.deviceID, deviceName: name
+            )
+            let entry = CatalogEntry(
+                serverID: book.serverID,
+                title: book.title,
+                authors: book.authors,
+                identity: book.identity,
+                downloadURL: book.acquisitionURL,
+                format: book.format,
+                thumbnailURL: book.thumbnailURL
+            )
+            let fresh = try await catalog.resolveDownload(for: entry)
+            book.acquisitionURL = fresh
+            try? context.save()
+        } catch {
+            // Intentional fall-through — see doc comment above.
+        }
     }
 }
 
