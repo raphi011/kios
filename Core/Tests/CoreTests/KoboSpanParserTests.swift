@@ -4,8 +4,6 @@ import Foundation
 
 struct KoboSpanParserTests {
 
-    /// Representative KEPUB chapter shape: paragraphs broken into koboSpan
-    /// runs by kepubify. Ten ids in document order.
     private static let fixture: String = """
     <?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE html>
@@ -81,8 +79,6 @@ struct KoboSpanParserTests {
     }
 
     @Test func ignoresNonSpanElementsWithKoboSpanClass() {
-        // Defensive: only `<span>` elements should be considered, even if a
-        // (malformed) document attached `class="koboSpan"` to another tag.
         let xhtml = #"""
         <div class="koboSpan" id="kobo.99.99">not a span</div>
         <span class="koboSpan" id="kobo.1.1">yes</span>
@@ -112,7 +108,6 @@ struct KoboSpanParserTests {
     }
 
     @Test func spanAtMiddleReturnsIndexFive() {
-        // floor(0.5 * 10) = 5 → spans[5] which is the sixth entry.
         #expect(KoboSpanParser.span(at: 0.5, in: Self.tenSpans) == "kobo.1.6")
     }
 
