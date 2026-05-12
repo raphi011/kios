@@ -18,6 +18,7 @@ struct ReaderHost: UIViewControllerRepresentable {
     let statusBarHidden: Bool
     var onLocatorChange: @Sendable (Locator) -> Void
     var onCenterTap: () -> Void
+    var onPageTurn: () -> Void
     var onPinchUpdate: (Int?) -> Void
     var onPinchCommit: (Int) -> Void
     var onDismissRequested: () -> Void
@@ -28,6 +29,7 @@ struct ReaderHost: UIViewControllerRepresentable {
             vc.update(fontSizePct: fontSizePct, statusBarHidden: statusBarHidden)
             vc.onLocatorChange = { locator in onLocatorChange(locator) }
             vc.onCenterTap = onCenterTap
+            vc.onPageTurn = onPageTurn
             vc.onPinchUpdate = onPinchUpdate
             vc.onPinchCommitToSwiftUI = onPinchCommit
             vc.onDismissRequested = onDismissRequested
@@ -46,6 +48,7 @@ struct ReaderHost: UIViewControllerRepresentable {
         // Re-bind callbacks each update — SwiftUI may have re-created closures.
         container.onLocatorChange = { locator in onLocatorChange(locator) }
         container.onCenterTap = onCenterTap
+        container.onPageTurn = onPageTurn
         container.onPinchUpdate = onPinchUpdate
         container.onPinchCommitToSwiftUI = onPinchCommit
         container.onDismissRequested = onDismissRequested

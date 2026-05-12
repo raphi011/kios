@@ -11,6 +11,10 @@ final class ReaderContainerVC: UIViewController {
 
     var onLocatorChange: ((Locator) -> Void)?
     var onCenterTap: (() -> Void)?
+    /// Fires when `DirectionalNavigationAdapter` triggers a page turn (edge
+    /// tap or arrow key). Hooked by SwiftUI to auto-hide the chrome so
+    /// turning a page never leaves stale chrome lingering on screen.
+    var onPageTurn: (() -> Void)?
     var onPinchUpdate: ((Int?) -> Void)?
     var onDismissRequested: (() -> Void)?
 
@@ -34,6 +38,10 @@ final class ReaderContainerVC: UIViewController {
     /// repeated `applyPendingJump` calls from SwiftUI re-renders so we don't
     /// replay the same navigation on every `updateUIViewController` pass.
     private var lastAppliedJumpJSON: String?
+    /// Largest safe-area insets observed during the reader's lifetime.
+    /// Returned by `navigatorContentInset` so the EPUB doesn't reflow when
+    /// the chrome shows/hides the status bar.
+    private var maxObservedInsets: UIEdgeInsets = .zero
 
     init(publication: Publication, initialLocator: Locator?) {
         self.publication = publication
@@ -137,7 +145,8 @@ final class ReaderContainerVC: UIViewController {
         guard let nav = navigator else { return }
 
         let dna = DirectionalNavigationAdapter(
-            pointerPolicy: .init(types: [.mouse, .touch])
+            pointerPolicy: .init(types: [.mouse, .touch]),
+            onNavigation: { [weak self] in self?.onPageTurn?() }
         )
         dna.bind(to: nav)
         directionalNavigationAdapter = dna
@@ -198,6 +207,23 @@ extension ReaderContainerVC: EPUBNavigatorDelegate {
     }
 
     nonisolated func navigator(_ navigator: Navigator, presentError error: NavigatorError) {}
+
+    /// Returns insets that already include the safe area, frozen at the
+    /// largest values observed during the reader's lifetime. The default
+    /// (returning `nil`) makes Readium track `view.safeAreaInsets`, which
+    /// shrinks when the status bar is hidden — reflowing the EPUB content
+    /// every time the chrome toggles. Locking in the maximum keeps the
+    /// reading position stable across status-bar visibility changes.
+    func navigatorContentInset(_ navigator: VisualNavigator) -> UIEdgeInsets? {
+        let current = view.safeAreaInsets
+        maxObservedInsets = UIEdgeInsets(
+            top: max(maxObservedInsets.top, current.top),
+            left: max(maxObservedInsets.left, current.left),
+            bottom: max(maxObservedInsets.bottom, current.bottom),
+            right: max(maxObservedInsets.right, current.right)
+        )
+        return maxObservedInsets
+    }
 
     /// Ask Readium for the cssSelector of the first visible block element on
     /// the current page. When that element is a koboSpan, the selector is

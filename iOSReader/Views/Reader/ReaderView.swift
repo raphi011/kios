@@ -122,6 +122,10 @@ struct ReaderView: View {
                         }
                     },
                     onCenterTap: { withAnimation(.easeOut(duration: 0.2)) { uiVisible.toggle() } },
+                    onPageTurn: {
+                        guard uiVisible else { return }
+                        withAnimation(.easeOut(duration: 0.2)) { uiVisible = false }
+                    },
                     onPinchUpdate: { pct in
                         // Spec: fade-in 0.15s, fade-out 0.3s.
                         let duration = (pct == nil) ? 0.3 : 0.15
