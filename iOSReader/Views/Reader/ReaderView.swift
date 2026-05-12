@@ -55,6 +55,10 @@ struct ReaderView: View {
     /// totalProgression. Sorted ascending; binary-searched to resolve the
     /// chapter heading for a scrub position.
     @State private var tocProgressions: [(progression: Double, title: String)] = []
+    /// Resource path (anchor stripped) → chapter title. Built alongside
+    /// `tocProgressions` so the cross-device prompt can name the chapter
+    /// a peer is on without re-walking the TOC.
+    @State private var tocTitlesByHref: [String: String] = [:]
 
     init(bookID: UUID) {
         self.bookID = bookID
@@ -70,6 +74,7 @@ struct ReaderView: View {
         let id = "continue-prompt"
         let local: Double
         let server: CanonicalProgress
+        let serverHref: String?
     }
 
     var body: some View {
@@ -129,7 +134,7 @@ struct ReaderView: View {
                 )
                 .alert(item: $pendingPrompt) { info in
                     Alert(
-                        title: Text("Continue from another device?"),
+                        title: Text(promptTitle(for: info)),
                         message: Text(relativeReadMessage(for: info.server)),
                         primaryButton: .default(Text("Continue")) {
                             if let json = info.server.locatorJSON,
@@ -221,7 +226,9 @@ struct ReaderView: View {
     private func loadScrubMetadata(for publication: Publication) async {
         positions = (try? await publication.positions().get()) ?? []
         let toc = (try? await publication.tableOfContents().get()) ?? []
-        tocProgressions = buildTOCProgressions(toc: toc, positions: positions)
+        let built = buildTOCProgressions(toc: toc, positions: positions)
+        tocProgressions = built.progressions
+        tocTitlesByHref = built.titlesByHref
     }
 
     /// Walks the TOC depth-first, mapping each entry to its starting
@@ -230,7 +237,10 @@ struct ReaderView: View {
     /// the reading order are dropped. Result is sorted ascending so a
     /// linear scan (or future binary search) can find "current chapter" for
     /// a given progression.
-    private func buildTOCProgressions(toc: [ReadiumShared.Link], positions: [Locator]) -> [(progression: Double, title: String)] {
+    private func buildTOCProgressions(
+        toc: [ReadiumShared.Link],
+        positions: [Locator]
+    ) -> (progressions: [(progression: Double, title: String)], titlesByHref: [String: String]) {
         var flat: [(href: String, title: String)] = []
         func walk(_ links: [ReadiumShared.Link]) {
             for link in links {
@@ -244,16 +254,34 @@ struct ReaderView: View {
         walk(toc)
 
         var mapped: [(progression: Double, title: String)] = []
+        var titlesByHref: [String: String] = [:]
         for entry in flat {
             // TOC hrefs often include #anchor; positions key on the resource
             // path. Compare resource-only — anchor granularity is not enough
             // to distinguish TOC entries in the typical EPUB.
             let entryResource = entry.href.components(separatedBy: "#").first ?? entry.href
+            if titlesByHref[entryResource] == nil {
+                titlesByHref[entryResource] = entry.title
+            }
             guard let pos = positions.first(where: { $0.href.string.hasSuffix(entryResource) || entryResource.hasSuffix($0.href.string) }),
                   let progression = pos.locations.totalProgression else { continue }
             mapped.append((progression: progression, title: entry.title))
         }
-        return mapped.sorted { $0.progression < $1.progression }
+        return (mapped.sorted { $0.progression < $1.progression }, titlesByHref)
+    }
+
+    /// Best-effort chapter title for a Kobo `Location.Source` or Readium
+    /// `locator.href`. Tolerates the same prefix/suffix ambiguity as
+    /// `buildTOCProgressions`, since locator hrefs may be relative to the
+    /// EPUB root while TOC entries are relative to wherever the OPF lives.
+    private func chapterTitle(forHref href: String?) -> String? {
+        guard let href else { return nil }
+        let resource = href.components(separatedBy: "#").first ?? href
+        if let exact = tocTitlesByHref[resource] { return exact }
+        for (tocHref, title) in tocTitlesByHref where resource.hasSuffix(tocHref) || tocHref.hasSuffix(resource) {
+            return title
+        }
+        return nil
     }
 
     /// Returns the title of the TOC entry that *starts at or before* the
@@ -359,6 +387,21 @@ struct ReaderView: View {
     /// is already on screen by the time this returns. Late-arriving prompts /
     /// silent jumps are suppressed once `userHasNavigated` is true so they
     /// can't yank a user mid-read.
+    private func promptTitle(for info: PromptInfo) -> String {
+        if let title = chapterTitle(forHref: info.serverHref) {
+            return "Another device is in '\(title)' — switch?"
+        }
+        return "Continue from another device?"
+    }
+
+    private func parseHref(_ json: String?) -> String? {
+        guard let json,
+              let data = json.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return dict["href"] as? String
+    }
+
     private func resolveOpen() async {
         guard let book, let sync = env.sync else { return }
         do {
@@ -372,7 +415,11 @@ struct ReaderView: View {
                 pendingJump = locator
             case .promptUser(let local, let server):
                 guard !userHasNavigated else { return }
-                pendingPrompt = PromptInfo(local: local, server: server)
+                pendingPrompt = PromptInfo(
+                    local: local,
+                    server: server,
+                    serverHref: parseHref(server.locatorJSON)
+                )
             }
         } catch {
             // Best-effort; ignore failures.
