@@ -28,6 +28,22 @@ struct ReaderView: View {
     @State private var uiVisible: Bool = false
     @State private var fontHUD: Int? = nil
     @State private var currentLocator: Locator?
+    /// Set when the user accepts a cross-device progress prompt. Handed to
+    /// `ReaderHost`; the container dedupes by `Locator.jsonString`, so we
+    /// don't need to clear it after navigating.
+    @State private var pendingJump: Locator?
+    /// Whole-book progression (0–1) the user is dragging toward. Non-nil only
+    /// while a scrub is in progress; drives both the bar's preview and the
+    /// scrub HUD overlay. Set back to nil on commit/cancel.
+    @State private var scrubProgress: Double?
+    /// Flat list of every Readium position, cached after publication opens.
+    /// Used to translate scrub progression → Locator without going through
+    /// the publication service on every drag sample.
+    @State private var positions: [Locator] = []
+    /// TOC entries flattened depth-first and tagged with their starting
+    /// totalProgression. Sorted ascending; binary-searched to resolve the
+    /// chapter heading for a scrub position.
+    @State private var tocProgressions: [(progression: Double, title: String)] = []
 
     init(bookID: UUID) {
         self.bookID = bookID
@@ -76,6 +92,7 @@ struct ReaderView: View {
                 ReaderHost(
                     publication: publication,
                     initialLocator: initialLocator,
+                    pendingJump: pendingJump,
                     fontSizePct: fontSizePct,
                     statusBarHidden: !uiVisible,
                     onLocatorChange: { @Sendable locator in
@@ -99,11 +116,15 @@ struct ReaderView: View {
                 .alert(item: $pendingPrompt) { info in
                     Alert(
                         title: Text("Continue from another device?"),
-                        message: Text(
-                            "\(Int(info.server.percentage * 100))% on '\(info.server.deviceName)'"
-                        ),
+                        message: Text(relativeReadMessage(for: info.server)),
                         primaryButton: .default(Text("Continue")) {
-                            // v1: silently accept; next locator change reconciles with the server.
+                            // Hand the server's locator to the navigator. The
+                            // resulting locationDidChange will round-trip back
+                            // through pushLocator and reconcile to the server.
+                            if let json = info.server.locatorJSON,
+                               let locator = try? Locator(jsonString: json) {
+                                pendingJump = locator
+                            }
                         },
                         secondaryButton: .cancel(Text("Stay here"))
                     )
@@ -126,7 +147,14 @@ struct ReaderView: View {
             VStack(spacing: 0) {
                 ReaderTopBar(title: book?.title ?? "", onClose: { dismiss() })
                 Spacer()
-                ReaderBottomProgressBar(locator: currentLocator)
+                ReaderBottomProgressBar(
+                    locator: currentLocator,
+                    scrubProgress: scrubProgress,
+                    chapterTitle: chapterTitle(at:),
+                    onScrubUpdate: { progress in scrubProgress = progress },
+                    onScrubCommit: { progress in commitScrub(to: progress) },
+                    onScrubCancel: { scrubProgress = nil }
+                )
             }
             .transition(.opacity)
         }
@@ -136,6 +164,9 @@ struct ReaderView: View {
     private var hudOverlay: some View {
         if let pct = fontHUD {
             ReaderFontHUD(pct: pct)
+                .transition(.opacity)
+        } else if let progress = scrubProgress {
+            ReaderScrubHUD(progress: progress, chapter: chapterTitle(at: progress))
                 .transition(.opacity)
         }
     }
@@ -162,11 +193,83 @@ struct ReaderView: View {
             initialLocator = try? Locator(jsonString: progress.locatorJSON)
         }
         do {
-            publication = try await openPublication(at: fileURL)
+            let pub = try await openPublication(at: fileURL)
+            publication = pub
+            await loadScrubMetadata(for: pub)
         } catch {
             let diagnostics = fileDiagnostics(at: fileURL)
             loadError = "Failed to open:\n\((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)\n\n\(diagnostics)"
         }
+    }
+
+    /// Caches the positions list and TOC→progression map so scrubbing can
+    /// resolve progress → Locator and progress → chapter heading without
+    /// hitting the publication service on every drag sample. Failures here
+    /// degrade gracefully: scrubbing still works (jumps via `positions`) and
+    /// the chapter label falls back to an em-dash when TOC is unavailable.
+    private func loadScrubMetadata(for publication: Publication) async {
+        positions = (try? await publication.positions().get()) ?? []
+        let toc = (try? await publication.tableOfContents().get()) ?? []
+        tocProgressions = buildTOCProgressions(toc: toc, positions: positions)
+    }
+
+    /// Walks the TOC depth-first, mapping each entry to its starting
+    /// totalProgression by matching against the first reading-order position
+    /// that lives in the same resource. Entries whose href doesn't appear in
+    /// the reading order are dropped. Result is sorted ascending so a
+    /// linear scan (or future binary search) can find "current chapter" for
+    /// a given progression.
+    private func buildTOCProgressions(toc: [ReadiumShared.Link], positions: [Locator]) -> [(progression: Double, title: String)] {
+        var flat: [(href: String, title: String)] = []
+        func walk(_ links: [ReadiumShared.Link]) {
+            for link in links {
+                let title = link.title ?? ""
+                if !title.isEmpty {
+                    flat.append((href: link.href, title: title))
+                }
+                walk(link.children)
+            }
+        }
+        walk(toc)
+
+        var mapped: [(progression: Double, title: String)] = []
+        for entry in flat {
+            // TOC hrefs often include #anchor; positions key on the resource
+            // path. Compare resource-only — anchor granularity is not enough
+            // to distinguish TOC entries in the typical EPUB.
+            let entryResource = entry.href.components(separatedBy: "#").first ?? entry.href
+            guard let pos = positions.first(where: { $0.href.string.hasSuffix(entryResource) || entryResource.hasSuffix($0.href.string) }),
+                  let progression = pos.locations.totalProgression else { continue }
+            mapped.append((progression: progression, title: entry.title))
+        }
+        return mapped.sorted { $0.progression < $1.progression }
+    }
+
+    /// Returns the title of the TOC entry that *starts at or before* the
+    /// given whole-book progression. Falls back to an em-dash when the TOC
+    /// wasn't loaded or the progression precedes the first mapped entry.
+    private func chapterTitle(at progression: Double) -> String {
+        guard !tocProgressions.isEmpty else { return "—" }
+        var match: String?
+        for entry in tocProgressions {
+            if entry.progression <= progression {
+                match = entry.title
+            } else {
+                break
+            }
+        }
+        return match ?? tocProgressions.first?.title ?? "—"
+    }
+
+    /// Translates a whole-book progression into a Readium `Locator` via the
+    /// cached positions list and hands it to the navigator through
+    /// `pendingJump`. No-ops if positions aren't loaded yet — caller is
+    /// responsible for resetting `scrubProgress` afterwards.
+    private func commitScrub(to progression: Double) {
+        defer { scrubProgress = nil }
+        guard !positions.isEmpty else { return }
+        let idx = max(0, min(positions.count - 1, Int(round(Double(positions.count - 1) * progression))))
+        pendingJump = positions[idx]
     }
 
     private func fileDiagnostics(at url: URL) -> String {
@@ -265,6 +368,20 @@ struct ReaderView: View {
     private func flush() async {
         guard let sync = env.sync, let book = currentBook() else { return }
         await sync.flushPendingProgress(for: book)
+    }
+
+    /// "Last read 5 min ago on '<device>'" when the server timestamp is real,
+    /// or "Last read on '<device>'" when the backend handed us `.distantPast`
+    /// (the sentinel for "we don't know when"). Percent isn't shown — Kobo and
+    /// Readium compute whole-book progress differently, so the number wouldn't
+    /// match the in-app progress bar after navigating.
+    private func relativeReadMessage(for progress: CanonicalProgress) -> String {
+        let device = "'\(progress.deviceName)'"
+        guard progress.timestamp > .distantPast else { return "Last read on \(device)" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        let when = formatter.localizedString(for: progress.timestamp, relativeTo: .now)
+        return "Last read \(when) on \(device)"
     }
 
     private func pushLocator(bookID: UUID, locator: Locator) async {

@@ -25,6 +25,10 @@ final class ReaderContainerVC: UIViewController {
     private let initialLocator: Locator?
     private var navigator: EPUBNavigatorViewController?
     private var inputHandlers: ReaderInputHandlers?
+    /// `Locator.jsonString` of the most recently applied jump. Used to dedupe
+    /// repeated `applyPendingJump` calls from SwiftUI re-renders so we don't
+    /// replay the same navigation on every `updateUIViewController` pass.
+    private var lastAppliedJumpJSON: String?
 
     init(publication: Publication, initialLocator: Locator?) {
         self.publication = publication
@@ -58,6 +62,21 @@ final class ReaderContainerVC: UIViewController {
         if self.statusBarHidden != statusBarHidden {
             self.statusBarHidden = statusBarHidden
             setNeedsStatusBarAppearanceUpdate()
+        }
+    }
+
+    /// Navigates to `locator` if it differs from the last jump applied. Pass
+    /// `nil` to clear the deduper (no navigation occurs). Idempotent across
+    /// SwiftUI's repeated `updateUIViewController` invocations.
+    func applyPendingJump(_ locator: Locator?) {
+        guard let locator,
+              let json = locator.jsonString,
+              json != lastAppliedJumpJSON
+        else { return }
+        lastAppliedJumpJSON = json
+        let nav = navigator
+        Task { @MainActor in
+            _ = await nav?.go(to: locator, options: NavigatorGoOptions(animated: false))
         }
     }
 

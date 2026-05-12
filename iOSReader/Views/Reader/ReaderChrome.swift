@@ -35,20 +35,44 @@ struct ReaderTopBar: View {
     }
 }
 
-/// Bottom strip with progress bar and `34% • Chapter 4` label.
+/// Bottom strip with progress bar and `34% • Chapter 4` label. Scrubbable:
+/// dragging the bar previews a target progression (caller renders a HUD via
+/// `onScrubUpdate`) and commits the jump on release via `onScrubCommit`.
 struct ReaderBottomProgressBar: View {
     let locator: Locator?
+    /// Non-nil while the user is dragging — display reflects the scrub
+    /// position, not the navigator's actual locator. Reset to nil after commit.
+    let scrubProgress: Double?
+    /// Resolves the TOC heading for a given whole-book progression.
+    let chapterTitle: (Double) -> String
+    var onScrubUpdate: (Double) -> Void
+    var onScrubCommit: (Double) -> Void
+    var onScrubCancel: () -> Void
 
     var body: some View {
         VStack(spacing: 4) {
-            ProgressView(value: progress)
-                .progressViewStyle(.linear)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.3))
+                    Capsule()
+                        .fill(Color.accentColor)
+                        .frame(width: max(0, geo.size.width * CGFloat(displayProgress)))
+                }
+                .frame(height: 4)
+                .contentShape(Rectangle())
+                .gesture(scrubGesture(in: geo.size.width))
+            }
+            // Tall hit area for the drag — the visible capsule is only 4pt,
+            // but the gesture treats the whole 28pt strip as draggable so a
+            // moving fingertip isn't lost between samples.
+            .frame(height: 28)
             HStack {
-                Text("\(Int(progress * 100))%")
+                Text("\(Int(displayProgress * 100))%")
                     .font(.caption.monospacedDigit())
                 Text("•")
                     .font(.caption)
-                Text(chapterLabel)
+                Text(displayChapterLabel)
                     .font(.caption)
                     .lineLimit(1)
                 Spacer()
@@ -58,21 +82,63 @@ struct ReaderBottomProgressBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.regularMaterial)
-        // Absorb taps so the page beneath doesn't see them.
         .contentShape(Rectangle())
-        .onTapGesture {}
     }
 
-    private var progress: Double {
-        locator?.locations.totalProgression ?? 0
+    private var displayProgress: Double {
+        scrubProgress ?? (locator?.locations.totalProgression ?? 0)
     }
 
-    private var chapterLabel: String {
-        // `Locator.title` is the chapter heading where Readium can resolve it.
+    private var displayChapterLabel: String {
+        if let sp = scrubProgress {
+            return chapterTitle(sp)
+        }
         if let title = locator?.title, !title.isEmpty {
             return title
         }
-        return "Chapter ?"
+        return chapterTitle(displayProgress)
+    }
+
+    private func scrubGesture(in width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                onScrubUpdate(clampedProgress(value.location.x, in: width))
+            }
+            .onEnded { value in
+                onScrubCommit(clampedProgress(value.location.x, in: width))
+            }
+    }
+
+    private func clampedProgress(_ x: CGFloat, in width: CGFloat) -> Double {
+        guard width > 0 else { return 0 }
+        return max(0, min(1, Double(x / width)))
+    }
+}
+
+/// Centered HUD shown during a progress-bar scrub. Mirrors `ReaderFontHUD`'s
+/// translucent rounded surface but stacks percent over the resolved chapter
+/// heading so the reader can see *what* they're scrubbing toward.
+struct ReaderScrubHUD: View {
+    let progress: Double
+    let chapter: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("\(Int(progress * 100))%")
+                .font(.title2.weight(.semibold).monospacedDigit())
+            if !chapter.isEmpty {
+                Text(chapter)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .frame(minWidth: 140)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityLabel("Scrubbing to \(Int(progress * 100)) percent, \(chapter)")
     }
 }
 

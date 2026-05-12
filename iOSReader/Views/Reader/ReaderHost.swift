@@ -9,6 +9,11 @@ import ReadiumNavigator
 struct ReaderHost: UIViewControllerRepresentable {
     let publication: Publication
     let initialLocator: Locator?
+    /// Non-nil when SwiftUI wants the navigator to jump to a new locator
+    /// (e.g., the user confirmed a cross-device progress prompt). The
+    /// container dedupes by `Locator.jsonString`, so it's safe to keep this
+    /// set across re-renders — only changes trigger navigation.
+    let pendingJump: Locator?
     let fontSizePct: Int
     let statusBarHidden: Bool
     var onLocatorChange: @Sendable (Locator) -> Void
@@ -26,6 +31,7 @@ struct ReaderHost: UIViewControllerRepresentable {
             vc.onPinchUpdate = onPinchUpdate
             vc.onPinchCommitToSwiftUI = onPinchCommit
             vc.onDismissRequested = onDismissRequested
+            vc.applyPendingJump(pendingJump)
             return vc
         } else {
             return errorController(
@@ -43,6 +49,7 @@ struct ReaderHost: UIViewControllerRepresentable {
         container.onPinchUpdate = onPinchUpdate
         container.onPinchCommitToSwiftUI = onPinchCommit
         container.onDismissRequested = onDismissRequested
+        container.applyPendingJump(pendingJump)
     }
 
     private func errorController(_ message: String) -> UIViewController {
