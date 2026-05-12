@@ -137,8 +137,7 @@ struct ReaderView: View {
                         title: Text(promptTitle(for: info)),
                         message: Text(relativeReadMessage(for: info.server)),
                         primaryButton: .default(Text("Continue")) {
-                            if let json = info.server.locatorJSON,
-                               let locator = try? Locator(legacyJSONString: json) {
+                            if let locator = parseLocator(info.server.locatorJSON) {
                                 pendingJump = locator
                             }
                         },
@@ -206,7 +205,7 @@ struct ReaderView: View {
         if let progress = try? context.fetch(
             FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
         ).first {
-            initialLocator = try? Locator(legacyJSONString: progress.locatorJSON)
+            initialLocator = parseLocator(progress.locatorJSON)
         }
         do {
             let pub = try await openPublication(at: fileURL)
@@ -402,6 +401,17 @@ struct ReaderView: View {
         return dict["href"] as? String
     }
 
+    /// Decodes a Readium locator JSON string via the modern `JSONValue` →
+    /// `Locator(json:)` path. Used wherever we have a stored or pushed
+    /// locator JSON string and need a `Locator` instance.
+    private func parseLocator(_ json: String?) -> Locator? {
+        guard let json,
+              let jsonValue = try? JSONValue(jsonString: json),
+              let locator = try? Locator(json: jsonValue, warnings: nil)
+        else { return nil }
+        return locator
+    }
+
     private func resolveOpen() async {
         guard let book, let sync = env.sync else { return }
         do {
@@ -410,8 +420,7 @@ struct ReaderView: View {
                 break
             case .applyServer(let progress):
                 guard !userHasNavigated,
-                      let json = progress.locatorJSON,
-                      let locator = try? Locator(legacyJSONString: json) else { return }
+                      let locator = parseLocator(progress.locatorJSON) else { return }
                 pendingJump = locator
             case .promptUser(let local, let server):
                 guard !userHasNavigated else { return }
