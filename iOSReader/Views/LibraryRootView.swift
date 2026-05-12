@@ -15,28 +15,51 @@ struct LibraryRootView: View {
     @Environment(AppEnvironment.self) private var env
 
     @State private var unsupportedKoboAlert: Bool = false
+    @State private var isRefreshing: Bool = false
 
     var body: some View {
         NavigationStack {
-            Group {
+            // Always render a List so `.refreshable` has a scrollable parent —
+            // the empty state goes inside as an overlay. ContentUnavailableView
+            // alone is not scrollable and the pull-to-refresh gesture silently
+            // does nothing.
+            List(books) { book in
+                Button { handleTap(book) } label: {
+                    LibraryBookRow(book: book)
+                }
+                .buttonStyle(.plain)
+            }
+            .overlay {
                 if books.isEmpty {
                     ContentUnavailableView(
                         "Your library is empty",
                         systemImage: "books.vertical",
-                        description: Text("Pull to refresh, or sign in via Settings.")
+                        description: Text("Pull to refresh, or tap Refresh.")
                     )
-                } else {
-                    List(books) { book in
-                        Button { handleTap(book) } label: {
-                            LibraryBookRow(book: book)
-                        }
-                        .buttonStyle(.plain)
-                    }
                 }
             }
-            .navigationTitle("Library")
             .refreshable {
                 try? await env.refreshLibrary()
+            }
+            .navigationTitle("Library")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task {
+                            isRefreshing = true
+                            try? await env.refreshLibrary()
+                            isRefreshing = false
+                        }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(isRefreshing)
+                    .accessibilityLabel("Refresh library")
+                }
             }
             .alert("Kobo reading not yet supported",
                    isPresented: $unsupportedKoboAlert) {
