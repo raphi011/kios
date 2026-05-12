@@ -184,9 +184,36 @@ final class ReaderContainerVC: UIViewController {
 extension ReaderContainerVC: EPUBNavigatorDelegate {
     nonisolated func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
         Task { @MainActor [weak self] in
-            self?.onLocatorChange?(locator)
+            guard let self else { return }
+            let enriched = await self.enrichWithVisibleSelector(locator)
+            self.onLocatorChange?(enriched)
         }
     }
 
     nonisolated func navigator(_ navigator: Navigator, presentError error: NavigatorError) {}
+
+    /// Ask Readium for the cssSelector of the first visible block element on
+    /// the current page. When that element is a koboSpan, the selector is
+    /// `#kobo\.X\.Y` — exact koboSpan id, no interpolation. Merge it into the
+    /// page-turn locator so `SyncService.augmentLocatorWithSpanID` skips the
+    /// resolver and pushes the exact id.
+    ///
+    /// Returns the original locator unchanged when the visible element isn't
+    /// a koboSpan (e.g. plain EPUBs, or a `<p>` without a koboSpan wrapping).
+    /// In that case the existing `KEPUBSpanResolver` runs as fallback and
+    /// picks via linear interpolation, same as today.
+    @MainActor
+    private func enrichWithVisibleSelector(_ locator: Locator) async -> Locator {
+        guard let nav = navigator,
+              let visible = await nav.firstVisibleElementLocator(),
+              let selector = visible.locations["cssSelector"] as? String,
+              selector.hasPrefix("#kobo") else {
+            return locator
+        }
+        return locator.copy(locations: { locations in
+            var other = locations.otherLocations
+            other["cssSelector"] = selector
+            locations.otherLocations = other
+        })
+    }
 }
