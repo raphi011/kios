@@ -14,6 +14,7 @@ final class SyncService {
     let activeProtocol: SyncProtocol
     let deviceID: String
     let deviceName: String
+    private let spanResolver: (any KoboSpanResolving)?
 
     /// Threshold for prompting when server progress is from a different
     /// device. Spec §4.7 notes this is tunable; >1% chosen to ignore noise
@@ -25,13 +26,15 @@ final class SyncService {
         context: ModelContext,
         activeProtocol: SyncProtocol,
         deviceID: String,
-        deviceName: String
+        deviceName: String,
+        spanResolver: (any KoboSpanResolving)? = nil
     ) {
         self.backendForProtocol = backendForProtocol
         self.context = context
         self.activeProtocol = activeProtocol
         self.deviceID = deviceID
         self.deviceName = deviceName
+        self.spanResolver = spanResolver
     }
 
     /// What the UI should do when the user opens a book.
@@ -105,7 +108,18 @@ final class SyncService {
                 deviceID: rowCanonical.deviceID,
                 deviceName: deviceName
             )
-            try await backend.pushProgress(canonical, for: book.identity)
+            let pushed: CanonicalProgress
+            if proto == .kobo,
+               let resolver = spanResolver,
+               let fileURL = book.fileURL,
+               let augmented = await augmentLocatorWithSpanID(
+                   canonical: canonical, fileURL: fileURL, resolver: resolver
+               ) {
+                pushed = augmented
+            } else {
+                pushed = canonical
+            }
+            try await backend.pushProgress(pushed, for: book.identity)
             row.pendingUpload = false
             row.pendingProtocol = nil
             try? context.save()
@@ -133,6 +147,39 @@ final class SyncService {
     }
 
     // MARK: - private
+
+    private func augmentLocatorWithSpanID(
+        canonical: CanonicalProgress,
+        fileURL: URL,
+        resolver: any KoboSpanResolving
+    ) async -> CanonicalProgress? {
+        guard let json = canonical.locatorJSON,
+              let data = json.data(using: .utf8),
+              var locator = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return nil }
+        guard let href = locator["href"] as? String,
+              var locations = locator["locations"] as? [String: Any],
+              let progression = locations["progression"] as? Double
+        else { return nil }
+        if let existing = locations["cssSelector"] as? String, !existing.isEmpty {
+            return nil
+        }
+        guard let spanID = await resolver.resolve(
+            bookFileURL: fileURL, chapterHref: href, progression: progression
+        ) else { return nil }
+        locations["cssSelector"] = "#" + KoboProgressMapper.escapeCSS(spanID)
+        locator["locations"] = locations
+        guard let newData = try? JSONSerialization.data(withJSONObject: locator),
+              let newJSON = String(data: newData, encoding: .utf8)
+        else { return nil }
+        return CanonicalProgress(
+            percentage: canonical.percentage,
+            locatorJSON: newJSON,
+            timestamp: canonical.timestamp,
+            deviceID: canonical.deviceID,
+            deviceName: canonical.deviceName
+        )
+    }
 
     private func currentLocalProgress(for bookID: UUID) -> ReadingProgress? {
         let descriptor = FetchDescriptor<ReadingProgress>(

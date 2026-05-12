@@ -33,6 +33,11 @@ final class AppEnvironment {
     /// operations like the Settings library refresh after a protocol switch.
     let deviceID: String
 
+    /// Shared across `SyncService` rebuilds (e.g. on credential save) so the
+    /// per-chapter koboSpan cache survives — chapters don't change without a
+    /// fresh download.
+    private let spanResolver = KEPUBSpanResolver()
+
     init() throws {
         self.modelContainer = try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self
@@ -110,7 +115,8 @@ final class AppEnvironment {
             context: modelContext,
             activeProtocol: activeProtocol,
             deviceID: deviceID,
-            deviceName: name
+            deviceName: name,
+            spanResolver: spanResolver
         )
 
         switch activeProtocol {

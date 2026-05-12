@@ -33,6 +33,16 @@ actor RecordingSyncBackend: SyncBackend {
     }
 }
 
+@MainActor
+final class StubSpanResolver: KoboSpanResolving {
+    var result: String?
+    var calls: [(bookFileURL: URL, chapterHref: String, progression: Double)] = []
+    func resolve(bookFileURL: URL, chapterHref: String, progression: Double) async -> String? {
+        calls.append((bookFileURL, chapterHref, progression))
+        return result
+    }
+}
+
 // MARK: - onOpen suite
 
 @Suite("SyncService.onOpen", .serialized)
@@ -401,5 +411,114 @@ struct SyncServiceBufferFlushTests {
         )).first
         #expect(finalRow?.pendingUpload == false)
         #expect(finalRow?.pendingProtocol == nil)
+    }
+
+    // MARK: - Kobo span resolver injection
+
+    @MainActor
+    private static func makeKoboEnv(
+        resolver: any KoboSpanResolving
+    ) throws -> (sync: SyncService, book: Book, context: ModelContext, backend: RecordingSyncBackend) {
+        let container = try ModelContainer(
+            for: Book.self, ReadingProgress.self, Download.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let backend = RecordingSyncBackend()
+        let sync = SyncService(
+            backendForProtocol: { _ in backend },
+            context: context,
+            activeProtocol: .kobo,
+            deviceID: "us",
+            deviceName: "iPhone",
+            spanResolver: resolver
+        )
+        // filename non-nil so Book.fileURL is non-nil; resolver is stubbed
+        // and never opens the file, so no disk I/O needed.
+        let book = Book(
+            serverID: "id",
+            serverIDProtocol: "kobo",
+            title: "T",
+            authors: [],
+            opdsHref: URL(string: "https://x")!,
+            acquisitionURL: URL(string: "https://x")!,
+            format: .epub,
+            koboBookUUID: "uuid-1",
+            archived: false,
+            filename: "test.epub",
+            partialMD5: "abc"
+        )
+        context.insert(book)
+        try context.save()
+        return (sync, book, context, backend)
+    }
+
+    @Test func koboPushWithResolverInjectsCSSSelector() async throws {
+        let stub = StubSpanResolver()
+        stub.result = "kobo.10.1"
+        let (sync, book, _, backend) = try Self.makeKoboEnv(resolver: stub)
+
+        let locator = #"{"href":"OEBPS/text/ch10.xhtml","locations":{"progression":0.5}}"#
+        sync.bufferLocator(book: book, locatorJSON: locator, percentage: 0.5)
+        await sync.flushPendingProgress(for: book)
+
+        let pushed = await backend.firstPush()
+        let json = pushed?.progress.locatorJSON ?? ""
+        let data = json.data(using: .utf8)!
+        let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let locations = obj?["locations"] as? [String: Any]
+        #expect((locations?["cssSelector"] as? String) == #"#kobo\.10\.1"#)
+        #expect((locations?["progression"] as? Double) == 0.5)
+        #expect((obj?["href"] as? String) == "OEBPS/text/ch10.xhtml")
+        #expect(stub.calls.count == 1)
+        #expect(stub.calls.first?.chapterHref == "OEBPS/text/ch10.xhtml")
+        #expect(stub.calls.first?.progression == 0.5)
+    }
+
+    @Test func koboPushWithResolverReturningNilLeavesLocatorUnchanged() async throws {
+        let stub = StubSpanResolver()
+        stub.result = nil
+        let (sync, book, _, backend) = try Self.makeKoboEnv(resolver: stub)
+
+        let locator = #"{"href":"OEBPS/text/ch10.xhtml","locations":{"progression":0.5}}"#
+        sync.bufferLocator(book: book, locatorJSON: locator, percentage: 0.5)
+        await sync.flushPendingProgress(for: book)
+
+        let pushed = await backend.firstPush()
+        let json = pushed?.progress.locatorJSON ?? ""
+        let data = json.data(using: .utf8)!
+        let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let locations = obj?["locations"] as? [String: Any]
+        #expect(locations?["cssSelector"] == nil)
+        #expect((locations?["progression"] as? Double) == 0.5)
+        #expect(stub.calls.count == 1)
+    }
+
+    @Test func koboPushWhenLocatorAlreadyHasCSSSelectorPreservesOriginal() async throws {
+        let stub = StubSpanResolver()
+        stub.result = "kobo.99.9"
+        let (sync, book, _, backend) = try Self.makeKoboEnv(resolver: stub)
+
+        // Build locator via JSONSerialization so the backslash escapes are
+        // unambiguous on the wire (raw-string `\` collides with `\.` in JSON).
+        let preExisting = "#" + KoboProgressMapper.escapeCSS("kobo.5.2")
+        let obj0: [String: Any] = [
+            "href": "OEBPS/text/ch10.xhtml",
+            "locations": ["progression": 0.5, "cssSelector": preExisting],
+        ]
+        let locator = String(
+            data: try JSONSerialization.data(withJSONObject: obj0),
+            encoding: .utf8
+        )!
+        sync.bufferLocator(book: book, locatorJSON: locator, percentage: 0.5)
+        await sync.flushPendingProgress(for: book)
+
+        let pushed = await backend.firstPush()
+        let json = pushed?.progress.locatorJSON ?? ""
+        let data = json.data(using: .utf8)!
+        let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let locations = obj?["locations"] as? [String: Any]
+        #expect((locations?["cssSelector"] as? String) == preExisting)
+        #expect(stub.calls.isEmpty)
     }
 }

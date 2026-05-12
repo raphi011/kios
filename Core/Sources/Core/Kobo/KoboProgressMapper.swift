@@ -51,14 +51,14 @@ public enum KoboProgressMapper {
     /// koboSpan IDs only contain `[a-zA-Z0-9.]`, so escaping `.` suffices.
     /// Paired with `unescapeCSS` so `KoboBackend` can extract the original id
     /// back out of the canonical locator JSON. **Edit these two in lockstep.**
-    static func escapeCSS(_ s: String) -> String {
+    public static func escapeCSS(_ s: String) -> String {
         s.replacingOccurrences(of: ".", with: #"\."#)
     }
 
-    /// Inverse of `escapeCSS`. Internal so `KoboBackend.buildBookmark` can
+    /// Inverse of `escapeCSS`. Paired with `escapeCSS` so `KoboBackend` can
     /// undo the escape when round-tripping a koboSpan id through the
     /// Readium-shape locator.
-    static func unescapeCSS(_ s: String) -> String {
+    public static func unescapeCSS(_ s: String) -> String {
         s.replacingOccurrences(of: #"\."#, with: ".")
     }
 }

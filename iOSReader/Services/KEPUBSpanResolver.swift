@@ -3,7 +3,12 @@ import Core
 import ReadiumZIPFoundation
 
 @MainActor
-final class KEPUBSpanResolver {
+protocol KoboSpanResolving: AnyObject {
+    func resolve(bookFileURL: URL, chapterHref: String, progression: Double) async -> String?
+}
+
+@MainActor
+final class KEPUBSpanResolver: KoboSpanResolving {
     private struct Key: Hashable {
         let bookFile: URL
         let chapterHref: String
