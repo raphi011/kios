@@ -2,12 +2,14 @@ import Foundation
 
 /// Adapts `KOSyncClient` to the backend-agnostic `SyncBackend` protocol.
 ///
-/// The kosync wire format embeds chapter index + intra-chapter progression as a
-/// `"<chapter>:<intra>"` string. We piggy-back on `CanonicalProgress.locatorJSON`
-/// to carry that pre-formatted string through the sync pipeline; when missing
-/// (e.g. a fresh progress not built from a kosync-aware locator) we fall back
-/// to `"0:0.0000"`. The full Readium ↔ kosync translation lives in
-/// `KOSyncProgressMapper` and is invoked at a higher layer.
+/// The kosync wire format embeds chapter index + intra-chapter
+/// progression as a `"<chapter>:<intra>"` string. We extract the
+/// intra-chapter progression from the Readium locator JSON's
+/// `locations.progression` field and hardcode chapter=0 — Readium
+/// locators don't carry a usable chapter index, and the global
+/// `percentage` field handles cross-device sync regardless. Peer
+/// readers (KOReader, etc.) that read our `progress` will see a
+/// chapter-0 anchor but a correct global percentage.
 public struct KOSyncBackend: SyncBackend {
     public let client: KOSyncClient
     public let deviceID: String
@@ -46,7 +48,15 @@ public struct KOSyncBackend: SyncBackend {
         guard let hash = id.partialMD5 else {
             throw BackendError.identityMissing(field: "partialMD5")
         }
-        let progressString = p.locatorJSON ?? "0:0.0000"
+        let intra = Self.extractIntraProgression(fromLocatorJSON: p.locatorJSON)
+        // Chapter index is intentionally 0 — Readium locators don't carry an
+        // explicit chapter index, and reconstructing one from `href` requires
+        // the publication's reading order. KOReader peers fall back to the
+        // global `percentage` for position recovery, which is correct.
+        let progressString = KOSyncProgressMapper.encodeProgress(
+            chapter: 0,
+            intraProgression: intra
+        )
         try await client.putProgress(.init(
             document: hash,
             progress: progressString,
@@ -54,5 +64,21 @@ public struct KOSyncBackend: SyncBackend {
             device: deviceName,
             deviceID: deviceID
         ))
+    }
+
+    /// Parses a Readium locator JSON string and returns
+    /// `locations.progression`, or 0.0 if the field is absent or the JSON
+    /// can't be parsed (e.g. nil, malformed, or non-JSON content). Defaults
+    /// to 0 — meaning "start of this chapter" — which is the safest position
+    /// for a peer reader to seek to if our intra-progression is unknown.
+    static func extractIntraProgression(fromLocatorJSON json: String?) -> Double {
+        guard let json,
+              let data = json.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let locations = obj["locations"] as? [String: Any],
+              let progression = locations["progression"] as? Double else {
+            return 0
+        }
+        return min(max(progression, 0), 1)
     }
 }
