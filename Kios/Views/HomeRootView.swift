@@ -7,16 +7,26 @@ struct HomeRootView: View {
            sort: \Book.title)
     private var books: [Book]
 
-    /// All progress rows for downloaded books. We do a single fetch instead of
-    /// one @Query per row — keeps the row view body simple and avoids creating
-    /// N FetchDescriptors for an N-book library.
     @Query private var progresses: [ReadingProgress]
+    @Query private var sessions: [ReadingSession]
 
     @Environment(\.modelContext) private var context
     @Environment(AppEnvironment.self) private var env
 
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
+    }
+
+    private var stats: HomeStats {
+        StatsAggregator.compute(sessions: sessions, books: books)
+    }
+
+    private var heroBook: Book? {
+        StatsAggregator.continueReadingCandidate(
+            books: books,
+            progressByBookID: progressByBookID,
+            sessions: sessions
+        )
     }
 
     var body: some View {
@@ -30,31 +40,70 @@ struct HomeRootView: View {
                     )
                 } else {
                     List {
-                        ForEach(books) { book in
-                            Button {
-                                env.openReader(book.id)
-                            } label: {
-                                BookRow(book: book,
-                                        readingProgress: progressByBookID[book.id] ?? 0)
+                        Section {
+                            StatsHeader(stats: stats)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
+                        if let hero = heroBook {
+                            Section {
+                                ContinueReadingCard(
+                                    book: hero,
+                                    progress: progressByBookID[hero.id] ?? 0,
+                                    perBookSessions: sessions.filter { $0.bookID == hero.id },
+                                    onTap: { env.openReader(hero.id) }
+                                )
                             }
-                            .buttonStyle(.plain)
-                            .listRowInsets(.init(top: 0, leading: 0,
-                                                 bottom: 0, trailing: 16))
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    delete(book)
+                        }
+
+                        Section("Library") {
+                            ForEach(books) { book in
+                                Button {
+                                    env.openReader(book.id)
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    BookRow(book: book,
+                                            readingProgress: progressByBookID[book.id] ?? 0)
+                                }
+                                .buttonStyle(.plain)
+                                .listRowInsets(.init(top: 0, leading: 16,
+                                                     bottom: 0, trailing: 16))
+                                .contextMenu {
+                                    Button(book.finishedAt == nil
+                                           ? "Mark as finished"
+                                           : "Mark as unfinished") {
+                                        toggleFinished(book)
+                                    }
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        delete(book)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
                     }
-                    .listRowSpacing(0)
+                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Home")
         }
+    }
+
+    private func toggleFinished(_ book: Book) {
+        if book.finishedAt == nil {
+            book.finishedAt = .now
+        } else {
+            book.finishedAt = nil
+        }
+        book.finishedManually = true
+        try? context.save()
     }
 
     private func delete(_ book: Book) {
@@ -72,6 +121,7 @@ struct HomeRootView: View {
         ).first {
             context.delete(progress)
         }
+        // Sessions for the book are kept (historical record).
         context.delete(book)
         try? context.save()
     }
