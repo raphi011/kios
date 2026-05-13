@@ -1,7 +1,7 @@
-name: iOSReader
+name: Kios
 
 options:
-  bundleIdPrefix: me.iosreader
+  bundleIdPrefix: com.raphi011
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -27,17 +27,17 @@ packages:
     from: "3.0.1"
 
 targets:
-  iOSReader:
+  Kios:
     type: application
     platform: iOS
     sources:
-      - path: iOSReader
+      - path: Kios
     resources:
-      - path: iOSReader/Resources
+      - path: Kios/Resources
         optional: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: me.iosreader.iOSReader
+        PRODUCT_BUNDLE_IDENTIFIER: com.raphi011.kios
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -61,20 +61,20 @@ targets:
         product: ReadiumZIPFoundation
     scheme:
       testTargets:
-        - iOSReaderTests
+        - KiosTests
       gatherCoverageData: false
 
-  iOSReaderTests:
+  KiosTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: iOSReaderTests
+      - path: KiosTests
     resources:
-      - path: iOSReaderTests/Fixtures
+      - path: KiosTests/Fixtures
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: me.iosreader.iOSReaderTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.raphi011.kios.tests
         GENERATE_INFOPLIST_FILE: YES
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
     dependencies:
-      - target: iOSReader
+      - target: Kios

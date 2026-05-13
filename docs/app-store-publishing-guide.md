@@ -4,16 +4,17 @@
 
 ## Context
 
-This iOS app — codenamed `ios-reader` in the repo, product name **Aldus** (pending verification) — is a native SwiftUI + SwiftData EPUB reader (iOS 17+, iPhone + iPad) that talks to self-hosted Calibre-Web/CWA servers and supports KOSync/Kobo sync. It's well-tested (168 tests passing) and feature-complete on the `feat/v1` branch, but **not yet ready for App Store submission**: Aldus name still needs trademark clearance, no Apple Developer account, no signing team, no version numbers, no app icon, no privacy manifest, no App Store Connect record, no screenshots, no marketing copy.
+This iOS app — codenamed `ios-reader` in the repo, product name **Kios** — is a native SwiftUI + SwiftData EPUB reader (iOS 17+, iPhone + iPad) that talks to self-hosted Calibre-Web/CWA servers and supports KOSync/Kobo sync. It's well-tested (168 tests passing) and feature-complete on the `feat/v1` branch, but **not yet ready for App Store submission**: no Apple Developer account, no signing team, no version numbers, no app icon, no privacy manifest, no App Store Connect record, no screenshots, no marketing copy.
 
 This document captures the full set of requirements, decisions, and process steps so future submission work has a single reference.
 
 ## Key decisions captured so far
 
-- **App name (working)**: **Aldus** — tentatively chosen, pending USPTO trademark clearance and domain acquisition. Named after Aldus Manutius (1449–1515), Venetian printer who invented the portable pocket-sized book in 1501 and commissioned the first italic typeface. Strong narrative fit: a self-hosted EPUB reader honoring the inventor of portable reading. See "Phase 0a — Picking a name" for the verification work that led here, and the trademark/domain caveats that must still be cleared.
+- **App name**: **Kios**. App Store listing name: **Kios Reader** (the "Reader" descriptor differentiates Class 9 goods from the existing *Kios, Inc.* mark and adds modest ASO weight). Home-screen `CFBundleDisplayName` stays as **Kios**. Treated as a coined word — no public reference to the Kobo+iOS etymology in marketing, store copy, or readme. Project is free + open source + niche, so the residual risks (kiosk search-collision, low-probability C&D from Kios, Inc.) are recoverable rather than existential. See "Phase 0a — Picking a name" for the analysis trail (including the rejected *Aldus* alternative).
+- **Bundle ID**: `com.raphi011.kios`. Locked. Matches the GitHub-handle namespace; short and ages well. Replaces the working-title `me.iosreader.iOSReader`.
 - **Apple Developer enrollment**: deferred until the app is "ready to launch."
 - **Reviewer access strategy**: add local EPUB file import so the app is fully testable offline; demo Calibre-Web server credentials in App Review Notes as backup.
-- **Visual assets**: must be designed from scratch (icon, screenshots). Icon design has a natural starting point: the historical Aldine anchor-and-dolphin printer's mark with the motto *festina lente* ("make haste slowly").
+- **Visual assets**: must be designed from scratch (icon, screenshots). Icon direction TBD now that the *Aldus* anchor-and-dolphin reference is off the table.
 - **Submission path**: TestFlight beta first, then promote to App Store review.
 
 ## Current state (verified via codebase exploration)

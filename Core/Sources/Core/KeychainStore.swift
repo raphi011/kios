@@ -9,7 +9,7 @@ import Security
 public struct KeychainStore: Sendable {
 
     /// The service identifier scoping all items in this store. Conventionally
-    /// a reverse-DNS string like `"me.iosreader.credentials"`.
+    /// a reverse-DNS string like `"com.raphi011.kios.credentials"`.
     public let service: String
 
     public init(service: String) {

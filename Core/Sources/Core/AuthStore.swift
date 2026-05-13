@@ -45,15 +45,15 @@ public final class AuthStore: Sendable {
     // while keeping the class Sendable.
     private nonisolated(unsafe) let defaults: UserDefaults
 
-    private static let serverURLKey            = "iOSReader.serverURL"
-    private static let usernameKey             = "iOSReader.username"
+    private static let serverURLKey            = "Kios.serverURL"
+    private static let usernameKey             = "Kios.username"
     private static let pwAccount               = "password"
-    private static let activeProtocolKey       = "iOSReader.activeProtocol"
-    private static let koboImageURLTemplateKey = "iOSReader.koboImageURLTemplate"
+    private static let activeProtocolKey       = "Kios.activeProtocol"
+    private static let koboImageURLTemplateKey = "Kios.koboImageURLTemplate"
     private static let koboBaseURLAccount      = "koboBaseURL"
 
     public init(
-        keychain: KeychainStore = .init(service: "me.iosreader.credentials"),
+        keychain: KeychainStore = .init(service: "com.raphi011.kios.credentials"),
         defaults: UserDefaults = .standard
     ) {
         self.keychain = keychain

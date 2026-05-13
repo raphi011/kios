@@ -10,8 +10,8 @@
 CORE_TEST  := cd Core && swift test --no-parallel
 SWIFT_BUILD := cd Core && swift build -Xswiftc -warnings-as-errors
 IOS_DEST   := platform=iOS Simulator,name=iPhone 17 Pro
-IOS_TEST   := xcodebuild test -project iOSReader.xcodeproj -scheme iOSReader -destination '$(IOS_DEST)'
-IOS_BUILD  := xcodebuild build -project iOSReader.xcodeproj -scheme iOSReader -destination '$(IOS_DEST)'
+IOS_TEST   := xcodebuild test -project Kios.xcodeproj -scheme Kios -destination '$(IOS_DEST)'
+IOS_BUILD  := xcodebuild build -project Kios.xcodeproj -scheme Kios -destination '$(IOS_DEST)'
 
 test: test-core test-ios
 
@@ -29,4 +29,4 @@ xcodegen:
 
 clean:
 	swift package --package-path Core clean
-	rm -rf ~/Library/Developer/Xcode/DerivedData/iOSReader-*
+	rm -rf ~/Library/Developer/Xcode/DerivedData/Kios-*
