@@ -31,4 +31,20 @@ struct ModelsTests {
         #expect(fetched.count == 1)
         #expect(fetched.first?.title == "Dune")
     }
+
+    @Test func bookDefaultsToUnfinished() throws {
+        let book = Book(
+            serverID: "s1",
+            serverIDProtocol: "kosync",
+            title: "t",
+            authors: [],
+            opdsHref: nil,
+            acquisitionURL: URL(string: "https://example.com/a")!,
+            format: .epub,
+            koboBookUUID: nil,
+            archived: false
+        )
+        #expect(book.finishedAt == nil)
+        #expect(book.finishedManually == false)
+    }
 }

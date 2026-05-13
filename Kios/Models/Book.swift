@@ -32,6 +32,14 @@ final class Book {
     var addedAt: Date
     /// Soft-delete flag used by Kobo (which models archive instead of delete).
     var archived: Bool
+    /// Set when the user has read the book to ≥95% progression (auto)
+    /// or via the row's "Mark as finished" context menu (manual).
+    /// nil means "not finished".
+    var finishedAt: Date?
+    /// `true` once the user has explicitly toggled finished/unfinished.
+    /// Locks out auto-95% detection so an un-finished book doesn't
+    /// re-finish itself on the next read past 95%.
+    var finishedManually: Bool = false
 
     init(
         id: UUID = UUID(),
@@ -47,7 +55,9 @@ final class Book {
         filename: String? = nil,
         partialMD5: String? = nil,
         thumbnailURL: URL? = nil,
-        addedAt: Date = .now
+        addedAt: Date = .now,
+        finishedAt: Date? = nil,
+        finishedManually: Bool = false
     ) {
         self.id = id
         self.serverID = serverID
@@ -63,6 +73,8 @@ final class Book {
         self.thumbnailURL = thumbnailURL
         self.addedAt = addedAt
         self.archived = archived
+        self.finishedAt = finishedAt
+        self.finishedManually = finishedManually
     }
 
     /// Resolved absolute file URL, recomputed each access from the live
