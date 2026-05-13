@@ -8,6 +8,8 @@ struct RootView: View {
     /// parent re-renders during a child's first appearance.
     @State private var selectedTab: Int = 0
 
+    @State private var coordinator = BookOpenCoordinator.shared
+
     var body: some View {
         @Bindable var env = env
 
@@ -45,6 +47,17 @@ struct RootView: View {
         // Home would be empty until they download something.
         .onChange(of: env.sync != nil) { _, hasSync in
             if hasSync { selectedTab = 1 }
+        }
+        .onChange(of: coordinator.pendingBookID) { _, newValue in
+            guard newValue != nil, let id = coordinator.consume() else { return }
+            env.openReader(id)
+        }
+        .onAppear {
+            // Cold launch: the intent may have set `pendingBookID` before
+            // RootView mounted. Consume it on first appear.
+            if let id = coordinator.consume() {
+                env.openReader(id)
+            }
         }
         .fullScreenCover(item: $env.activeReader) { route in
             ReaderView(bookID: route.id)
