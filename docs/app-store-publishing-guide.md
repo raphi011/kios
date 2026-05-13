@@ -14,7 +14,7 @@ This document captures the full set of requirements, decisions, and process step
 - **Bundle ID**: `com.raphi011.kios`. Locked. Matches the GitHub-handle namespace; short and ages well. Replaces the working-title `me.iosreader.iOSReader`.
 - **Apple Developer enrollment**: deferred until the app is "ready to launch."
 - **Reviewer access strategy**: add local EPUB file import so the app is fully testable offline; demo Calibre-Web server credentials in App Review Notes as backup.
-- **Visual assets**: must be designed from scratch (icon, screenshots). Icon direction TBD now that the *Aldus* anchor-and-dolphin reference is off the table.
+- **Visual assets**: still need designed mark + screenshots. A **placeholder icon from [IconikAI](https://www.iconikai.com/) is wired into the build** (`Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`) so the simulator install + Xcode validation pipelines work end-to-end today. The placeholder **must be replaced with a real designed mark before public launch** — see "1.6 App icon assets" for the AI tooling shortlist evaluated during the placeholder pass.
 - **Submission path**: TestFlight beta first, then promote to App Store review.
 
 ## Current state (verified via codebase exploration)
@@ -25,7 +25,7 @@ This document captures the full set of requirements, decisions, and process step
 | Deployment target | iOS 17+, iPhone + iPad |
 | Code signing | `CODE_SIGN_STYLE = Automatic`, `DEVELOPMENT_TEAM = ""` (unset) |
 | Versioning | `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` **not set** (uses auto-Info.plist) |
-| App icon | **Missing** — no `Assets.xcassets` in source |
+| App icon | **Placeholder** — IconikAI 1024×1024 single-size master at `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`. To be replaced before public launch. |
 | Launch screen | Auto-generated (generic) |
 | Privacy descriptions in Info.plist | None (app uses no camera/photos/location/tracking) |
 | `PrivacyInfo.xcprivacy` | **Missing** |
@@ -216,10 +216,58 @@ The README says HTTP needs an exception. Two options:
 
 ### 1.6 App icon assets
 
-Create `iOSReader/Resources/Assets.xcassets/AppIcon.appiconset/` with the iOS 17+ single-size approach: one `1024×1024` PNG, no alpha channel, no transparency, sRGB color space. Xcode auto-generates the smaller sizes. Icon design tips:
-- Avoid copying the system Books app aesthetic (rejection risk under Guideline 4.1).
-- No "EPUB" text on the icon (App Store rejects icon-as-marketing).
-- Test at 60×60pt — it must read at thumbnail size.
+The asset catalog uses the **iOS 17+ single-size approach**: one `1024×1024` PNG at `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`, no alpha channel, no transparency, sRGB color space. Xcode auto-generates every smaller variant (20pt/29pt/40pt/60pt iPhone + 76pt/83.5pt iPad) via Lanczos resampling at build time, so the catalog stays a one-file affair.
+
+**Current state — placeholder in place.** A generic icon generated with [IconikAI](https://www.iconikai.com/) (free tier) is wired into the build to unblock Phase 1 validation, simulator installs, and eventually TestFlight internal testing. It is **not** the final brand mark. Free-tier AI generators share a recognisable "AI-generated" aesthetic and won't stand out among the 50+ existing EPUB readers on the App Store. Plan to replace before public launch.
+
+#### AI icon tooling shortlist (evaluated May 2026)
+
+When designing the replacement, three tiers of AI tools are worth knowing about. Mix and match — the model and the asset-packager are separate concerns.
+
+**Tier 1 — All-in-one AI icon generators** (cheapest path, weakest brand differentiation):
+- [Recraft](https://www.recraft.ai/generate/icons) — best free-tier *quality*; vector + raster export, brand-style references, editable in Figma after export
+- [IconikAI](https://www.iconikai.com/) — used for the current placeholder; 5 generations/day free; auto-exports iOS asset bundles
+- [Appicons.ai](https://appicons.ai/) — trained specifically on app-icon shapes; strong rounded-squircle defaults
+- [Venngage AI iOS icons](https://venngage.com/ai-tools/ios-app-icon-generator) — Apple HIG defaults baked in
+
+**Tier 2 — General image models** (highest ceiling, more iteration):
+- **Flux 2 Pro** (`$0.08/image` via fal.ai, replicate.com) — strongest prompt adherence; ideal for sharp geometric marks
+- **Flux 1 Schnell** — free via fal.ai / together.ai / openrouter; same family, lower fidelity
+- **Midjourney v7** (`$10/mo` Basic) — best for painterly/illustrative icons; use `--style raw` for cleaner geometric output
+- **Ideogram 3** (10/day free) — unbeaten letter rendering; ideal if going with a typographic "K" monogram
+- **GPT Image 2** (ChatGPT Plus `$20/mo` or API) — easiest one-shot workflow; output is "good not great"
+- **Imagen 4** (Gemini `$20/mo` or Vertex AI) — more suited to scenes than icons
+
+**Tier 3 — Local / open-weight** (free forever, more setup):
+- **Flux 2 Klein** + **ComfyUI** — Black Forest Labs open-weights model (Nov 2025); needs ≥12 GB VRAM Nvidia (Apple Silicon works but 3–5× slower)
+- **SDXL** — older but mature; many app-icon LoRAs available on Civitai
+- **Stable Diffusion 3** — 8 GB VRAM minimum
+
+**Asset packagers** (take any 1024×1024 PNG and produce the Xcode-ready `.appiconset`):
+- [icon.kitchen](https://icon.kitchen/) — free, no signup, drag-drop, exports `AppIcon.appiconset` directly
+- [appicon.co](https://www.appicon.co/) — browser-only equivalent
+- [AppIconKitchen](https://www.appiconkitchen.com/) — bundles AI concept generation + Xcode/Android/PWA export in one tool
+
+For the iOS 17+ single-size approach already in use, the packager step is optional: you can drop a `1024×1024` PNG and the minimal `Contents.json` directly into the existing `AppIcon.appiconset/` folder and Xcode handles the rest.
+
+#### Design constraints (Apple-imposed)
+
+- **No alpha channel.** AI tools often output PNGs with alpha; verify with `sips -g hasAlpha icon.png` (must say "no"). Strip alpha with `sips -s format png -s formatOptions normal icon.png` or Preview → Export → Alpha: off.
+- **sRGB colour space.** Most AI output is already sRGB; verify same way (`sips -g space`).
+- **No corner radius in the source.** iOS applies its squircle mask at render — your source must be a square canvas. Pre-rounded corners get double-rounded and look broken.
+- **No "iOS-style" mimicry.** Skip drawn bezels, drop shadows, 3D highlights. iOS 18+ tinted-icon mode flattens these and they collapse visually.
+- **For iOS 18+ tinted-icon support**, also export a single-colour silhouette variant (most AI tools won't generate this — derive in Figma from the colour version).
+- **No "EPUB" text or marketing copy on the icon** (Guideline 4.1 / icon-as-marketing rejection).
+- **Avoid the system Books app aesthetic** (Guideline 4.1 copycats).
+- **Test at 60×60pt early.** AirDrop the 1024 PNG to a real iPhone and view at thumbnail size. Detail that reads at 1024 disappears at 60pt — the #1 cause of "looked great in Figma, looks blobby on iPhone."
+
+#### Recommended replacement workflow (when ready)
+
+1. Generate concept variants in **Ideogram 3** (free) — Kios is a coined word, so a typographic "K" mark is the strongest brand direction and Ideogram leads on letter rendering.
+2. Generate parallel concepts in **Recraft** (free) with the "Flat icon" or "Vector" style preset to explore non-typographic alternatives.
+3. Refine the chosen direction in **Flux 2 Pro** (~`$1.60` total across ~20 iterations) for prompt-precise tuning of the final master.
+4. Polish in Affinity Designer or Figma — strip alpha, force sRGB, export 1024×1024 PNG.
+5. Drop the PNG into `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` (replacing the IconikAI placeholder). Done — no `Contents.json` changes needed.
 
 ### 1.7 Launch screen
 
@@ -231,7 +279,7 @@ Auto-generated is fine for v1 but looks generic. Optionally add a `LaunchScreen.
 |---|---|
 | `project.yml` | Add `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, eventually `DEVELOPMENT_TEAM`. Add `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: false`. Add `sources:` entry for new `Resources/` folder. |
 | `iOSReader/Resources/PrivacyInfo.xcprivacy` (NEW) | First-party privacy manifest |
-| `iOSReader/Resources/Assets.xcassets/AppIcon.appiconset/` (NEW) | App icon |
+| `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` | App icon (currently the IconikAI placeholder; replace before launch) |
 | `iOSReader/App/` — new view for document picker | Local file import UI |
 | `Info.plist` keys via `project.yml` | `CFBundleDocumentTypes` for EPUB; optionally `NSAppTransportSecurity` |
 | `README.md` | Document HTTPS-only requirement (if going that route) |
@@ -342,7 +390,7 @@ When rejected: respond in App Store Connect → Resolution Center within a day. 
 |---|---|
 | `project.yml` | Versioning, dev team, Info.plist keys, Resources path |
 | `iOSReader/Resources/PrivacyInfo.xcprivacy` (NEW) | Privacy manifest |
-| `iOSReader/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json` (NEW) + `icon-1024.png` | App icon |
+| `Kios/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json` + `icon-1024.png` | App icon — wired today with IconikAI placeholder; replace `icon-1024.png` before launch |
 | `iOSReader/App/` (new files for document picker / local library) | Local EPUB import feature |
 | `README.md` | HTTPS-only documentation |
 | `fastlane/` (optional, NEW) | Automated upload pipeline |
