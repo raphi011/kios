@@ -39,9 +39,7 @@ final class AppEnvironment {
     private let spanResolver = KEPUBSpanResolver()
 
     init() throws {
-        self.modelContainer = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self
-        )
+        self.modelContainer = try ModelContainer.kios()
         // Use the container's mainContext (the same one `.modelContainer(...)`
         // wires `@Query` to in views). Constructing a parallel `ModelContext`
         // here would create a second cache on the same store — service writes
