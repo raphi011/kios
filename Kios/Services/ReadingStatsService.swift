@@ -35,7 +35,10 @@ final class ReadingStatsService {
     private let context: ModelContext
     private let clock: StatsClock
     private let idleTimeoutSeconds: Int
-    private let minSessionSeconds: Int = 5
+    /// Sessions shorter than this are dropped on close — protects against
+    /// noise from accidental reader opens. Production default is 5s; tests
+    /// inject lower values to isolate the lifecycle path from the floor.
+    private let minSessionSeconds: Int
     /// Gap cap applied to each (lastActivityAt → now) window.
     /// Must equal `idleTimeoutSeconds` for the math to line up.
     private var gapCapSeconds: Int { idleTimeoutSeconds }
@@ -45,11 +48,13 @@ final class ReadingStatsService {
     init(
         context: ModelContext,
         clock: StatsClock = .real,
-        idleTimeoutSeconds: Int = 120
+        idleTimeoutSeconds: Int = 120,
+        minSessionSeconds: Int = 5
     ) {
         self.context = context
         self.clock = clock
         self.idleTimeoutSeconds = idleTimeoutSeconds
+        self.minSessionSeconds = minSessionSeconds
     }
 
     // MARK: - Lifecycle entry points
@@ -69,7 +74,7 @@ final class ReadingStatsService {
             maxPosition: initialPosition,
             idleTimer: nil
         )
-        // Idle timer scheduled in Task 8.
+        scheduleIdleTimer()
     }
 
     func sessionDidAdvance(position: Int, totalPositions: Int, bookID: UUID? = nil) {
@@ -84,6 +89,7 @@ final class ReadingStatsService {
                 maxPosition: position,
                 idleTimer: nil
             )
+            scheduleIdleTimer()
             return
         }
         guard var current = active else { return }
@@ -93,7 +99,7 @@ final class ReadingStatsService {
         current.minPosition = min(current.minPosition, position)
         current.maxPosition = max(current.maxPosition, position)
         active = current
-        // Idle timer reset scheduled in Task 8.
+        scheduleIdleTimer()
     }
 
     func sessionDidClose(reason: EndReason) {
@@ -101,6 +107,28 @@ final class ReadingStatsService {
     }
 
     // MARK: - Internals
+
+    private func scheduleIdleTimer() {
+        active?.idleTimer?.cancel()
+        let bookID = active?.bookID
+        let clock = self.clock
+        let timeout = self.idleTimeoutSeconds
+        let timer = Task { [weak self] in
+            do {
+                try await clock.sleep(timeout)
+            } catch {
+                return  // cancelled — normal path on every advance.
+            }
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                // Only fire if we're still in the same active session.
+                guard self.active?.bookID == bookID else { return }
+                self.close(reason: .idle)
+            }
+        }
+        active?.idleTimer = timer
+    }
 
     private func close(reason: EndReason) {
         guard var current = active else { return }

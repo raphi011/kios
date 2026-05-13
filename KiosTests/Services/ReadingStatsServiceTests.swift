@@ -125,3 +125,47 @@ struct ReadingStatsServiceBasicTests {
         #expect(sessions[0].durationSeconds == 35)
     }
 }
+
+@MainActor
+@Suite("ReadingStatsService idle timer", .serialized)
+struct ReadingStatsServiceIdleTests {
+
+    /// This suite uses a real (short) idle timeout instead of a gated mock
+    /// clock — `StatsClock` is `Sendable` and resists being mocked across
+    /// the timer's background Task boundary, while a 1-sec real timeout is
+    /// fast enough that the test runtime stays manageable. The 5-second
+    /// minimum-session floor is bypassed via `minSessionSeconds: 0` so the
+    /// test isolates the idle path.
+    @Test func idleFireEndsSessionWithIdleReason() async throws {
+        let container = try ModelContainer.kiosInMemory()
+        let context = ModelContext(container)
+        let book = Book(
+            serverID: "s", serverIDProtocol: "kosync",
+            title: "t", authors: [], opdsHref: nil,
+            acquisitionURL: URL(string: "https://e.com/a")!,
+            format: .epub, koboBookUUID: nil, archived: false,
+            filename: "x.epub"
+        )
+        context.insert(book)
+        try context.save()
+
+        let service = ReadingStatsService(
+            context: context,
+            clock: .real,
+            idleTimeoutSeconds: 1,
+            minSessionSeconds: 0
+        )
+        service.sessionDidOpen(bookID: book.id, initialPosition: 0, totalPositions: 100)
+
+        // Wait past the idle timeout + a buffer for the timer Task to
+        // hop back onto MainActor and persist.
+        try await Task.sleep(for: .milliseconds(1500))
+
+        let sessions = try context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.count == 1)
+        #expect(sessions[0].endReason == "idle")
+        // Active time ≈ 1 sec (the idle timeout). Allow ±1 sec slack to
+        // absorb scheduling jitter.
+        #expect(sessions[0].durationSeconds >= 1 && sessions[0].durationSeconds <= 2)
+    }
+}
