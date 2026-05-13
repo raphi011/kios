@@ -90,6 +90,7 @@ final class ReadingStatsService {
                 idleTimer: nil
             )
             scheduleIdleTimer()
+            applyAutoFinish(bookID: active?.bookID, position: position, totalPositions: totalPositions)
             return
         }
         guard var current = active else { return }
@@ -100,6 +101,7 @@ final class ReadingStatsService {
         current.maxPosition = max(current.maxPosition, position)
         active = current
         scheduleIdleTimer()
+        applyAutoFinish(bookID: active?.bookID, position: position, totalPositions: totalPositions)
     }
 
     func sessionDidClose(reason: EndReason) {
@@ -128,6 +130,20 @@ final class ReadingStatsService {
             }
         }
         active?.idleTimer = timer
+    }
+
+    private func applyAutoFinish(bookID: UUID?, position: Int, totalPositions: Int) {
+        guard let bookID, totalPositions > 0 else { return }
+        let progression = Double(position) / Double(totalPositions)
+        guard progression >= 0.95 else { return }
+
+        let descriptor = FetchDescriptor<Book>(
+            predicate: #Predicate { $0.id == bookID }
+        )
+        guard let book = try? context.fetch(descriptor).first else { return }
+        guard book.finishedAt == nil, !book.finishedManually else { return }
+        book.finishedAt = clock.now()
+        try? context.save()
     }
 
     private func close(reason: EndReason) {

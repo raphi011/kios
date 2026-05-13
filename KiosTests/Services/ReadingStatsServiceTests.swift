@@ -169,3 +169,86 @@ struct ReadingStatsServiceIdleTests {
         #expect(sessions[0].durationSeconds >= 1 && sessions[0].durationSeconds <= 2)
     }
 }
+
+@MainActor
+@Suite("ReadingStatsService auto-finish", .serialized)
+struct ReadingStatsServiceAutoFinishTests {
+
+    /// See `ReadingStatsServiceBasicTests.TestClock` for the @unchecked rationale.
+    final class FixedClock: @unchecked Sendable {
+        var current: Date
+        init(start: Date) { self.current = start }
+        func advance(by seconds: Int) { current = current.addingTimeInterval(TimeInterval(seconds)) }
+        func statsClock() -> StatsClock {
+            StatsClock(
+                now: { [self] in self.current },
+                // Indefinite sleep — idle timer never fires here. Same
+                // reason as in `ReadingStatsServiceBasicTests.TestClock`.
+                sleep: { _ in
+                    try await Task.sleep(for: .seconds(60 * 60 * 24 * 365))
+                }
+            )
+        }
+    }
+
+    private static func makeEnv(
+        finishedAt: Date? = nil,
+        finishedManually: Bool = false
+    ) throws -> (service: ReadingStatsService, context: ModelContext, book: Book, clock: FixedClock) {
+        let container = try ModelContainer.kiosInMemory()
+        let context = ModelContext(container)
+        let book = Book(
+            serverID: "s", serverIDProtocol: "kosync",
+            title: "t", authors: [], opdsHref: nil,
+            acquisitionURL: URL(string: "https://e.com/a")!,
+            format: .epub, koboBookUUID: nil, archived: false,
+            filename: "x.epub", finishedAt: finishedAt, finishedManually: finishedManually
+        )
+        context.insert(book)
+        try context.save()
+
+        let clock = FixedClock(start: Date(timeIntervalSince1970: 1_000_000))
+        let service = ReadingStatsService(
+            context: context, clock: clock.statsClock(), idleTimeoutSeconds: 120
+        )
+        return (service, context, book, clock)
+    }
+
+    @Test func advancingPast95SetsFinishedAt() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 30)
+        env.service.sessionDidAdvance(position: 96, totalPositions: 100)
+
+        #expect(env.book.finishedAt != nil)
+    }
+
+    @Test func advancingPast95DoesNotSetWhenAlreadyFinished() throws {
+        let initial = Date(timeIntervalSince1970: 500_000)
+        let env = try Self.makeEnv(finishedAt: initial)
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 30)
+        env.service.sessionDidAdvance(position: 97, totalPositions: 100)
+
+        #expect(env.book.finishedAt == initial)  // unchanged
+    }
+
+    @Test func advancingPast95DoesNotSetWhenManuallyOverridden() throws {
+        // User explicitly un-finished the book (finishedAt nil, finishedManually true).
+        let env = try Self.makeEnv(finishedAt: nil, finishedManually: true)
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 30)
+        env.service.sessionDidAdvance(position: 97, totalPositions: 100)
+
+        #expect(env.book.finishedAt == nil)  // manual override holds
+    }
+
+    @Test func advancingBelow95DoesNotSetFinishedAt() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 30)
+        env.service.sessionDidAdvance(position: 50, totalPositions: 100)
+
+        #expect(env.book.finishedAt == nil)
+    }
+}
