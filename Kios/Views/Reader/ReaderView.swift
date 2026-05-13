@@ -97,6 +97,26 @@ struct ReaderView: View {
             async let p: Void = loadPublicationIfReady()
             async let r: Void = resolveOpen()
             _ = await (p, r)
+            // Stats: open a session once the publication is loaded.
+            // Position = current locator's index in the positions list,
+            // or 0 if no current locator yet.
+            let initialPosition: Int
+            if let locator = currentLocator,
+               let idx = positions.firstIndex(where: { $0.href == locator.href }) {
+                initialPosition = idx
+            } else if let initial = initialLocator,
+                      let idx = positions.firstIndex(where: { $0.href == initial.href }) {
+                initialPosition = idx
+            } else {
+                initialPosition = 0
+            }
+            if !positions.isEmpty {
+                env.stats.sessionDidOpen(
+                    bookID: bookID,
+                    initialPosition: initialPosition,
+                    totalPositions: positions.count
+                )
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
@@ -113,6 +133,7 @@ struct ReaderView: View {
         }
         .onDisappear {
             Task { await flush() }
+            env.stats.sessionDidClose(reason: .closed)
             env.activeReader = nil
         }
     }
@@ -525,5 +546,13 @@ struct ReaderView: View {
         env.sync?.bufferLocator(
             book: book, locatorJSON: json, percentage: total
         )
+        // Stats: piggy-back on the same locator callback.
+        if let positionIndex = positions.firstIndex(where: { $0.href == locator.href }) {
+            env.stats.sessionDidAdvance(
+                position: positionIndex,
+                totalPositions: positions.count,
+                bookID: book.id
+            )
+        }
     }
 }
