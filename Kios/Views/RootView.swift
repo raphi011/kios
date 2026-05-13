@@ -35,7 +35,7 @@ struct RootView: View {
                     if newPhase == .active {
                         Task { await env.sync?.flushAllPending() }
                     }
-                    if newPhase == .background || newPhase == .inactive {
+                    if newPhase == .background {
                         env.stats.sessionDidClose(reason: .backgrounded)
                     }
                 }

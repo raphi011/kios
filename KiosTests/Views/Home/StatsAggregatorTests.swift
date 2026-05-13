@@ -206,7 +206,12 @@ struct StatsAggregatorTests {
         #expect(result?.id == downloaded.id)
     }
 
-    @Test func candidateFiltersOutZeroAndOver95Progress() {
+    /// Verifies that books with `progress >= 0.95` are filtered out.
+    /// The other two books (progress 0.0 and 0.4) are BOTH eligible —
+    /// progress 0 is allowed by spec for fresh downloads. `mid` wins
+    /// the tie-break (later in input order; see `continueReadingCandidate`
+    /// for the explicit `enumerated()`-based tie-breaker).
+    @Test func candidateFiltersOutOver95Progress() {
         let zero = Self.book()
         let over = Self.book()
         let mid = Self.book()
