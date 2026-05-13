@@ -9,9 +9,9 @@ iOS 17+ / iPadOS 17+. macOS deferred. Built with Swift 5.10, Xcode 26+.
 
 ## Status
 
-v1 in development on `feat/v1`. Phases 0–9 implemented and unit-tested
-end-to-end (86 Core tests + 82 iOS tests, all passing). Manual smoke
-test against a live CWA pending.
+v1 feature-complete on `main`. Unit-tested end-to-end
+(104 Core tests + 91 iOS tests passing as of last `make test`).
+Manual smoke test against a live CWA pending; not yet on TestFlight.
 
 ## Server requirements
 
@@ -61,8 +61,8 @@ Two Swift modules:
 
 | Module | Contents | Tested via |
 |---|---|---|
-| `Core/` (local SPM package) | `DocumentHasher`, `KeychainStore`, `HTTPClient`, `KOSyncClient`, `ProgressMapper`, `AuthStore`, plus shared value types | `swift test` |
-| `Kios/` (Xcode app target) | SwiftData models, `OPDSClient` (Readium-backed), services (`LibraryService`, `DownloadService`, `SyncService`), SwiftUI views | `xcodebuild test` |
+| `Core/` (local SPM package) | `DocumentHasher`, `KeychainStore`, `HTTPClient`, `AuthStore`, `KOSyncClient` + `KOSyncBackend` + `KOSyncProgressMapper`, `KoboClient` + `KoboBackend` + `KoboProgressMapper` + `KoboSpanParser`, plus shared value types | `swift test` |
+| `Kios/` (Xcode app target) | SwiftData models, `OPDSClient` (Readium-backed), services (`LibraryService`, `DownloadService`, `SyncService`, `KEPUBSpanResolver`), SwiftUI views | `xcodebuild test` |
 
 The split keeps pure-Foundation code (~70% of testable logic) on a fast
 `swift test` loop. Anything touching SwiftData, UIKit, or Readium lives in
@@ -111,9 +111,6 @@ This prevents a mid-buffer protocol switch from misrouting writes.
 
 ### Known v1 limitations
 
-- A real Kobo's KEPUB file format isn't openable in the app's reader
-  today (PDF/CBZ limitation applies to KEPUB too). Sync works — you can
-  open the same book as EPUB locally and the Kobo location maps in.
 - Cross-protocol identity merge happens by **normalized title + authors**
   (lowercase, alphanumeric-only) when neither a `koboBookUUID` nor a
   `partialMD5` is shared. Edge cases (typo'd titles, missing authors)
@@ -123,6 +120,10 @@ This prevents a mid-buffer protocol switch from misrouting writes.
 ## Formats supported in v1
 
 - **EPUB** — full Readium navigator (pagination, themes, font sizing).
+- **KEPUB** — opens via the same EPUB navigator. KEPUB is structurally
+  EPUB3; Kobo's `kobo.X.Y` span markup is ignored at render time and
+  reused at sync time by `KEPUBSpanResolver` to push exact positions
+  back to other devices.
 - **PDF / CBZ** — downloadable but not currently openable in-app. The
   Readium navigators for these formats require an embedded HTTP server
   (`ReadiumAdapterGCDWebServer`) we haven't yet wired up; the reader shows
@@ -150,8 +151,8 @@ This prevents a mid-buffer protocol switch from misrouting writes.
 
 Required before tagging a release. In short:
 
-1. Run a reachable CWA instance with HTTPS and at least one EPUB. The
-   cluster at `https://cwa.example.com` is suitable.
+1. Have a reachable CWA instance available over HTTPS with at least one
+   EPUB in its library.
 2. Launch the app in the simulator. In Settings, pick a protocol:
    - **kosync**: enter URL + username + password.
    - **kobo**: paste the sync URL from CWA admin → enable Kobo sync.
@@ -171,9 +172,7 @@ Required before tagging a release. In short:
 ## Known follow-ups
 
 - PDF / CBZ reading via `ReadiumAdapterGCDWebServer`.
-- Real chapter index in `pushLocator` (currently hard-coded to 0; we rely on
-  `percentage` as the lingua franca cross-reader).
-- "Continue" alert button currently dismisses; should call
-  `navigator.go(to:)` with the server's locator.
-- Pending-upload retry on app foreground (rows are flagged but the retry
-  loop isn't wired).
+- Real chapter index in the kosync push path (`KOSyncBackend.pushProgress`
+  currently encodes `chapter: 0` because Readium locators don't carry an
+  explicit chapter index; KOReader peers fall back to whole-book
+  `percentage` for cross-device seeking).
