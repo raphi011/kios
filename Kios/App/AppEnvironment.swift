@@ -19,6 +19,10 @@ final class AppEnvironment {
     /// at init and keep it available even before credentials are present.
     let library: LibraryService
 
+    /// Tracks reading sessions, persisted as `ReadingSession` rows.
+    /// Eagerly constructed: pure-local, no credentials required.
+    let stats: ReadingStatsService
+
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
     private(set) var sync: SyncService?
     private(set) var downloads: DownloadService?
@@ -49,6 +53,7 @@ final class AppEnvironment {
         self.modelContext = self.modelContainer.mainContext
         self.authStore = AuthStore()
         self.library = LibraryService(context: self.modelContext)
+        self.stats = ReadingStatsService(context: self.modelContext)
 
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory
