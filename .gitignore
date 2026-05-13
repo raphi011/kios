@@ -37,5 +37,8 @@ scripts/capture-opds-fixtures.sh
 ## Implementation plans and design specs (kept locally, not in repo)
 docs/superpowers/
 
+## Brainstorm session state (visual companion mockups)
+.superpowers/
+
 ## Claude Code / AI tooling local state
 .claude/
