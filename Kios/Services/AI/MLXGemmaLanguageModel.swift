@@ -11,11 +11,13 @@ import Core
 final class MLXGemmaLanguageModel: LanguageModel {
     /// Practical upper bound on prompt size for on-device Gemma 4 inference.
     /// The model's *stated* window is 128 K tokens; the limiting factor on a
-    /// phone is the KV cache. With `kvBits: 4` quantization (configured in
-    /// `MLXModelRunner.generate`) the cache footprint is roughly 4× smaller
-    /// than fp16, so 32 K tokens (~96 K characters) is comfortably below the
-    /// jetsam threshold even on 8 GB devices. Chapters beyond this still go
-    /// through `MapReduceSummarizer`.
+    /// phone is the KV cache. KV-cache quantization (`kvBits`) is NOT usable
+    /// here — `Gemma4Attention` in mlx-swift-lm 3.31.3 calls the generic
+    /// `cache.update(...)` which `fatalError`s on `QuantizedKVCache`. With
+    /// fp16 cache, Gemma 4's hybrid attention (36 sliding-window layers +
+    /// 6 global) keeps the footprint at ~1.6 GB for 32 K-token prompts, so
+    /// 96 K characters is a safe budget on 8 GB+ devices. Chapters beyond
+    /// this still go through `MapReduceSummarizer`.
     let contextBudgetCharacters = 96_000
 
     private let runner: any ModelRunner

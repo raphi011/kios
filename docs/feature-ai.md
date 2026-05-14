@@ -30,11 +30,12 @@ Once a user has downloaded Gemma, the picker defaults to it. Built-in stays as a
 
 ## Stability: the load-bearing iOS knobs
 
-iOS aggressively jetsam-kills processes that exceed the per-process memory cap. Jetsam terminations are SIGKILL — they write no `.ips` crash report, never reach Xcode Organizer's Crashes tab, and look from the user's side like the app just vanished. Three knobs together keep us inside the cap; missing any one of them causes silent crashes:
+iOS aggressively jetsam-kills processes that exceed the per-process memory cap. Jetsam terminations are SIGKILL — they write no `.ips` crash report, never reach Xcode Organizer's Crashes tab, and look from the user's side like the app just vanished. Two knobs keep us inside the cap; missing either causes silent crashes:
 
 1. **`com.apple.developer.kernel.increased-memory-limit` entitlement** (`Kios/Kios.entitlements`). On supported devices, this lifts the per-process cap from ~3 GB to ~5–6 GB on 8 GB phones, higher on 12 GB phones. Without it, the 5.2 GB Gemma 4 download crashes the process during *load*, before inference even starts.
 2. **`MLX.Memory.cacheLimit` + `MLX.Memory.memoryLimit`** (`Kios/Services/AI/ModelRuntime.swift`). The Metal buffer-cache and overall-allocation ceilings on MLX. We set `cacheLimit = 32 MB` (LLMEval uses 20 MB for smaller models) and `memoryLimit = 70 % of os_proc_available_memory()` before the first `_load`. Default behavior is unbounded growth until the OS pushes back — which on iOS is a SIGKILL.
-3. **`kvBits: 4` KV-cache quantization** (`GenerateParameters` in `MLXModelRunner.generate`). At 32 K tokens the fp16 KV cache is ~4 GB; quantizing to 4 bits cuts that to ~1 GB with no measurable quality loss for summarization. This is what makes the 96 KB-character prompt budget actually fit in memory.
+
+**Do NOT set `kvBits` on `GenerateParameters` with Gemma.** KV-cache quantization in mlx-swift-lm 3.31.3 is opt-in per-model — only `GPTOSS` and `MiMoV2Flash` route through `cache.updateQuantized(...)`. Every Gemma variant (and most other attention implementations) calls the generic `cache.update(keys:values:)`, which on `QuantizedKVCache` is `fatalError("Use updateQuantized instead")`. Setting `kvBits` crashes the process on the first prefill step inside `Gemma4Attention.callAsFunction`. The fp16 cache is fine for Gemma 4 anyway: its hybrid attention (36 sliding-window layers with a 512-token window + 6 global attention layers) keeps the cache around 1.6 GB even at the full 32 K-token prompt — well below the per-process cap.
 
 The corresponding eviction policy:
 
@@ -281,7 +282,7 @@ Set both before the first MLX allocation — i.e. inside `MLXRunnerLoader.load`,
 
 ### `contextBudgetCharacters` must reflect *device* memory, not the model's stated window
 
-Gemma 4 claims a 128 K-token context. The phone can't actually run prompts that long: KV cache scales linearly with sequence length, and even quantized to 4 bits it grows past comfortable limits at ~50 K tokens. The empirical practical limit with `kvBits: 4` is roughly 32 K tokens (~96 K English characters), which is what `contextBudgetCharacters` is set to. Anything larger goes through `MapReduceSummarizer`. Bumping this number "because the model supports more" reintroduces silent jetsam kills on long chapters.
+Gemma 4 claims a 128 K-token context. The phone can't actually run prompts that long: even with Gemma 4's hybrid attention (36 sliding-window layers + 6 global), KV cache for the *global* layers still scales linearly with sequence length and grows past comfortable limits well before the model card's claim. The empirical practical limit is roughly 32 K tokens (~96 K English characters), which is what `contextBudgetCharacters` is set to. Anything larger goes through `MapReduceSummarizer`. Bumping this number "because the model supports more" reintroduces silent jetsam kills on long chapters.
 
 ### `AISettings` must use stored properties with `didSet`, not computed UserDefaults accessors
 

@@ -103,16 +103,22 @@ final class MLXModelRunner: ModelRunner {
         maxNewTokens: Int,
         onToken: @Sendable @escaping (String) -> Void
     ) async throws {
-        // KV-cache quantization is the single biggest unlock for staying under
-        // iOS's jetsam threshold at long prompts. At 32 K tokens the fp16
-        // default cache is ~4 GB; `kvBits: 4` (group size 64) cuts that to
-        // ~1 GB without measurable summarization quality loss. `quantizedKVStart`
-        // remains 0 so quantization is active from the very first token.
+        // Do NOT set `kvBits` here. KV-cache quantization in mlx-swift-lm
+        // 3.31.3 is opt-in per-model: only Gemma4Attention (and most other
+        // attention impls in MLXLLM/Models) call the generic
+        // `cache.update(keys:values:)`, which on `QuantizedKVCache` is a
+        // hard `fatalError("Use updateQuantized instead")`. Setting `kvBits`
+        // here crashes during the first prefill step inside
+        // `Gemma4Attention.callAsFunction` → `QuantizedKVCache.update`.
+        // Only `GPTOSS` and `MiMoV2Flash` take the `updateQuantized` path.
+        //
+        // fp16 KV cache is fine for Gemma 4 anyway: the hybrid attention
+        // (36 sliding-window layers with a 512-token window + 6 global
+        // attention layers) keeps the cache around 1.6 GB even at the full
+        // 32 K-token prompt — well below the per-process cap on 8 GB
+        // devices with the `increased-memory-limit` entitlement.
         let parameters = GenerateParameters(
             maxTokens: maxNewTokens,
-            kvBits: 4,
-            kvGroupSize: 64,
-            quantizedKVStart: 0,
             temperature: 0.4
         )
         try await container.perform { (context: ModelContext) in
