@@ -33,7 +33,7 @@ Once a user has downloaded Gemma, the picker defaults to it. Built-in stays as a
 iOS aggressively jetsam-kills processes that exceed the per-process memory cap. Jetsam terminations are SIGKILL — they write no `.ips` crash report, never reach Xcode Organizer's Crashes tab, and look from the user's side like the app just vanished. Two knobs keep us inside the cap; missing either causes silent crashes:
 
 1. **`com.apple.developer.kernel.increased-memory-limit` entitlement** (`Kios/Kios.entitlements`). On supported devices, this lifts the per-process cap from ~3 GB to ~5–6 GB on 8 GB phones, higher on 12 GB phones. Without it, the 5.2 GB Gemma 4 download crashes the process during *load*, before inference even starts.
-2. **`MLX.Memory.cacheLimit` + `MLX.Memory.memoryLimit`** (`Kios/Services/AI/ModelRuntime.swift`). The Metal buffer-cache and overall-allocation ceilings on MLX. We set `cacheLimit = 32 MB` (LLMEval uses 20 MB for smaller models) and `memoryLimit = 70 % of os_proc_available_memory()` before the first `_load`. Default behavior is unbounded growth until the OS pushes back — which on iOS is a SIGKILL.
+2. **`MLX.Memory.cacheLimit`** (`Kios/Services/AI/ModelRuntime.swift`). Caps the Metal buffer cache MLX holds across allocations. We set `32 MB` (LLMEval uses 20 MB for smaller models) before the first `_load`. Default behavior is unbounded cache growth. We deliberately do NOT set `MLX.Memory.memoryLimit` — it's a hard ceiling that stalls inference during legitimate spikes (prefill, kernel JIT), and without observed evidence that we need it, the entitlement + cacheLimit + release()-on-memory-warning are the working combo.
 
 **Do NOT set `kvBits` on `GenerateParameters` with Gemma.** KV-cache quantization in mlx-swift-lm 3.31.3 is opt-in per-model — only `GPTOSS` and `MiMoV2Flash` route through `cache.updateQuantized(...)`. Every Gemma variant (and most other attention implementations) calls the generic `cache.update(keys:values:)`, which on `QuantizedKVCache` is `fatalError("Use updateQuantized instead")`. Setting `kvBits` crashes the process on the first prefill step inside `Gemma4Attention.callAsFunction`. The fp16 cache is fine for Gemma 4 anyway: its hybrid attention (36 sliding-window layers with a 512-token window + 6 global attention layers) keeps the cache around 1.6 GB even at the full 32 K-token prompt — well below the per-process cap.
 
@@ -248,7 +248,7 @@ The Gemma runtime is heavy (a 5.2 GB MLX module + KV cache in Metal memory). To 
 
 | Event | What happens |
 |---|---|
-| First `acquire(at:)` | Calls `RunnerLoading.load(from:)` — the MLX implementation configures `Memory.cacheLimit` / `Memory.memoryLimit`, then `LLMModelFactory._load` reads weights into Metal |
+| First `acquire(at:)` | Calls `RunnerLoading.load(from:)` — the MLX implementation sets `Memory.cacheLimit`, then `LLMModelFactory._load` reads weights into Metal |
 | Subsequent `acquire(at:)` with same directory | Reuses the loaded runner; updates `lastUsed` |
 | `release()` | Drops the runner immediately |
 | `evictIfIdle()` | Drops the runner if `lastUsed` is older than the idle timeout (default 5 min) |
@@ -269,16 +269,15 @@ Because of this requirement, we cannot use the short `LLMModelFactory.loadContai
 
 If `mlx-swift-lm` ever adds a `loadContainer(from: directory, using: ..., configuration:)` overload that accepts a configuration object for local-directory loads, prefer that.
 
-### `MLX.Memory.cacheLimit` / `memoryLimit` (not `MLX.GPU.set(...)`)
+### `MLX.Memory.cacheLimit` (not `MLX.GPU.set(...)`)
 
-The deprecated `MLX.GPU.set(cacheLimit:)` and `MLX.GPU.set(memoryLimit:)` functions still work but produce warnings; the maintained API in `mlx-swift` 0.31+ is the `MLX.Memory` namespace's static properties:
+The deprecated `MLX.GPU.set(cacheLimit:)` still works but produces a warning; the maintained API in `mlx-swift` 0.31+ is the `MLX.Memory` namespace's static property:
 
 ```swift
 MLX.Memory.cacheLimit = 32 * 1024 * 1024
-MLX.Memory.memoryLimit = Int(Double(os_proc_available_memory()) * 0.7)
 ```
 
-Set both before the first MLX allocation — i.e. inside `MLXRunnerLoader.load`, before `_load`. Setting them after the model is loaded has no effect on the existing allocation.
+Set it before the first MLX allocation — i.e. inside `MLXRunnerLoader.load`, before `_load`. Setting it after the model is loaded has no effect on the existing allocation. We do NOT set `MLX.Memory.memoryLimit` (the hard-ceiling counterpart) — it stalls inference on legitimate prefill spikes and the cacheLimit + entitlement combo is sufficient in practice.
 
 ### `contextBudgetCharacters` must reflect *device* memory, not the model's stated window
 
@@ -471,7 +470,7 @@ Map-reduce. Apple FM's 4 K-token context window forces multi-step summarization 
 
 ### "MLX model crashed the app"
 
-Check `Application Support/kios/diagnostics/` after reopening. A bumped `cumulativeMemoryResourceLimitExitCount` means iOS jetsammed us for memory pressure — usually means `Memory.memoryLimit` was set too high, the entitlement isn't being honored, or another app pushed the device into a low-memory state. Apple's Foundation Model is more conservative; falling back to Built-in for that session is the right move while investigating.
+Check `Application Support/kios/diagnostics/` after reopening. A bumped `cumulativeMemoryResourceLimitExitCount` means iOS jetsammed us for memory pressure — usually means the entitlement isn't being honored, `cacheLimit` is letting too much cache accumulate, or another app pushed the device into a low-memory state. As a last resort, setting `MLX.Memory.memoryLimit` (deliberately omitted today) can clamp MLX before the OS does. Apple's Foundation Model is more conservative; falling back to Built-in for that session is the right move while investigating.
 
 ### "I keep seeing 'Re-download required'"
 

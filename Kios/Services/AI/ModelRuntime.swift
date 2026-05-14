@@ -1,5 +1,4 @@
 import Foundation
-import os
 
 /// Generates tokens from a loaded MLX module. Real implementation lives
 /// alongside `MLXGemmaLanguageModel`. This protocol exists so tests can
@@ -151,27 +150,21 @@ final class MLXModelRunner: ModelRunner {
 /// the converted MLX weights + tokenizer + config.json.
 struct MLXRunnerLoader: RunnerLoading {
     func load(from directory: URL) async throws -> any ModelRunner {
-        // Configure MLX's Metal allocator BEFORE the first allocation. iOS
-        // jetsam-kills processes that hold "wired" GPU memory past the per-
-        // process cap — without these limits MLX will happily allocate until
-        // the kernel pushes back, which on iOS means SIGKILL with no .ips
-        // crash report.
+        // Cap the Metal buffer cache before the first MLX allocation. iOS
+        // counts MLX's "wired" GPU memory against the per-process limit, and
+        // the default behavior is unbounded cache growth across allocations.
+        // 32 MB mirrors what LLMEval ships (it uses 20 MB for smaller models).
+        // Wrong values just trade throughput for headroom, never correctness.
         //
-        // `cacheLimit` caps the buffer cache the allocator holds across
-        // allocations. 32 MB is conservative; LLMEval uses 20 MB for smaller
-        // models. Wrong values just trade throughput for headroom, never
-        // correctness.
-        //
-        // `memoryLimit` is a soft ceiling on overall MLX allocations. We size
-        // it from `os_proc_available_memory()` so it tracks the device's
-        // actual budget (which depends on the `increased-memory-limit`
-        // entitlement and other apps' pressure), with a ~70 % safety margin
-        // so the rest of the reader (Readium, SwiftData) still has room.
-        let available = Int(os_proc_available_memory())
-        let safetyFloor = 1_500_000_000   // 1.5 GB — never go below
-        let memoryLimit = max(safetyFloor, Int(Double(available) * 0.7))
+        // NOT setting `MLX.Memory.memoryLimit`: it's a *hard* ceiling on MLX
+        // allocations. Picking a value too low stalls or fails inference
+        // during legitimate spikes (prefill, kernel JIT); picking it too high
+        // is no better than the OS jetsam catching us anyway. Without
+        // observed evidence that we need this, we leave it unset and rely on
+        // (a) the `increased-memory-limit` entitlement to lift the per-
+        // process cap, (b) the `release()` on memory warning / background
+        // hooks, and (c) `cacheLimit` above to bound the steady-state.
         MLX.Memory.cacheLimit = 32 * 1024 * 1024
-        MLX.Memory.memoryLimit = memoryLimit
 
         // Build a ResolvedModelConfiguration manually so we can set
         // `extraEOSTokens`. The shorter `loadContainer(from:using:)` overload
