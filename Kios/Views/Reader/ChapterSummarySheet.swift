@@ -11,6 +11,7 @@ struct ChapterSummarySheet: View {
     let onClose: () -> Void
 
     @State private var scope: SummaryScope = .readSoFar
+    @State private var hasStartedFirstRun: Bool = false
     @Bindable var service: AISummaryService
 
     var body: some View {
@@ -34,9 +35,19 @@ struct ChapterSummarySheet: View {
                         }
                         switch service.summaryState {
                         case .idle:
-                            Text("Tap Summarize to begin.")
-                                .foregroundStyle(.secondary)
-                        case .streaming(let s), .done(let s):
+                            if hasStartedFirstRun {
+                                preparingIndicator
+                            } else {
+                                Text("Tap Summarize to begin.")
+                                    .foregroundStyle(.secondary)
+                            }
+                        case .streaming(let s):
+                            if s.isEmpty {
+                                preparingIndicator
+                            } else {
+                                Text(s).textSelection(.enabled)
+                            }
+                        case .done(let s):
                             Text(s).textSelection(.enabled)
                         case .failed(let err):
                             errorCard(err)
@@ -71,6 +82,7 @@ struct ChapterSummarySheet: View {
     }
 
     private func runSummary() async {
+        hasStartedFirstRun = true
         await service.summarizeCurrentChapter(
             bookID: bookID,
             chapterHref: chapterHref,
@@ -79,6 +91,15 @@ struct ChapterSummarySheet: View {
             scope: scope,
             engine: engine
         )
+    }
+
+    private var preparingIndicator: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+            Text("Preparing summary…")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func regenerate() {

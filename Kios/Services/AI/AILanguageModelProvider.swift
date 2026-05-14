@@ -24,22 +24,36 @@ final class AILanguageModelProvider: AILanguageModelProviding, @unchecked Sendab
                 throw ProviderError.fmUnavailable
             }
         case .gemma3_4b:
+            // MLX's Metal kernels aren't supported by the iOS Simulator's Metal
+            // subset; loading the model crashes the process inside
+            // `mlx::core::metal::Device::Device()`. Fail fast with a clear
+            // message so the summary sheet shows an error card instead.
+            #if targetEnvironment(simulator)
+            throw ProviderError.gemmaUnsupportedOnSimulator
+            #else
             let asset = ModelCatalog.gemma3_4b
             guard case .installed = assetStore.installationStatus(for: asset) else {
                 throw ProviderError.gemmaNotInstalled
             }
             let runner = try await runtime.acquire(at: assetStore.directory(for: asset))
             return MLXGemmaLanguageModel(runner: runner)
+            #endif
         }
     }
 
     enum ProviderError: LocalizedError {
         case fmUnavailable
         case gemmaNotInstalled
+        case gemmaUnsupportedOnSimulator
+
         var errorDescription: String? {
             switch self {
-            case .fmUnavailable: return "Apple Intelligence is unavailable."
-            case .gemmaNotInstalled: return "Gemma model is not installed."
+            case .fmUnavailable:
+                return "Apple Intelligence is unavailable."
+            case .gemmaNotInstalled:
+                return "Gemma model is not installed."
+            case .gemmaUnsupportedOnSimulator:
+                return "MLX-based engines (including Gemma 3 4B) can't run in the iOS Simulator. Test on a real device, or switch to the Built-in engine in Settings."
             }
         }
     }
