@@ -25,6 +25,9 @@ packages:
   ZIPFoundation:
     url: https://github.com/readium/ZIPFoundation.git
     from: "3.0.1"
+  MLXSwift:
+    url: https://github.com/ml-explore/mlx-swift-examples.git
+    from: "2.29.1"
 
 targets:
   Kios:
@@ -43,6 +46,7 @@ targets:
         ENABLE_PREVIEWS: YES
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_ENTITLEMENTS: Kios/Kios.entitlements
     dependencies:
       - package: Core
         product: Core
@@ -56,6 +60,8 @@ targets:
         product: ReadiumOPDS
       - package: ZIPFoundation
         product: ReadiumZIPFoundation
+      - package: MLXSwift
+        product: MLXLLM
       - target: KiosControls
     scheme:
       testTargets:
