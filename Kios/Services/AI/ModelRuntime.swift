@@ -56,3 +56,59 @@ actor ModelRuntime {
         }
     }
 }
+
+#if canImport(MLXLLM)
+import MLXLLM
+import MLXLMCommon
+
+/// MLX-backed `ModelRunner`. Wraps a loaded `ModelContainer` and streams
+/// generated text deltas (already detokenized by MLXLMCommon) via the
+/// `onToken` callback. Honors `Task.isCancelled`.
+final class MLXModelRunner: ModelRunner {
+    private let container: ModelContainer
+
+    init(container: ModelContainer) {
+        self.container = container
+    }
+
+    func generate(
+        prompt: String,
+        maxNewTokens: Int,
+        onToken: @Sendable @escaping (String) -> Void
+    ) async throws {
+        let parameters = GenerateParameters(maxTokens: maxNewTokens, temperature: 0.4)
+        try await container.perform { (context: ModelContext) in
+            let userInput = UserInput(prompt: prompt)
+            let lmInput = try await context.processor.prepare(input: userInput)
+            let stream = try MLXLMCommon.generate(
+                input: lmInput,
+                parameters: parameters,
+                context: context
+            )
+            for await generation in stream {
+                if Task.isCancelled { break }
+                switch generation {
+                case .chunk(let delta):
+                    onToken(delta)
+                case .info:
+                    continue
+                case .toolCall:
+                    continue
+                }
+            }
+        }
+    }
+}
+
+/// Loads an MLX `ModelContainer` from a local on-disk directory containing
+/// the converted MLX weights + tokenizer + config.json.
+struct MLXRunnerLoader: RunnerLoading {
+    func load(from directory: URL) async throws -> any ModelRunner {
+        let configuration = ModelConfiguration(directory: directory)
+        let container = try await LLMModelFactory.shared.loadContainer(
+            configuration: configuration
+        )
+        return MLXModelRunner(container: container)
+    }
+}
+#endif
