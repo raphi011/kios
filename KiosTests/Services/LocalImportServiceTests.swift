@@ -60,6 +60,115 @@ struct LocalImportServiceTests {
         let dest = h.booksDir.appendingPathComponent(filename)
         #expect(FileManager.default.fileExists(atPath: dest.path))
     }
+
+    @Test func dedupReturnsExistingByPartialMD5() async throws {
+        let h = try makeHarness()
+        let src = try fixture("sample.epub")
+
+        // First import lands a row.
+        let first = try await h.service.import(from: src)
+        guard case .imported(let firstBook) = first else {
+            Issue.record("first import should be .imported"); return
+        }
+        let firstID = firstBook.id
+        let knownHash = try #require(firstBook.partialMD5)
+
+        // Second import of the same file hits dedup.
+        let second = try await h.service.import(from: src)
+        guard case .existing(let existing) = second else {
+            Issue.record("second import should be .existing, got \(second)")
+            return
+        }
+        #expect(existing.id == firstID)
+        #expect(existing.partialMD5 == knownHash)
+
+        // Exactly one row in the store.
+        let rows = try h.context.fetch(FetchDescriptor<Book>())
+        #expect(rows.count == 1)
+
+        // No orphaned files in the test books directory.
+        let entries = try FileManager.default.contentsOfDirectory(atPath: h.booksDir.path)
+        let epubs = entries.filter { $0.hasSuffix(".epub") }
+        #expect(epubs.count == 1)
+    }
+
+    @Test func dedupHitsAcrossSyncedRow() async throws {
+        let h = try makeHarness()
+        let src = try fixture("sample.epub")
+
+        // Pre-compute the hash and pre-insert a .synced Book with that hash.
+        let tempCopy = FileManager.default.temporaryDirectory
+            .appendingPathComponent("hash-probe-\(UUID().uuidString).epub")
+        try FileManager.default.copyItem(at: src, to: tempCopy)
+        defer { try? FileManager.default.removeItem(at: tempCopy) }
+        let knownHash = try DocumentHasher.partialMD5(of: tempCopy)
+
+        let syncedBook = Book(
+            serverID: "srv-existing",
+            serverIDProtocol: "kosync",
+            title: "Already Synced",
+            authors: ["A"],
+            opdsHref: nil,
+            acquisitionURL: URL(string: "https://x")!,
+            format: .epub,
+            koboBookUUID: nil,
+            archived: false,
+            partialMD5: knownHash
+        )
+        h.context.insert(syncedBook)
+        try h.context.save()
+
+        // Import the same content locally — should dedupe to the synced row,
+        // not create a .local copy or flip the source.
+        let result = try await h.service.import(from: src)
+        guard case .existing(let hit) = result else {
+            Issue.record("expected .existing, got \(result)")
+            return
+        }
+        #expect(hit.id == syncedBook.id)
+        #expect(hit.source == .synced)  // no flip!
+        #expect(hit.title == "Already Synced")
+
+        let rows = try h.context.fetch(FetchDescriptor<Book>())
+        #expect(rows.count == 1)
+    }
+
+    @Test func throwsNoTitleWhenOPFMissingTitle() async throws {
+        let h = try makeHarness()
+        let src = try fixture("no-title.epub")
+
+        await #expect(throws: LocalImportError.noTitle) {
+            _ = try await h.service.import(from: src)
+        }
+
+        // No row inserted.
+        let rows = try h.context.fetch(FetchDescriptor<Book>())
+        #expect(rows.isEmpty)
+
+        // No leftover epub or cover files in the test books directory.
+        let entries = try FileManager.default.contentsOfDirectory(atPath: h.booksDir.path)
+        let leftover = entries.filter { $0.hasSuffix(".epub") || $0.hasSuffix(".cover.jpg") }
+        #expect(leftover.isEmpty)
+    }
+
+    @Test func cleansUpFileOnParseFailure() async throws {
+        let h = try makeHarness()
+        let src = try fixture("corrupt.epub")
+
+        do {
+            _ = try await h.service.import(from: src)
+            Issue.record("expected throw, got success")
+        } catch is LocalImportError {
+            // expected
+        }
+
+        let rows = try h.context.fetch(FetchDescriptor<Book>())
+        #expect(rows.isEmpty)
+
+        let entries = try FileManager.default.contentsOfDirectory(atPath: h.booksDir.path)
+        let leftover = entries.filter { $0.hasSuffix(".epub") || $0.hasSuffix(".cover.jpg") }
+        #expect(leftover.isEmpty)
+    }
 }
 
 /// Anchor class for `Bundle(for:)` — gives us the test bundle so we can
