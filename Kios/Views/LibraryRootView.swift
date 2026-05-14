@@ -151,17 +151,21 @@ struct LibraryRootView: View {
                 )
                 .padding(.horizontal, EditorialTheme.listSidePad)
 
-                if filter == .all || filter == .reading, !readingBooks.isEmpty {
-                    section("Reading", books: readingBooks, kind: .reading)
-                }
-                if filter == .all || filter == .unread, !unreadBooks.isEmpty {
-                    section("Unread", books: unreadBooks, kind: .unread)
-                }
-                if filter == .all || filter == .finished, !finishedBooks.isEmpty {
-                    section("Finished",
-                            books: finishedBooks,
-                            kind: .finished,
-                            footer: lastSyncedFooter)
+                if isFilteredEmpty {
+                    filteredEmptyState
+                } else {
+                    if filter == .all || filter == .reading, !readingBooks.isEmpty {
+                        section("Reading", books: readingBooks, kind: .reading)
+                    }
+                    if filter == .all || filter == .unread, !unreadBooks.isEmpty {
+                        section("Unread", books: unreadBooks, kind: .unread)
+                    }
+                    if filter == .all || filter == .finished, !finishedBooks.isEmpty {
+                        section("Finished",
+                                books: finishedBooks,
+                                kind: .finished,
+                                footer: lastSyncedFooter)
+                    }
                 }
 
                 Color.clear.frame(height: 110)   // tab-bar breathing
@@ -219,6 +223,53 @@ struct LibraryRootView: View {
                 description: Text("Tap + to import an EPUB, or pull to refresh.")
             )
             Spacer()
+        }
+    }
+
+    /// True when the currently-selected filter produces no rows. The `.all`
+    /// branch covers the degenerate case where every book is catalog-only
+    /// with mid-read progress (and therefore matches none of the three
+    /// section predicates) — `books.isEmpty` is handled separately above.
+    private var isFilteredEmpty: Bool {
+        switch filter {
+        case .all:      return readingBooks.isEmpty && unreadBooks.isEmpty && finishedBooks.isEmpty
+        case .reading:  return readingBooks.isEmpty
+        case .unread:   return unreadBooks.isEmpty
+        case .finished: return finishedBooks.isEmpty
+        }
+    }
+
+    @ViewBuilder
+    private var filteredEmptyState: some View {
+        let (title, description, symbol) = filteredEmptyContent
+        ContentUnavailableView(
+            title,
+            systemImage: symbol,
+            description: Text(description)
+        )
+        .frame(maxWidth: .infinity)
+        .padding(.top, 80)
+        .padding(.bottom, 80)
+    }
+
+    private var filteredEmptyContent: (title: String, description: String, symbol: String) {
+        switch filter {
+        case .all:
+            return ("Your library is empty",
+                    "Tap + to import an EPUB, or pull to refresh.",
+                    "books.vertical")
+        case .reading:
+            return ("Nothing in progress",
+                    "Books you start reading will appear here.",
+                    "book.pages")
+        case .unread:
+            return ("No unread books",
+                    "Books you haven't started will appear here.",
+                    "book.closed")
+        case .finished:
+            return ("No finished books",
+                    "Books you finish reading will appear here.",
+                    "checkmark.circle")
         }
     }
 
