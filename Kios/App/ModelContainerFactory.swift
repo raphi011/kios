@@ -7,14 +7,14 @@ extension ModelContainer {
     /// the intent outside the app's DI graph.
     static func kios() throws -> ModelContainer {
         try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self
+            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self, ChapterSummary.self
         )
     }
 
     /// In-memory variant for tests and previews — shares the same schema.
     static func kiosInMemory() throws -> ModelContainer {
         try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
+            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self, ChapterSummary.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
     }
