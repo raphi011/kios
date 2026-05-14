@@ -42,4 +42,66 @@ final class MLXGemmaLanguageModel: LanguageModel {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
+
+    func extract<T: Decodable & Sendable>(
+        _ type: T.Type,
+        schema: String,
+        system: String,
+        user: String
+    ) async throws -> T {
+        let baseSystem = """
+        \(system)
+
+        Respond with ONLY valid JSON matching this exact shape, no prose \
+        before or after:
+
+        \(schema)
+        """
+        if let first = try? await collectAndDecode(type, system: baseSystem, user: user) {
+            return first
+        }
+        let retrySystem = baseSystem + """
+
+        Your last reply could not be parsed as JSON. Reply with valid JSON \
+        matching the shape above. Do NOT include any other text.
+        """
+        do {
+            return try await collectAndDecode(type, system: retrySystem, user: user)
+        } catch {
+            throw ExtractionError.malformedOutput(
+                attempts: 2,
+                underlying: String(describing: error)
+            )
+        }
+    }
+
+    private func collectAndDecode<T: Decodable>(
+        _ type: T.Type, system: String, user: String
+    ) async throws -> T {
+        let prompt = AIChatPrompt(system: system, user: user)
+        let buffer = TokenBuffer()
+        try await runner.generate(prompt: prompt, maxNewTokens: 4096) { token in
+            buffer.append(token)
+        }
+        let text = buffer.text
+        return try JSONDecoder().decode(T.self, from: Data(text.utf8))
+    }
+}
+
+/// Thread-safe string accumulator for the @Sendable onToken closure
+/// in `runner.generate`. Local `var` capture is forbidden inside a
+/// @Sendable closure.
+private final class TokenBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _text = ""
+
+    func append(_ s: String) {
+        lock.lock(); defer { lock.unlock() }
+        _text.append(s)
+    }
+
+    var text: String {
+        lock.lock(); defer { lock.unlock() }
+        return _text
+    }
 }
