@@ -102,6 +102,7 @@ targets:
       - path: Kios/Models/BookAnalysis.swift
       - path: Kios/Models/BookSource.swift
       - path: Kios/Models/ChapterSummary.swift
+      - path: Kios/Models/CharacterMention.swift
       - path: Kios/Models/Download.swift
       - path: Kios/Models/DownloadState.swift
       - path: Kios/Models/ReadingProgress.swift

@@ -8,7 +8,7 @@ extension ModelContainer {
     static func kios() throws -> ModelContainer {
         try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
-                 ChapterSummary.self, BookAnalysis.self
+                 ChapterSummary.self, BookAnalysis.self, CharacterMention.self
         )
     }
 
@@ -16,7 +16,7 @@ extension ModelContainer {
     static func kiosInMemory() throws -> ModelContainer {
         try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
-                 ChapterSummary.self, BookAnalysis.self,
+                 ChapterSummary.self, BookAnalysis.self, CharacterMention.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
     }
