@@ -220,11 +220,12 @@ struct ReaderView: View {
                 )
             }
         }
-        .onDisappear {
-            // Drop the service so the next reader open builds a fresh one
-            // bound to that publication's text extractor.
-            summaryService = nil
-        }
+        // NB: do NOT clear `summaryService` in `.onDisappear` — SwiftUI fires
+        // onDisappear on this view when the AI sheet (`.sheet(item:)`) covers
+        // it, which clears the service before the sheet body reads it and
+        // renders the sheet blank. ReaderView is recreated on each
+        // fullScreenCover presentation, so per-book `@State` is naturally
+        // fresh without this cleanup.
     }
 
     // MARK: - Contents/Bookmarks/Notes data
