@@ -62,5 +62,23 @@ struct RootView: View {
         .fullScreenCover(item: $env.activeReader) { route in
             ReaderView(bookID: route.id)
         }
+        .onOpenURL { url in
+            guard url.pathExtension.lowercased() == "epub" else { return }
+            Task { await handleOpenURL(url) }
+        }
+    }
+
+    private func handleOpenURL(_ url: URL) async {
+        do {
+            let outcome = try await env.localImporter.import(from: url)
+            switch outcome {
+            case .imported(let book), .existing(let book):
+                env.openReader(book.id)
+            }
+        } catch {
+            // .onOpenURL has no UI to alert from. Swallow — file is left
+            // alone, no row inserted. Future improvement: bridge errors
+            // back to a toast surface.
+        }
     }
 }
