@@ -28,6 +28,7 @@ Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 - **Swift strict concurrency: complete** — all code must be Sendable-correct. No `@unchecked Sendable` on `@Model` classes.
 - **SwiftData models are NOT Sendable** — pass `PersistentIdentifier` across actor boundaries, re-fetch on the other side. See `Kios/Models/CONVENTIONS.md`.
 - **First build resolves ~1 GB of Readium deps** — subsequent builds are incremental.
+- **No installed users yet — no SwiftData migrations needed.** The app has not shipped or been installed anywhere outside this dev machine. Schema changes (adding/removing fields, changing optionality, renaming) can land as direct edits to the `@Model` classes; do not introduce `VersionedSchema` / `SchemaMigrationPlan` / migration tests. When the app ships, revisit this and add migrations from that point forward.
 
 ## Code Style
 
