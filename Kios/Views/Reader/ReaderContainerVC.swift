@@ -24,7 +24,6 @@ final class ReaderContainerVC: UIViewController {
     // MARK: - Inputs (set via update())
 
     private(set) var fontSizePct: Int = 100
-    private(set) var statusBarHidden: Bool = true
 
     // MARK: - Internals
 
@@ -64,20 +63,18 @@ final class ReaderContainerVC: UIViewController {
         installInputHandlers()
     }
 
-    override var prefersStatusBarHidden: Bool { statusBarHidden }
-    override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { .fade }
+    /// Always hidden — the reader is fully immersive. Showing/hiding the
+    /// status bar would change `view.safeAreaInsets.top`, which would resize
+    /// the navigator and reflow the EPUB columns every time chrome toggles.
+    override var prefersStatusBarHidden: Bool { true }
 
     // MARK: - Updates from SwiftUI
 
     /// Called from `ReaderHost.updateUIViewController` whenever SwiftUI re-renders.
-    func update(fontSizePct: Int, statusBarHidden: Bool) {
+    func update(fontSizePct: Int) {
         if self.fontSizePct != fontSizePct {
             self.fontSizePct = fontSizePct
             applyFontSize()
-        }
-        if self.statusBarHidden != statusBarHidden {
-            self.statusBarHidden = statusBarHidden
-            setNeedsStatusBarAppearanceUpdate()
         }
     }
 

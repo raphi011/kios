@@ -15,7 +15,6 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// set across re-renders — only changes trigger navigation.
     let pendingJump: Locator?
     let fontSizePct: Int
-    let statusBarHidden: Bool
     var onLocatorChange: @Sendable (Locator) -> Void
     var onCenterTap: () -> Void
     var onPageTurn: () -> Void
@@ -29,7 +28,7 @@ struct ReaderHost: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         if publication.conforms(to: .epub) {
             let vc = ReaderContainerVC(publication: publication, initialLocator: initialLocator)
-            vc.update(fontSizePct: fontSizePct, statusBarHidden: statusBarHidden)
+            vc.update(fontSizePct: fontSizePct)
             vc.onLocatorChange = { locator in onLocatorChange(locator) }
             vc.onCenterTap = onCenterTap
             vc.onPageTurn = onPageTurn
@@ -48,7 +47,7 @@ struct ReaderHost: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
         guard let container = uiViewController as? ReaderContainerVC else { return }
-        container.update(fontSizePct: fontSizePct, statusBarHidden: statusBarHidden)
+        container.update(fontSizePct: fontSizePct)
         // Re-bind callbacks each update — SwiftUI may have re-created closures.
         container.onLocatorChange = { locator in onLocatorChange(locator) }
         container.onCenterTap = onCenterTap

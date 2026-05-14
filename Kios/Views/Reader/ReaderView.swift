@@ -95,13 +95,12 @@ struct ReaderView: View {
     var body: some View {
         ZStack {
             // EPUB content stretches edge-to-edge horizontally and behind the
-            // Dynamic Island. At rest, the navigator gets a bottom safeAreaInset
-            // filled with the rest strip, so body text never overlaps the
-            // hairline. When chrome is visible, the inset is empty and the
-            // floating glass bottom bar overlays the natural safe area.
+            // Dynamic Island. Bottom safe area (home indicator) is respected
+            // so body text doesn't run under it. Chrome is a floating overlay,
+            // never a safeAreaInset — toggling an inset would resize the
+            // navigator and reflow the EPUB columns.
             content
                 .ignoresSafeArea(edges: [.top, .horizontal])
-                .safeAreaInset(edge: .bottom, spacing: 0) { restStripInset }
             chromeOverlay
             hudOverlay
         }
@@ -219,7 +218,6 @@ struct ReaderView: View {
                     initialLocator: initialLocator,
                     pendingJump: pendingJump,
                     fontSizePct: fontSizePct,
-                    statusBarHidden: !uiVisible,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in
                             currentLocator = locator
@@ -315,25 +313,6 @@ struct ReaderView: View {
         }
     }
 
-    /// Bottom safe-area inset for the navigator. Shows the at-rest progress
-    /// strip when chrome is hidden; otherwise reserves zero height so the
-    /// floating chrome bar handles its own placement.
-    @ViewBuilder
-    private var restStripInset: some View {
-        if !uiVisible, publication != nil {
-            EditorialReaderRestStrip(
-                chapterShort: chapterShortLabel,
-                pageShort: pageShortLabel,
-                progress: currentLocator?.locations.totalProgression ?? 0
-            )
-            .padding(.top, 8)
-            .padding(.bottom, 6)
-            .allowsHitTesting(false)
-        } else {
-            Color.clear.frame(height: 0)
-        }
-    }
-
     // MARK: - Chrome string helpers
 
     /// 1-based index of the TOC entry whose progression is the largest still
@@ -359,12 +338,6 @@ struct ReaderView: View {
         return "CHAPTER \(romanNumeral(i))"
     }
 
-    /// "ch. 4" — lowercase mono form used by the rest strip.
-    private var chapterShortLabel: String {
-        guard let i = currentChapterIndex else { return "—" }
-        return "ch. \(i)"
-    }
-
     /// Chapter title (from TOC) for the current progression, or "—" when
     /// the TOC hasn't loaded yet.
     private var chapterTitleForCurrent: String {
@@ -377,12 +350,6 @@ struct ReaderView: View {
         guard !positions.isEmpty else { return "—" }
         let idx = currentPageIndex
         return "p. \(idx + 1) / \(positions.count)"
-    }
-
-    /// "p. 142" — short form for the rest strip.
-    private var pageShortLabel: String {
-        guard !positions.isEmpty else { return "—" }
-        return "p. \(currentPageIndex + 1)"
     }
 
     private var currentPageIndex: Int {

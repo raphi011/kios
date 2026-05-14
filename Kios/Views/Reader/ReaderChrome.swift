@@ -275,52 +275,6 @@ struct EditorialReaderBottomBar: View {
     }
 }
 
-// MARK: - Rest strip (chrome hidden)
-
-/// Subtle bottom strip shown while the reader is in its at-rest state (chrome
-/// hidden). A 1pt hairline progress bar bracketed by mono-cap "ch. N" and
-/// "p. M" labels — just enough wayfinding without breaking immersion.
-struct EditorialReaderRestStrip: View {
-    let chapterShort: String   // e.g. "ch. 4"
-    let pageShort: String      // e.g. "p. 142"
-    let progress: Double       // 0...1
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var muted: Color { colorScheme == .dark ? EditorialTheme.muted.opacity(0.85) : EditorialTheme.muted }
-    private var rule: Color { colorScheme == .dark ? Color.white.opacity(0.10) : EditorialTheme.rule }
-    private var ink: Color { colorScheme == .dark ? EditorialTheme.bg : EditorialTheme.ink }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(chapterShort)
-                .font(EditorialTheme.mono(size: 10))
-                .tracking(1.0)
-                .textCase(.uppercase)
-                .foregroundStyle(muted)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(rule)
-                        .frame(height: 1)
-                    Rectangle()
-                        .fill(ink)
-                        .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 1)
-                }
-            }
-            .frame(height: 1)
-
-            Text(pageShort)
-                .font(EditorialTheme.mono(size: 10))
-                .tracking(1.0)
-                .textCase(.uppercase)
-                .foregroundStyle(muted)
-        }
-        .padding(.horizontal, 30)
-    }
-}
-
 // MARK: - HUDs (overlay state during scrub / pinch)
 
 /// Centered HUD shown during a progress-bar scrub. Translucent rounded
