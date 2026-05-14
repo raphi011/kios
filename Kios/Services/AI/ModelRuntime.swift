@@ -57,6 +57,19 @@ actor ModelRuntime {
     }
 }
 
+/// Stub loader used when MLXLLM is unavailable at compile time (e.g. SwiftPM
+/// resolution skipped on this platform). Acquiring throws so callers surface
+/// "Gemma unavailable" rather than crashing on a missing runner.
+struct UnavailableRunnerLoader: RunnerLoading {
+    enum LoadError: LocalizedError {
+        case mlxNotAvailable
+        var errorDescription: String? { "MLX runtime is not available in this build." }
+    }
+    func load(from directory: URL) async throws -> any ModelRunner {
+        throw LoadError.mlxNotAvailable
+    }
+}
+
 #if canImport(MLXLLM)
 import MLXLLM
 import MLXLMCommon

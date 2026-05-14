@@ -42,6 +42,13 @@ struct ReaderView: View {
     /// Set true by the `⊟` button in the reader top bar to present the
     /// Contents / Bookmarks / Notes modal. Setting back to false dismisses.
     @State private var showContents: Bool = false
+    /// Non-nil while the chapter-summary sheet is presented. Holds the
+    /// snapshot of chapter context taken at tap time so the sheet doesn't
+    /// shift if the reader navigates while it's open.
+    @State private var summarySheet: SummarySheetContext?
+    /// Lazily created on first summary request — needs the per-reader
+    /// `Publication` to construct the text extractor. Cleared on reader close.
+    @State private var summaryService: AISummaryService?
     @State private var fontHUD: Int? = nil
     /// Percent shown in the brightness HUD (0...100). Driven by the
     /// `onBrightnessUpdate` callback from `ReaderInputHandlers`' UIKit pan
@@ -90,6 +97,17 @@ struct ReaderView: View {
         let local: Double
         let server: CanonicalProgress
         let serverHref: String?
+    }
+
+    /// Snapshot of chapter context captured at the moment the user taps the
+    /// summary button. Identifiable so `.sheet(item:)` can present it.
+    struct SummarySheetContext: Identifiable {
+        let id = UUID()
+        let bookID: UUID
+        let chapterHref: String
+        let chapterTitle: String
+        let cutoff: Double?
+        let engine: AIEngine
     }
 
     var body: some View {
@@ -159,6 +177,24 @@ struct ReaderView: View {
                 },
                 onDismiss: { showContents = false }
             )
+        }
+        .sheet(item: $summarySheet) { context in
+            if let service = summaryService {
+                ChapterSummarySheet(
+                    bookID: context.bookID,
+                    chapterHref: context.chapterHref,
+                    chapterTitle: context.chapterTitle,
+                    cutoff: context.cutoff,
+                    engine: context.engine,
+                    onClose: { summarySheet = nil },
+                    service: service
+                )
+            }
+        }
+        .onDisappear {
+            // Drop the service so the next reader open builds a fresh one
+            // bound to that publication's text extractor.
+            summaryService = nil
         }
     }
 
@@ -277,7 +313,9 @@ struct ReaderView: View {
                     title: book?.title ?? "",
                     onLibrary: { dismiss() },
                     onContents: { showContents = true },
-                    onTypeSettings: { /* stub — Type settings sheet not implemented yet */ }
+                    onTypeSettings: { /* stub — Type settings sheet not implemented yet */ },
+                    canSummarize: resolvedAIEngine != nil,
+                    onSummarize: { presentSummarySheet() }
                 )
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -304,7 +342,7 @@ struct ReaderView: View {
                         scrubCommitPending = false
                         scrubProgress = nil
                     },
-                    onSummarise: { /* stub — AI summary not implemented yet */ }
+                    onSummarise: { presentSummarySheet() }
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
@@ -405,6 +443,54 @@ struct ReaderView: View {
         }
     }
 
+
+    // MARK: - AI summary
+
+    /// The engine `AIAvailability` resolved against the user's preference, or
+    /// `nil` when AI is disabled / no engine is usable. Recomputed on every
+    /// access — `installationStatus(for:)` is a stat call, cheap enough for a
+    /// chrome-render cadence.
+    private var resolvedAIEngine: AIEngine? {
+        let availability = AIAvailability.resolve(
+            userEnabled: env.aiSettings.featuresEnabled,
+            preferredEngine: env.aiSettings.preferredEngine,
+            capability: .current,
+            assetStore: env.aiAssetStore,
+            downloads: env.aiDownloadService
+        )
+        return availability.resolved(
+            preferred: env.aiSettings.preferredEngine,
+            userEnabled: env.aiSettings.featuresEnabled
+        )
+    }
+
+    /// Captures the current chapter context, lazily builds the per-reader
+    /// `AISummaryService`, and triggers `.sheet(item:)`. No-ops if no engine
+    /// resolved, the publication hasn't loaded yet, or the locator isn't
+    /// inside a known reading-order entry.
+    private func presentSummarySheet() {
+        guard let engine = resolvedAIEngine,
+              let publication,
+              let locator = currentLocator ?? initialLocator else {
+            return
+        }
+        if summaryService == nil {
+            summaryService = AISummaryService(
+                modelContext: context,
+                modelProvider: env.aiModelProvider,
+                textExtractor: PublicationChapterTextExtractor(publication: publication)
+            )
+        }
+        let href = locator.href.string
+        let title = chapterTitle(forHref: href) ?? chapterTitleForCurrent
+        summarySheet = SummarySheetContext(
+            bookID: bookID,
+            chapterHref: href,
+            chapterTitle: title,
+            cutoff: locator.locations.progression,
+            engine: engine
+        )
+    }
 
     private func swipeDownDismissGesture() -> some Gesture {
         DragGesture(minimumDistance: 20)

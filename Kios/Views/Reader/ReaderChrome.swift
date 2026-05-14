@@ -18,6 +18,11 @@ struct EditorialReaderTopBar: View {
     var onLibrary: () -> Void
     var onContents: () -> Void
     var onTypeSettings: () -> Void
+    /// When `true`, a `sparkles` button is rendered next to Contents that
+    /// opens the AI chapter-summary sheet. Gated by the caller on AI being
+    /// enabled and a usable engine being available.
+    var canSummarize: Bool = false
+    var onSummarize: () -> Void = {}
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -54,6 +59,18 @@ struct EditorialReaderTopBar: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 0) {
+                if canSummarize {
+                    Button(action: onSummarize) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 18, weight: .regular))
+                            .foregroundStyle(EditorialTheme.accent)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Summarise chapter")
+                }
+
                 Button(action: onContents) {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 18, weight: .regular))

@@ -39,6 +39,16 @@ final class AppEnvironment {
     /// `URLSession` identifier is reused across the process lifetime.
     let aiDownloadService: ModelDownloadService
 
+    /// Shared MLX runtime — actor-isolated, lazily loads the Gemma container
+    /// on first use and evicts after the idle timeout. Built once at boot so
+    /// repeated summary/ask invocations reuse the same loaded weights.
+    let aiModelRuntime: ModelRuntime
+
+    /// Shared language-model provider. Adapts `aiAssetStore` + `aiModelRuntime`
+    /// (and on iOS 26+, FoundationModels) into the protocol the reader's AI
+    /// services depend on.
+    let aiModelProvider: AILanguageModelProvider
+
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
     private(set) var sync: SyncService?
     private(set) var downloads: DownloadService?
@@ -78,6 +88,15 @@ final class AppEnvironment {
         self.aiSettings = AISettings()
         self.aiAssetStore = ModelAssetStore(rootDirectory: AppPaths.aiModelsDirectory)
         self.aiDownloadService = ModelDownloadService(assetStore: self.aiAssetStore)
+        #if canImport(MLXLLM)
+        self.aiModelRuntime = ModelRuntime(loader: MLXRunnerLoader())
+        #else
+        self.aiModelRuntime = ModelRuntime(loader: UnavailableRunnerLoader())
+        #endif
+        self.aiModelProvider = AILanguageModelProvider(
+            assetStore: self.aiAssetStore,
+            runtime: self.aiModelRuntime
+        )
 
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory
