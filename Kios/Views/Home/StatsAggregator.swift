@@ -1,13 +1,25 @@
 import Foundation
 
-/// Aggregated stats for the Home tab. Lifetime totals.
+/// Aggregated stats for the Home tab. `totalSeconds` / `totalPages` are
+/// lifetime; `todaySeconds` / `todayPages` are local-day-of-`now`. Both are
+/// populated so the strip can switch between "Today, so far" and lifetime
+/// without recomputing.
 struct HomeStats: Equatable {
     let booksRead: Int
     let totalSeconds: Int
     let totalPages: Int
     let streakDays: Int
+    let todaySeconds: Int
+    let todayPages: Int
 
-    static let zero = HomeStats(booksRead: 0, totalSeconds: 0, totalPages: 0, streakDays: 0)
+    static let zero = HomeStats(
+        booksRead: 0,
+        totalSeconds: 0,
+        totalPages: 0,
+        streakDays: 0,
+        todaySeconds: 0,
+        todayPages: 0
+    )
 }
 
 /// Pure aggregation functions over sessions + books. No `Environment`,
@@ -34,11 +46,17 @@ enum StatsAggregator {
             calendar: calendar,
             threshold: streakThresholdSeconds
         )
+        let today = calendar.startOfDay(for: now)
+        let todaysSessions = sessions.filter { calendar.startOfDay(for: $0.endedAt) == today }
+        let todaySeconds = todaysSessions.reduce(0) { $0 + $1.durationSeconds }
+        let todayPages = todaysSessions.reduce(0) { $0 + $1.pagesAdded }
         return HomeStats(
             booksRead: booksRead,
             totalSeconds: totalSeconds,
             totalPages: totalPages,
-            streakDays: streakDays
+            streakDays: streakDays,
+            todaySeconds: todaySeconds,
+            todayPages: todayPages
         )
     }
 

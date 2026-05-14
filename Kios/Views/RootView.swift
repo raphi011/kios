@@ -18,7 +18,7 @@ struct RootView: View {
             // SyncService. Library is a SwiftData @Query and shows for both
             // protocols — it's safe even when `env.opds == nil` (Kobo mode).
             if env.sync == nil {
-                NavigationStack { SettingsView() }
+                NavigationStack { SyncSetupView() }
             } else {
                 TabView(selection: $selectedTab) {
                     HomeRootView()
@@ -31,6 +31,7 @@ struct RootView: View {
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(2)
                 }
+                .editorialTabBarStyling()
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         Task { await env.sync?.flushAllPending() }

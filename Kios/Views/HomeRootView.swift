@@ -2,6 +2,14 @@ import SwiftUI
 import SwiftData
 import Core
 
+/// Editorial "Today" home screen. Matches the design package's `EditorialHome`:
+///
+/// - Large serif **Today** title with a dated eyebrow + trailing search icon
+/// - 3-cell stats card (Read time / Pages / Streak) under a "Today, so far" header
+/// - Hero "Continue reading" card with the most-recently-touched book
+/// - Editorial book rows for the rest of the library, with a "Last synced" footer
+///
+/// Search isn't wired yet — the icon is rendered as a stub.
 struct HomeRootView: View {
     @Query(filter: #Predicate<Book> { $0.filename != nil },
            sort: \Book.title)
@@ -29,71 +37,144 @@ struct HomeRootView: View {
         )
     }
 
+    /// Books shown in the "In your library" section: everything except the
+    /// hero (so we don't repeat it) and finished books (they belong in the
+    /// Library tab's Finished group, not Today's quick list).
+    private var libraryPreview: [Book] {
+        books.filter { book in
+            book.finishedAt == nil && book.id != heroBook?.id
+        }
+    }
+
+    private var todayEyebrow: String {
+        let f = DateFormatter()
+        f.dateFormat = "EEE · d MMM"
+        return f.string(from: .now).uppercased()
+    }
+
+    private var statCells: [EditorialStatsCard.Cell] {
+        let minutes = stats.todaySeconds / 60
+        let pages = stats.todayPages
+        let streak = stats.streakDays
+        return [
+            .init(number: String(minutes), unit: "m", caption: "Read time"),
+            .init(number: String(pages), unit: nil, caption: "Pages"),
+            .init(number: String(streak), unit: "d", caption: "Streak"),
+        ]
+    }
+
+    private var lastSyncedFooter: String? {
+        // Hook for "Last synced N min ago". Real sync timestamps aren't
+        // surfaced through AppEnvironment yet, so we hide the footer when no
+        // sync has happened in this process. Wire the timestamp through and
+        // this lights up automatically.
+        nil
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if books.isEmpty {
-                    ContentUnavailableView(
-                        "No downloaded books",
-                        systemImage: "books.vertical",
-                        description: Text("Books you download from Browse appear here.")
-                    )
+                    emptyState
                 } else {
-                    List {
-                        Section {
-                            StatsHeader(stats: stats)
-                        }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-
-                        if let hero = heroBook {
-                            Section {
-                                ContinueReadingCard(
-                                    book: hero,
-                                    progress: progressByBookID[hero.id] ?? 0,
-                                    perBookSessions: sessions.filter { $0.bookID == hero.id },
-                                    onTap: { env.openReader(hero.id) }
-                                )
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            EditorialNavBar(title: "Today", eyebrow: todayEyebrow) {
+                                EditorialNavIconButton(
+                                    systemName: "magnifyingglass",
+                                    accessibilityLabel: "Search"
+                                ) {
+                                    // Stub: search isn't implemented yet.
+                                }
                             }
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                        }
 
-                        Section("Library") {
-                            ForEach(books) { book in
-                                Button {
-                                    env.openReader(book.id)
-                                } label: {
-                                    BookRow(book: book,
-                                            readingProgress: progressByBookID[book.id] ?? 0)
-                                }
-                                .buttonStyle(.plain)
-                                .listRowInsets(.init(top: 0, leading: 16,
-                                                     bottom: 0, trailing: 16))
-                                .contextMenu {
-                                    Button(book.finishedAt == nil
-                                           ? "Mark as finished"
-                                           : "Mark as unfinished") {
-                                        toggleFinished(book)
-                                    }
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        delete(book)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                            EditorialList("Today, so far") {
+                                EditorialStatsCard(cells: statCells)
+                            }
+
+                            if let hero = heroBook {
+                                EditorialList("Continue reading") {
+                                    EditorialContinueCard(
+                                        book: hero,
+                                        progress: progressByBookID[hero.id] ?? 0,
+                                        perBookSessions: sessions.filter { $0.bookID == hero.id }
+                                    ) {
+                                        env.openReader(hero.id)
                                     }
                                 }
                             }
+
+                            if !libraryPreview.isEmpty {
+                                EditorialList(
+                                    "In your library",
+                                    footer: lastSyncedFooter
+                                ) {
+                                    ForEach(libraryPreview.indices, id: \.self) { i in
+                                        let book = libraryPreview[i]
+                                        Button {
+                                            env.openReader(book.id)
+                                        } label: {
+                                            EditorialBookRow(
+                                                title: book.title,
+                                                author: book.authors.joined(separator: ", "),
+                                                progress: progressByBookID[book.id] ?? 0,
+                                                meta: bookMeta(book),
+                                                finishedLabel: nil
+                                            ) {
+                                                AnyView(BookCoverImage(book: book))
+                                            }
+                                        }
+                                        .buttonStyle(.plain)
+                                        .contextMenu {
+                                            Button(book.finishedAt == nil
+                                                   ? "Mark as finished"
+                                                   : "Mark as unfinished") {
+                                                toggleFinished(book)
+                                            }
+                                            Button("Delete", role: .destructive) {
+                                                delete(book)
+                                            }
+                                        }
+                                        if i < libraryPreview.count - 1 {
+                                            EditorialHairline()
+                                        }
+                                    }
+                                }
+                            }
+
+                            Color.clear.frame(height: 110)   // tab-bar breathing
                         }
                     }
-                    .listStyle(.plain)
+                    .background(EditorialTheme.bg)
                 }
             }
-            .navigationTitle("Home")
+            .background(EditorialTheme.bg)
+            .navigationBarHidden(true)
         }
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView(
+            "No downloaded books",
+            systemImage: "books.vertical",
+            description: Text("Books you download from Browse appear here.")
+        )
+        .background(EditorialTheme.bg)
+    }
+
+    /// "EPUB · 2.4 MB" when we can read the file; "EPUB" otherwise. Used as
+    /// the meta line on un-started books.
+    private func bookMeta(_ book: Book) -> String? {
+        let format = book.format.rawValue.uppercased()
+        guard let url = book.fileURL,
+              let size = try? FileManager.default
+                  .attributesOfItem(atPath: url.path)[.size] as? Int else {
+            return format
+        }
+        let mb = Double(size) / (1024 * 1024)
+        return mb >= 0.1
+            ? String(format: "\(format) · %.1f MB", mb)
+            : format
     }
 
     private func toggleFinished(_ book: Book) {

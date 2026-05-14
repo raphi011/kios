@@ -1,242 +1,282 @@
 import SwiftUI
-import UIKit
+import UniformTypeIdentifiers
 import Core
 
+/// Editorial settings screen. Matches the design package's `EditorialSettings`:
+/// Reading / Library & sync / AI assistant / Account sections in grouped
+/// inset cards under a big serif **Settings** title, with a version footer.
+///
+/// Most rows are stubs — the design calls for placeholders so the chrome lands
+/// before the underlying features (themes, AI, transitions) exist. Rows that
+/// work today: Import EPUB, Sync protocol/URL (push to `SyncSetupView`),
+/// Signed in as, Sign out.
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
-    @State private var activeProtocol: SyncProtocol = .kosync
-    /// Snapshot of the persisted protocol at view-appear time. The "Test &
-    /// Save" path compares against this to decide whether the action would
-    /// switch protocols (and therefore require user confirmation + a library
-    /// refresh).
-    @State private var originalProtocol: SyncProtocol = .kosync
-    @State private var pendingConfirm: Bool = false
-    @State private var kosyncServerURL: String = ""
-    @State private var kosyncUsername: String = ""
-    @State private var kosyncPassword: String = ""
-    @State private var koboBaseURL: String = ""
-    @State private var status: Status = .idle
 
-    enum Status: Equatable {
-        case idle
-        case testing
-        case ok
-        case failure(String)
-    }
+    // Reading — display-only stubs until the reader settings model lands.
+    @State private var defaultTheme = "Paper"
+    @State private var defaultFont = "Newsreader"
+    @State private var pageTransition = "Slide"
+    @State private var tapZones = "Edges"
+
+    // Library & sync — toggles persist in-session only.
+    @State private var syncOverCellular = false
+
+    // AI — toggles persist in-session only. The master switch dims dependents,
+    // matching the design's "Disable the master switch to make no AI calls".
+    @State private var aiEnabled = true
+    @State private var chapterSummaries = true
+    @State private var bookSoFarSummaries = true
+    @State private var vocabLookup = true
+    @State private var aiModel = "Claude Haiku 4.5"
+
+    // File importer (Import EPUB row).
+    @State private var showFileImporter = false
+    @State private var importError: String?
+
+    // Sign-out confirmation.
+    @State private var showSignOutConfirm = false
 
     var body: some View {
-        Form {
-            Section("Sync protocol") {
-                Picker("Protocol", selection: $activeProtocol) {
-                    Text("KOReader Sync").tag(SyncProtocol.kosync)
-                    Text("Kobo Sync").tag(SyncProtocol.kobo)
-                }
-                .pickerStyle(.segmented)
+        ScrollView {
+            VStack(spacing: 0) {
+                EditorialNavBar(title: "Settings")
 
-                switch activeProtocol {
-                case .kosync:
-                    TextField("https://cwa.example.com", text: $kosyncServerURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                    TextField("Username", text: $kosyncUsername)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("Password", text: $kosyncPassword)
+                readingSection
+                librarySyncSection
+                aiSection
+                accountSection
 
-                case .kobo:
-                    TextField("Kobo sync URL", text: $koboBaseURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                    Text("Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .disabled(status == .testing)
-            Section {
-                Button("Test & Save") { handleTestAndSaveTap() }
-                    .disabled(!canTestAndSave || status == .testing)
-                statusView
-            }
-            Section {
-                Button("Sign Out", role: .destructive) {
-                    Task { await env.signOut() }
-                }
+                Text(versionLine)
+                    .editorialEyebrow()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 20)
+
+                Color.clear.frame(height: 110)   // tab-bar breathing
             }
         }
-        .navigationTitle("Settings")
-        .task { await loadExisting() }
+        .background(EditorialTheme.bg)
+        .navigationBarHidden(true)
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.epub],
+            allowsMultipleSelection: false
+        ) { result in
+            Task { await handleImport(result) }
+        }
+        .alert(
+            "Import failed",
+            isPresented: Binding(
+                get: { importError != nil },
+                set: { if !$0 { importError = nil } }
+            )
+        ) {
+            Button("OK") { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
         .confirmationDialog(
-            "Switch to \(activeProtocol == .kosync ? "KOReader Sync" : "Kobo Sync")?",
-            isPresented: $pendingConfirm,
+            "Sign out?",
+            isPresented: $showSignOutConfirm,
             titleVisibility: .visible
         ) {
-            Button("Switch and refresh library") {
-                Task { await testAndSave() }
+            Button("Sign out", role: .destructive) {
+                Task { await env.signOut() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Your library will be refreshed against the new server. Books not present on the new server will be archived (not deleted). Downloaded files and reading progress are preserved.")
+            Text("Catalog will be cleared. Downloaded books and reading progress stay on this device.")
         }
     }
 
-    private var protocolIsChanging: Bool {
-        activeProtocol != originalProtocol
-    }
+    // MARK: - Reading
 
-    private func handleTestAndSaveTap() {
-        if protocolIsChanging {
-            pendingConfirm = true
-        } else {
-            Task { await testAndSave() }
+    private var readingSection: some View {
+        EditorialList("Reading") {
+            stubRow(label: "Default theme", value: defaultTheme)
+            EditorialHairline()
+            stubRow(label: "Default font", value: defaultFont)
+            EditorialHairline()
+            stubRow(label: "Page transition", value: pageTransition)
+            EditorialHairline()
+            stubRow(label: "Tap zones", value: tapZones)
         }
     }
 
-    private var canTestAndSave: Bool {
-        switch activeProtocol {
-        case .kosync:
-            return !kosyncServerURL.isEmpty && !kosyncUsername.isEmpty && !kosyncPassword.isEmpty
-        case .kobo:
-            return !koboBaseURL.isEmpty
+    // MARK: - Library & sync
+
+    private var librarySyncSection: some View {
+        EditorialList(
+            "Library & sync",
+            footer: "Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password."
+        ) {
+            Button { showFileImporter = true } label: {
+                EditorialRow(
+                    label: "Import EPUB",
+                    detail: "From Files, iCloud, AirDrop…",
+                    chevron: true
+                )
+            }
+            .buttonStyle(.plain)
+            EditorialHairline()
+
+            NavigationLink {
+                SyncSetupView()
+            } label: {
+                EditorialRow(
+                    label: "Sync protocol",
+                    value: syncProtocolName,
+                    chevron: true
+                )
+            }
+            .buttonStyle(.plain)
+            EditorialHairline()
+
+            NavigationLink {
+                SyncSetupView()
+            } label: {
+                EditorialRow(
+                    label: "Sync URL",
+                    value: syncURLMasked,
+                    chevron: true
+                )
+            }
+            .buttonStyle(.plain)
+            EditorialHairline()
+
+            // Last synced is a display-only row until the sync layer surfaces
+            // a real timestamp. Showing "—" keeps the layout intact.
+            EditorialRow(label: "Last synced", value: "—")
+            EditorialHairline()
+
+            EditorialRow(
+                label: "Sync over cellular",
+                toggle: $syncOverCellular
+            )
         }
     }
 
-    @ViewBuilder
-    private var statusView: some View {
-        switch status {
-        case .idle: EmptyView()
-        case .testing: ProgressView("Testing…")
-        case .ok: Label("Connected", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-        case .failure(let msg):
-            Label(msg, systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
+    // MARK: - AI assistant
+
+    private var aiSection: some View {
+        EditorialList(
+            "AI assistant",
+            footer: "Summaries are generated on demand — text never leaves the chapter you ask about. Disable the master switch to make no AI calls at all."
+        ) {
+            EditorialRow(label: "Enable AI features", toggle: $aiEnabled)
+            EditorialHairline()
+
+            EditorialRow(label: "Chapter summaries", toggle: $chapterSummaries)
+                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
+            EditorialHairline()
+
+            EditorialRow(label: "Book-so-far summaries", toggle: $bookSoFarSummaries)
+                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
+            EditorialHairline()
+
+            EditorialRow(label: "Vocabulary lookup", toggle: $vocabLookup)
+                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
+            EditorialHairline()
+
+            stubRow(label: "Model", value: aiModel)
+                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
         }
     }
 
-    private func loadExisting() async {
-        let current = env.authStore.loadActiveProtocol()
-        activeProtocol = current
-        originalProtocol = current
+    // MARK: - Account
+
+    private var accountSection: some View {
+        EditorialList("Account") {
+            EditorialRow(label: "Signed in as", value: signedInLabel)
+            EditorialHairline()
+
+            Button { showSignOutConfirm = true } label: {
+                EditorialRow(label: "Sign out", danger: true)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Display-only row for an unimplemented setting. Renders the editorial
+    /// chevron row but does nothing when tapped — once the underlying feature
+    /// exists, swap this for a `NavigationLink` to its detail screen without
+    /// touching call sites.
+    private func stubRow(label: String, value: String) -> some View {
+        EditorialRow(label: label, value: value, chevron: true)
+    }
+
+    private var syncProtocolName: String {
+        switch env.authStore.loadActiveProtocol() {
+        case .kosync: return "KOReader Sync"
+        case .kobo:   return "Kobo Sync"
+        }
+    }
+
+    /// Masked URL hint — last 8 chars of host. Avoids surfacing the full
+    /// token-bearing path while still letting the user recognise their server.
+    private var syncURLMasked: String {
+        if let creds = try? env.authStore.load(),
+           let host = creds.serverURL.host {
+            return "••••" + String(host.suffix(8))
+        }
+        if let kobo = try? env.authStore.loadKobo(),
+           let host = kobo.baseURL.host {
+            return "••••" + String(host.suffix(8))
+        }
+        return "Not set"
+    }
+
+    private var signedInLabel: String {
         if let creds = try? env.authStore.load() {
-            kosyncServerURL = creds.serverURL.absoluteString
-            kosyncUsername = creds.basic.username
-            // Don't pre-fill password — keychain access already proved we have it,
-            // and pre-filling the field would suggest the password is visible.
+            return creds.basic.username
         }
         if let kobo = try? env.authStore.loadKobo() {
-            koboBaseURL = kobo.baseURL.absoluteString
+            return kobo.baseURL.host ?? "Kobo"
+        }
+        return "Not signed in"
+    }
+
+    private var versionLine: String {
+        let info = Bundle.main.infoDictionary
+        let v = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let b = info?["CFBundleVersion"] as? String ?? "—"
+        return "Kios · v\(v) · build \(b)"
+    }
+
+    private func handleImport(_ result: Result<[URL], Error>) async {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            do {
+                let outcome = try await env.localImporter.import(from: url)
+                switch outcome {
+                case .imported(let book), .existing(let book):
+                    env.openReader(book.id)
+                }
+            } catch let err as LocalImportError {
+                importError = userFacingMessage(for: err)
+            } catch {
+                importError = error.localizedDescription
+            }
+        case .failure(let error):
+            importError = error.localizedDescription
         }
     }
 
-    private func testAndSave() async {
-        status = .testing
-        switch activeProtocol {
-        case .kosync:
-            await testAndSaveKOSync()
-        case .kobo:
-            await testAndSaveKobo()
+    private func userFacingMessage(for error: LocalImportError) -> String {
+        switch error {
+        case .unsupportedFormat:
+            return "Kios can only import EPUB files right now."
+        case .readFailed(let detail):
+            return "Couldn't read the file. \(detail)"
+        case .parseFailed:
+            return "This EPUB seems to be damaged."
+        case .copyFailed(let detail):
+            return "Couldn't save the file. \(detail)"
+        case .noTitle:
+            return "This EPUB has no title metadata and can't be imported."
         }
     }
-
-    private func testAndSaveKOSync() async {
-        let trimmed = kosyncServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
-              url.scheme?.hasPrefix("http") == true else {
-            status = .failure("Invalid URL")
-            return
-        }
-        let basic = BasicCredentials(username: kosyncUsername, password: kosyncPassword)
-        let http = HTTPClient(credentials: basic)
-
-        // Probe OPDS — Calibre-Web (and CWA) expose it at /opds/.
-        do {
-            _ = try await http.data(
-                for: URLRequest(url: url.appendingPathComponent("opds/"))
-            )
-        } catch HTTPError.unauthorized {
-            status = .failure("Wrong username or password.")
-            return
-        } catch {
-            status = .failure("Cannot reach OPDS at \(url.absoluteString)opds/.")
-            return
-        }
-
-        // Probe kosync — only CWA ships this.
-        do {
-            let kosync = KOSyncClient(
-                baseURL: url.appendingPathComponent("kosync"), http: http
-            )
-            _ = try await kosync.authenticate()
-        } catch HTTPError.notFound {
-            status = .failure(
-                "Server has no /kosync — iOS Reader requires Calibre-Web-Automated."
-            )
-            return
-        } catch HTTPError.unauthorized {
-            // Inconsistent: OPDS accepted but kosync rejected. Could happen
-            // if the user has an OPDS-only account on CWA (rare).
-            status = .failure(
-                "Credentials work for OPDS but not /kosync. Check the user has kosync access."
-            )
-            return
-        } catch {
-            status = .failure("kosync auth failed: \(error.localizedDescription)")
-            return
-        }
-
-        // Both probes passed — persist and rebuild env services.
-        do {
-            try env.authStore.save(
-                serverURL: url, username: kosyncUsername, password: kosyncPassword
-            )
-            env.authStore.saveActiveProtocol(.kosync)
-            try env.bootIfCredentialsPresent()
-            // Always refresh on save (not just on protocol switch) so re-saving
-            // with the same credentials still pulls server-side library
-            // changes into the local store.
-            try await env.refreshLibrary()
-            // Sync the baseline AFTER the refresh succeeds — if refresh throws,
-            // we leave `originalProtocol` as-is so the user still sees the
-            // confirmation on a retry rather than silently switching.
-            originalProtocol = .kosync
-            status = .ok
-        } catch {
-            status = .failure("Failed to save: \(error.localizedDescription)")
-        }
-    }
-
-    private func testAndSaveKobo() async {
-        let trimmed = koboBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
-              url.scheme?.hasPrefix("http") == true else {
-            status = .failure("Invalid URL")
-            return
-        }
-        let http = HTTPClient()  // Kobo auth is in the URL path, not headers
-        let kc = KoboClient(baseURL: url, http: http, deviceID: env.deviceID)
-        do {
-            let res = try await kc.initialization()
-            // res.imageURLTemplate is non-optional in the type; if the response
-            // shape was bad, KoboClient would have thrown
-            // BackendError.serverShapeUnexpected already.
-            try env.authStore.saveKobo(
-                KoboCredentials(baseURL: url, imageURLTemplate: res.imageURLTemplate)
-            )
-            env.authStore.saveActiveProtocol(.kobo)
-            try env.bootIfCredentialsPresent()
-            try await env.refreshLibrary()
-            originalProtocol = .kobo
-            status = .ok
-        } catch HTTPError.unauthorized {
-            status = .failure("Token rejected by Kobo sync. Re-generate from CWA admin.")
-        } catch HTTPError.notFound {
-            status = .failure("No Kobo sync endpoint at this URL. Check the path.")
-        } catch {
-            status = .failure("Kobo init failed: \(error.localizedDescription)")
-        }
-    }
-
 }

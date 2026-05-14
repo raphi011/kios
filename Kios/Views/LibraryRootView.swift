@@ -3,87 +3,76 @@ import SwiftData
 import UniformTypeIdentifiers
 import Core
 
-/// Unified catalog view across sync protocols. Backed by the local
-/// SwiftData `Book` store (populated by `LibraryService.refresh`), so the
-/// list works identically for kosync and Kobo and is visible offline.
-/// Pull-to-refresh re-runs the active protocol's catalog fetch.
+/// Editorial Library screen. Matches `EditorialLibrary`:
+///
+/// - Large serif **Library** title with trailing search + plus icons
+/// - All / Reading / Unread / Finished segmented filter
+/// - Three grouped-inset card sections: Reading · Unread · Finished
+/// - "Add a book" action sheet on the plus button (Files / URL / Sync now)
+///
+/// Search is stubbed; "Add from URL" surfaces a "coming soon" alert until the
+/// URL importer lands.
 struct LibraryRootView: View {
+
+    /// Library tab filter (also used by the segmented control).
+    private enum Filter: Hashable {
+        case all, reading, unread, finished
+    }
+
     @Query(filter: #Predicate<Book> { !$0.archived },
            sort: \Book.title)
     private var books: [Book]
 
-    /// Same single-fetch approach as Home — one query, looked up by bookID
-    /// per row, instead of N FetchDescriptors.
     @Query private var progresses: [ReadingProgress]
 
     @Environment(AppEnvironment.self) private var env
 
+    @State private var filter: Filter = .all
     @State private var isRefreshing: Bool = false
     @State private var showFileImporter: Bool = false
+    @State private var showAddSheet: Bool = false
+    @State private var showURLImportComingSoon: Bool = false
     @State private var importError: String?
 
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
     }
 
+    private var readingBooks: [Book] {
+        books.filter { book in
+            let p = progressByBookID[book.id] ?? 0
+            return book.finishedAt == nil && book.filename != nil && p > 0 && p < 1
+        }
+    }
+
+    private var unreadBooks: [Book] {
+        // Includes both freshly-downloaded books (progress 0) and catalog-only
+        // books (filename == nil) so the user can see what's available to read.
+        books.filter { book in
+            let p = progressByBookID[book.id] ?? 0
+            return book.finishedAt == nil && p == 0
+        }
+    }
+
+    private var finishedBooks: [Book] {
+        books.filter { $0.finishedAt != nil }
+    }
+
+    /// Footer for the last section — surfaces sync recency. Hidden until the
+    /// sync layer exposes a timestamp.
+    private var lastSyncedFooter: String? { nil }
+
     var body: some View {
         NavigationStack {
-            // Always render a List so `.refreshable` has a scrollable parent —
-            // the empty state goes inside as an overlay. ContentUnavailableView
-            // alone is not scrollable and the pull-to-refresh gesture silently
-            // does nothing.
-            List(books) { book in
-                Button { handleTap(book) } label: {
-                    BookRow(book: book,
-                            readingProgress: progressByBookID[book.id] ?? 0)
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(.init(top: 0, leading: 0,
-                                     bottom: 0, trailing: 16))
-                .listRowSeparator(.hidden)
-            }
-            .listRowSpacing(0)
-            .overlay {
+            Group {
                 if books.isEmpty {
-                    ContentUnavailableView(
-                        "Your library is empty",
-                        systemImage: "books.vertical",
-                        description: Text("Pull to refresh, or tap Refresh.")
-                    )
+                    emptyState
+                } else {
+                    libraryScroll
                 }
             }
-            .refreshable {
-                try? await env.refreshLibrary()
-            }
-            .navigationTitle("Library")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            showFileImporter = true
-                        } label: {
-                            Label("Import file…", systemImage: "doc.badge.plus")
-                        }
-                        Button {
-                            Task {
-                                isRefreshing = true
-                                try? await env.refreshLibrary()
-                                isRefreshing = false
-                            }
-                        } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
-                        }
-                        .disabled(isRefreshing)
-                    } label: {
-                        if isRefreshing {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "plus")
-                        }
-                    }
-                    .accessibilityLabel("Import or refresh library")
-                }
-            }
+            .background(EditorialTheme.bg)
+            .navigationBarHidden(true)
             .fileImporter(
                 isPresented: $showFileImporter,
                 allowedContentTypes: [.epub],
@@ -102,7 +91,155 @@ struct LibraryRootView: View {
             } message: {
                 Text(importError ?? "")
             }
+            .alert("Coming soon", isPresented: $showURLImportComingSoon) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Importing from a URL isn't supported yet. For now, save the file and use Import EPUB from Files.")
+            }
+            .confirmationDialog(
+                "Add a book",
+                isPresented: $showAddSheet,
+                titleVisibility: .visible
+            ) {
+                Button("Import EPUB from Files…") {
+                    showFileImporter = true
+                }
+                Button("Add from URL…") {
+                    showURLImportComingSoon = true
+                }
+                Button("Sync now") {
+                    Task {
+                        isRefreshing = true
+                        try? await env.refreshLibrary()
+                        isRefreshing = false
+                    }
+                }
+                .disabled(isRefreshing)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("DRM-free EPUB only. Kios won't ask you to log in to a store.")
+            }
         }
+    }
+
+    private var libraryScroll: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                EditorialNavBar(title: "Library") {
+                    EditorialNavIconButton(
+                        systemName: "magnifyingglass",
+                        accessibilityLabel: "Search"
+                    ) {
+                        // Stub: search isn't implemented yet.
+                    }
+                    EditorialNavIconButton(
+                        systemName: isRefreshing ? "arrow.triangle.2.circlepath" : "plus",
+                        accessibilityLabel: "Add book"
+                    ) {
+                        showAddSheet = true
+                    }
+                }
+
+                EditorialSegmented(
+                    items: [
+                        ("All", Filter.all),
+                        ("Reading", Filter.reading),
+                        ("Unread", Filter.unread),
+                        ("Finished", Filter.finished),
+                    ],
+                    selection: $filter
+                )
+                .padding(.horizontal, EditorialTheme.listSidePad)
+
+                if filter == .all || filter == .reading, !readingBooks.isEmpty {
+                    section("Reading", books: readingBooks, kind: .reading)
+                }
+                if filter == .all || filter == .unread, !unreadBooks.isEmpty {
+                    section("Unread", books: unreadBooks, kind: .unread)
+                }
+                if filter == .all || filter == .finished, !finishedBooks.isEmpty {
+                    section("Finished",
+                            books: finishedBooks,
+                            kind: .finished,
+                            footer: lastSyncedFooter)
+                }
+
+                Color.clear.frame(height: 110)   // tab-bar breathing
+            }
+        }
+        .refreshable {
+            try? await env.refreshLibrary()
+        }
+    }
+
+    private enum SectionKind { case reading, unread, finished }
+
+    private func section(
+        _ name: String,
+        books: [Book],
+        kind: SectionKind,
+        footer: String? = nil
+    ) -> some View {
+        EditorialList("\(name) · \(books.count)", footer: footer) {
+            ForEach(books.indices, id: \.self) { i in
+                let book = books[i]
+                Button { handleTap(book) } label: {
+                    EditorialBookRow(
+                        title: book.title,
+                        author: book.authors.joined(separator: ", "),
+                        progress: progressByBookID[book.id] ?? 0,
+                        meta: kind == .unread ? bookMeta(book) : nil,
+                        finishedLabel: kind == .finished ? finishedLabel(book) : nil
+                    ) {
+                        AnyView(BookCoverImage(book: book))
+                    }
+                }
+                .buttonStyle(.plain)
+                if i < books.count - 1 {
+                    EditorialHairline()
+                }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 0) {
+            EditorialNavBar(title: "Library") {
+                EditorialNavIconButton(
+                    systemName: "plus",
+                    accessibilityLabel: "Add book"
+                ) {
+                    showAddSheet = true
+                }
+            }
+            Spacer()
+            ContentUnavailableView(
+                "Your library is empty",
+                systemImage: "books.vertical",
+                description: Text("Tap + to import an EPUB, or pull to refresh.")
+            )
+            Spacer()
+        }
+    }
+
+    private func bookMeta(_ book: Book) -> String? {
+        let format = book.format.rawValue.uppercased()
+        guard let url = book.fileURL,
+              let size = try? FileManager.default
+                  .attributesOfItem(atPath: url.path)[.size] as? Int else {
+            return format
+        }
+        let mb = Double(size) / (1024 * 1024)
+        return mb >= 0.1
+            ? String(format: "\(format) · %.1f MB", mb)
+            : format
+    }
+
+    private func finishedLabel(_ book: Book) -> String? {
+        guard let finishedAt = book.finishedAt else { return nil }
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        return f.string(from: finishedAt)
     }
 
     private func handleImport(_ result: Result<[URL], Error>) async {
@@ -145,10 +282,8 @@ struct LibraryRootView: View {
             env.openReader(book.id)
             return
         }
-        // Reaching this point means filename is nil. For a synced book, that
-        // is the catalog-only state we resolve by downloading. For a local
-        // book it would mean a row was inserted without bytes — a future bug,
-        // not something we can fix here. Bail in that case.
+        // Catalog-only synced book: kick off the download and open the reader.
+        // Local books shouldn't reach this branch (they always have a filename).
         guard book.source == .synced, book.acquisitionURL != nil else {
             return
         }

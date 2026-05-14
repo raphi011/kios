@@ -45,7 +45,12 @@ struct StatsHeader: View {
 
 #Preview {
     StatsHeader(stats: HomeStats(
-        booksRead: 12, totalSeconds: 87 * 3600, totalPages: 4210, streakDays: 12
+        booksRead: 12,
+        totalSeconds: 87 * 3600,
+        totalPages: 4210,
+        streakDays: 12,
+        todaySeconds: 47 * 60,
+        todayPages: 38
     ))
     .padding()
     .background(Color(.systemGroupedBackground))
