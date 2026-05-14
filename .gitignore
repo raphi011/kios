@@ -42,3 +42,6 @@ docs/superpowers/
 
 ## Claude Code / AI tooling local state
 .claude/
+
+## Git worktrees for isolated workspace
+.worktrees/

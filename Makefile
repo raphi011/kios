@@ -1,4 +1,4 @@
-.PHONY: test test-core test-ios build-ios xcodegen clean
+.PHONY: test test-core test-ios build-ios archive xcodegen clean
 
 # `swift test` defaults to parallel execution, which races against the static
 # `MockURLProtocol.handler` shared by HTTPClient and KOSyncClient suites.
@@ -26,6 +26,18 @@ test-ios: xcodegen
 
 build-ios: xcodegen
 	$(IOS_BUILD)
+
+# Archive for distribution (TestFlight). Bypasses the Xcode UI macro-trust
+# prompt that otherwise blocks `MLXHuggingFaceMacros` from compiling.
+# Output: build/Kios.xcarchive.
+archive: xcodegen
+	xcodebuild archive \
+		-project Kios.xcodeproj \
+		-scheme Kios \
+		-configuration Release \
+		-destination 'generic/platform=iOS' \
+		-archivePath build/Kios.xcarchive \
+		-skipMacroValidation
 
 xcodegen:
 	xcodegen generate
