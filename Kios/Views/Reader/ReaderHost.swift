@@ -15,6 +15,12 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// set across re-renders — only changes trigger navigation.
     let pendingJump: Locator?
     let fontSizePct: Int
+    /// Drives whether the navigator advertises the "Ask AI" custom edit-menu
+    /// action. Resolved by SwiftUI from `AIAvailability`. Read once at
+    /// `makeUIViewController` time — toggling AI mid-read won't add or remove
+    /// the action until the reader is reopened, matching how Readium consumes
+    /// `Configuration.editingActions`.
+    let canAskAI: Bool
     var onLocatorChange: @Sendable (Locator) -> Void
     var onCenterTap: () -> Void
     var onPageTurn: () -> Void
@@ -24,10 +30,17 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// release so SwiftUI fades the HUD.
     var onBrightnessUpdate: (Int?) -> Void
     var onDismissRequested: () -> Void
+    /// Fires with the selected text when the user picks "Ask AI" from the
+    /// edit menu. SwiftUI uses this to present `AskAboutSelectionSheet`.
+    var onAskAIRequested: (String) -> Void
 
     func makeUIViewController(context: Context) -> UIViewController {
         if publication.conforms(to: .epub) {
-            let vc = ReaderContainerVC(publication: publication, initialLocator: initialLocator)
+            let vc = ReaderContainerVC(
+                publication: publication,
+                initialLocator: initialLocator,
+                canAskAI: canAskAI
+            )
             vc.update(fontSizePct: fontSizePct)
             vc.onLocatorChange = { locator in onLocatorChange(locator) }
             vc.onCenterTap = onCenterTap
@@ -36,6 +49,7 @@ struct ReaderHost: UIViewControllerRepresentable {
             vc.onPinchCommitToSwiftUI = onPinchCommit
             vc.onBrightnessUpdate = onBrightnessUpdate
             vc.onDismissRequested = onDismissRequested
+            vc.onAskAIRequested = onAskAIRequested
             vc.applyPendingJump(pendingJump)
             return vc
         } else {
@@ -56,6 +70,7 @@ struct ReaderHost: UIViewControllerRepresentable {
         container.onPinchCommitToSwiftUI = onPinchCommit
         container.onBrightnessUpdate = onBrightnessUpdate
         container.onDismissRequested = onDismissRequested
+        container.onAskAIRequested = onAskAIRequested
         container.applyPendingJump(pendingJump)
     }
 

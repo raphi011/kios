@@ -46,6 +46,10 @@ struct ReaderView: View {
     /// snapshot of chapter context taken at tap time so the sheet doesn't
     /// shift if the reader navigates while it's open.
     @State private var summarySheet: SummarySheetContext?
+    /// Non-nil while the Ask-AI sheet is presented. Snapshot of selection +
+    /// chapter context captured when the user picks "Ask AI" from the
+    /// text-selection edit menu.
+    @State private var askSheet: AskSheetContext?
     /// Lazily created on first summary request — needs the per-reader
     /// `Publication` to construct the text extractor. Cleared on reader close.
     @State private var summaryService: AISummaryService?
@@ -107,6 +111,18 @@ struct ReaderView: View {
         let chapterHref: String
         let chapterTitle: String
         let cutoff: Double?
+        let engine: AIEngine
+    }
+
+    /// Snapshot of selection + chapter context captured when the user picks
+    /// "Ask AI" from the navigator's text-selection edit menu. Identifiable
+    /// so `.sheet(item:)` can present `AskAboutSelectionSheet` against it.
+    struct AskSheetContext: Identifiable {
+        let id = UUID()
+        let selection: String
+        let bookID: UUID
+        let bookTitle: String
+        let chapterTitle: String?
         let engine: AIEngine
     }
 
@@ -191,6 +207,19 @@ struct ReaderView: View {
                 )
             }
         }
+        .sheet(item: $askSheet) { context in
+            if let service = summaryService {
+                AskAboutSelectionSheet(
+                    selection: context.selection,
+                    bookID: context.bookID,
+                    bookTitle: context.bookTitle,
+                    chapterTitle: context.chapterTitle,
+                    engine: context.engine,
+                    onClose: { askSheet = nil },
+                    service: service
+                )
+            }
+        }
         .onDisappear {
             // Drop the service so the next reader open builds a fresh one
             // bound to that publication's text extractor.
@@ -254,6 +283,7 @@ struct ReaderView: View {
                     initialLocator: initialLocator,
                     pendingJump: pendingJump,
                     fontSizePct: fontSizePct,
+                    canAskAI: resolvedAIEngine != nil,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in
                             currentLocator = locator
@@ -279,7 +309,8 @@ struct ReaderView: View {
                             brightnessHUD = pct
                         }
                     },
-                    onDismissRequested: { dismiss() }
+                    onDismissRequested: { dismiss() },
+                    onAskAIRequested: { selection in presentAskSheet(selection: selection) }
                 )
                 .alert(item: $pendingPrompt) { info in
                     Alert(
@@ -488,6 +519,36 @@ struct ReaderView: View {
             chapterHref: href,
             chapterTitle: title,
             cutoff: locator.locations.progression,
+            engine: engine
+        )
+    }
+
+    /// Snapshot the current chapter context for the supplied selection text
+    /// and present `AskAboutSelectionSheet`. Reuses the same lazily-built
+    /// `AISummaryService` as the chapter summary path — both rely on it
+    /// streaming through the resolved engine's `LanguageModel`. No-ops if AI
+    /// isn't currently usable (the action shouldn't have been visible in that
+    /// case, but availability can change between menu show + tap).
+    private func presentAskSheet(selection: String) {
+        guard let engine = resolvedAIEngine,
+              let publication,
+              !selection.isEmpty else {
+            return
+        }
+        if summaryService == nil {
+            summaryService = AISummaryService(
+                modelContext: context,
+                modelProvider: env.aiModelProvider,
+                textExtractor: PublicationChapterTextExtractor(publication: publication)
+            )
+        }
+        let href = currentLocator?.href.string ?? initialLocator?.href.string
+        let title: String? = href.flatMap(chapterTitle(forHref:)) ?? chapterTitleForCurrent
+        askSheet = AskSheetContext(
+            selection: selection,
+            bookID: bookID,
+            bookTitle: book?.title ?? "",
+            chapterTitle: title,
             engine: engine
         )
     }
