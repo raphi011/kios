@@ -41,6 +41,34 @@ struct FoundationModelsLanguageModel: LanguageModel {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
+
+    func extract<T: Decodable & Sendable>(
+        _ type: T.Type,
+        schema: String,
+        system: String,
+        user: String
+    ) async throws -> T {
+        let session = LanguageModelSession(instructions: system)
+        do {
+            if type == ChapterCharactersResponse.self {
+                let fm = try await session.respond(
+                    to: user,
+                    generating: FMChapterCharactersResponse.self
+                ).content
+                return ChapterCharactersResponse(fm) as! T
+            }
+            if type == ProfilesSynthesisResponse.self {
+                let fm = try await session.respond(
+                    to: user,
+                    generating: FMProfilesSynthesisResponse.self
+                ).content
+                return ProfilesSynthesisResponse(fm) as! T
+            }
+            throw ExtractionError.unsupportedType(String(describing: type))
+        } catch let error as LanguageModelSession.GenerationError {
+            throw FoundationModelsError(from: error)
+        }
+    }
 }
 
 /// Translation layer over `LanguageModelSession.GenerationError` so the
