@@ -16,6 +16,9 @@ final class ReaderContainerVC: UIViewController {
     /// turning a page never leaves stale chrome lingering on screen.
     var onPageTurn: (() -> Void)?
     var onPinchUpdate: ((Int?) -> Void)?
+    /// Live brightness percent while the left-edge pan is active; `nil` on
+    /// release so SwiftUI can fade the HUD.
+    var onBrightnessUpdate: ((Int?) -> Void)?
     var onDismissRequested: (() -> Void)?
 
     // MARK: - Inputs (set via update())
@@ -169,6 +172,7 @@ final class ReaderContainerVC: UIViewController {
             self?.fontSizePct ?? 100
         })
         handlers.onPinchUpdate = { [weak self] pct in self?.onPinchUpdate?(pct) }
+        handlers.onBrightnessUpdate = { [weak self] pct in self?.onBrightnessUpdate?(pct) }
         handlers.onPinchCommit = { [weak self] pct in
             // The container is the only place that owns the navigator handle.
             // Apply the preferences here; SwiftUI also writes @AppStorage,

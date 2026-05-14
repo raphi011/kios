@@ -17,6 +17,8 @@ struct ReaderView: View {
 
     @Query private var books: [Book]
     @Query private var downloads: [Download]
+    /// Sessions for this book — drives the "time left" estimate in the chrome.
+    @Query private var sessionsForBook: [ReadingSession]
 
     @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
 
@@ -37,7 +39,14 @@ struct ReaderView: View {
     @State private var userHasNavigated: Bool = false
 
     @State private var uiVisible: Bool = false
+    /// Set true by the `⊟` button in the reader top bar to present the
+    /// Contents / Bookmarks / Notes modal. Setting back to false dismisses.
+    @State private var showContents: Bool = false
     @State private var fontHUD: Int? = nil
+    /// Percent shown in the brightness HUD (0...100). Driven by the
+    /// `onBrightnessUpdate` callback from `ReaderInputHandlers`' UIKit pan
+    /// recognizer. `nil` hides the HUD.
+    @State private var brightnessHUD: Int? = nil
     @State private var currentLocator: Locator?
     /// Set when the user accepts a cross-device progress prompt. Handed to
     /// `ReaderHost`; the container dedupes by `Locator.jsonString`, so we
@@ -70,6 +79,7 @@ struct ReaderView: View {
         let id = bookID
         _books = Query(filter: #Predicate<Book> { $0.id == id })
         _downloads = Query(filter: #Predicate<Download> { $0.bookID == id })
+        _sessionsForBook = Query(filter: #Predicate<ReadingSession> { $0.bookID == id })
     }
 
     private var book: Book? { books.first }
@@ -84,10 +94,14 @@ struct ReaderView: View {
 
     var body: some View {
         ZStack {
-            // EPUB content stretches edge-to-edge for immersive reading;
-            // chrome and HUD respect the safe area so they don't draw
-            // behind the Dynamic Island / status bar / home indicator.
-            content.ignoresSafeArea()
+            // EPUB content stretches edge-to-edge horizontally and behind the
+            // Dynamic Island. At rest, the navigator gets a bottom safeAreaInset
+            // filled with the rest strip, so body text never overlaps the
+            // hairline. When chrome is visible, the inset is empty and the
+            // floating glass bottom bar overlays the natural safe area.
+            content
+                .ignoresSafeArea(edges: [.top, .horizontal])
+                .safeAreaInset(edge: .bottom, spacing: 0) { restStripInset }
             chromeOverlay
             hudOverlay
         }
@@ -136,6 +150,63 @@ struct ReaderView: View {
             env.stats.sessionDidClose(reason: .closed)
             env.activeReader = nil
         }
+        .fullScreenCover(isPresented: $showContents) {
+            ReaderContentsView(
+                bookTitle: book?.title ?? "",
+                chapters: chapterEntries,
+                onJump: { locator in
+                    pendingJump = locator
+                    showContents = false
+                },
+                onDismiss: { showContents = false }
+            )
+        }
+    }
+
+    // MARK: - Contents/Bookmarks/Notes data
+
+    /// Builds the chapter list shown in the Contents tab. Pairs each TOC
+    /// entry with its starting position (for the jump target + page number)
+    /// and labels each chapter as read / current / unread.
+    private var chapterEntries: [ReaderContentsView.Chapter] {
+        guard !tocProgressions.isEmpty, !positions.isEmpty else { return [] }
+        let watermark = maxReadProgression
+        let currentIdx0 = (currentChapterIndex ?? 0) - 1   // back to 0-based; -1 = none
+        var out: [ReaderContentsView.Chapter] = []
+        for (i, entry) in tocProgressions.enumerated() {
+            guard let positionIdx = positions.firstIndex(where: {
+                ($0.locations.totalProgression ?? 0) >= entry.progression
+            }) else { continue }
+            let nextProg: Double = (i + 1 < tocProgressions.count)
+                ? tocProgressions[i + 1].progression
+                : 1.0
+            let status: ReaderContentsView.Status
+            if i == currentIdx0 {
+                status = .current
+            } else if nextProg <= watermark {
+                status = .read
+            } else {
+                status = .unread
+            }
+            out.append(.init(
+                index: i + 1,
+                roman: romanNumeral(i + 1),
+                title: entry.title,
+                page: positionIdx + 1,
+                status: status,
+                locator: positions[positionIdx]
+            ))
+        }
+        return out
+    }
+
+    /// Highest progression reached for this book across all sessions —
+    /// drives the "read" check next to chapters the user has already passed.
+    /// Approximate; doesn't account for jump-skipped chapters.
+    private var maxReadProgression: Double {
+        let maxPosition = sessionsForBook.map(\.maxPosition).max() ?? 0
+        guard positions.count > 1 else { return 0 }
+        return Double(maxPosition) / Double(positions.count - 1)
     }
 
     @ViewBuilder
@@ -168,6 +239,12 @@ struct ReaderView: View {
                     onPinchCommit: { pct in
                         fontSizePct = pct
                     },
+                    onBrightnessUpdate: { pct in
+                        let duration = (pct == nil) ? 0.3 : 0.08
+                        withAnimation(.easeOut(duration: duration)) {
+                            brightnessHUD = pct
+                        }
+                    },
                     onDismissRequested: { dismiss() }
                 )
                 .alert(item: $pendingPrompt) { info in
@@ -198,12 +275,26 @@ struct ReaderView: View {
     private var chromeOverlay: some View {
         if uiVisible {
             VStack(spacing: 0) {
-                ReaderTopBar(title: book?.title ?? "", onClose: { dismiss() })
+                EditorialReaderTopBar(
+                    title: book?.title ?? "",
+                    onLibrary: { dismiss() },
+                    onContents: { showContents = true },
+                    onTypeSettings: { /* stub — Type settings sheet not implemented yet */ }
+                )
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+
                 Spacer()
-                ReaderBottomProgressBar(
+
+                EditorialReaderBottomBar(
+                    chapterEyebrow: chapterEyebrow,
+                    chapterTitle: chapterTitleForCurrent,
+                    pageLabel: pageLabel,
+                    timeLeftLabel: timeLeftLabel,
                     locator: currentLocator,
                     scrubProgress: scrubProgress,
-                    chapterTitle: chapterTitle(at:),
+                    tocProgressions: tocProgressions.map(\.progression),
+                    resolveChapterTitle: chapterTitle(at:),
                     onScrubUpdate: { progress in
                         // A fresh drag overrides any post-commit hold from a
                         // previous scrub — the user is steering again.
@@ -214,11 +305,123 @@ struct ReaderView: View {
                     onScrubCancel: {
                         scrubCommitPending = false
                         scrubProgress = nil
-                    }
+                    },
+                    onSummarise: { /* stub — AI summary not implemented yet */ }
                 )
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
             }
             .transition(.opacity)
         }
+    }
+
+    /// Bottom safe-area inset for the navigator. Shows the at-rest progress
+    /// strip when chrome is hidden; otherwise reserves zero height so the
+    /// floating chrome bar handles its own placement.
+    @ViewBuilder
+    private var restStripInset: some View {
+        if !uiVisible, publication != nil {
+            EditorialReaderRestStrip(
+                chapterShort: chapterShortLabel,
+                pageShort: pageShortLabel,
+                progress: currentLocator?.locations.totalProgression ?? 0
+            )
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .allowsHitTesting(false)
+        } else {
+            Color.clear.frame(height: 0)
+        }
+    }
+
+    // MARK: - Chrome string helpers
+
+    /// 1-based index of the TOC entry whose progression is the largest still
+    /// `<=` the current whole-book progression. nil when the TOC isn't loaded
+    /// or the locator's progression precedes the first entry.
+    private var currentChapterIndex: Int? {
+        guard let p = currentLocator?.locations.totalProgression else { return nil }
+        var idx: Int?
+        for (i, entry) in tocProgressions.enumerated() {
+            if entry.progression <= p {
+                idx = i
+            } else {
+                break
+            }
+        }
+        return idx.map { $0 + 1 }   // 1-based
+    }
+
+    /// "CHAPTER IV" — Roman numeral, falling back to an arabic numeral past
+    /// the supported range or to a generic eyebrow when no chapter is known.
+    private var chapterEyebrow: String {
+        guard let i = currentChapterIndex else { return "READING" }
+        return "CHAPTER \(romanNumeral(i))"
+    }
+
+    /// "ch. 4" — lowercase mono form used by the rest strip.
+    private var chapterShortLabel: String {
+        guard let i = currentChapterIndex else { return "—" }
+        return "ch. \(i)"
+    }
+
+    /// Chapter title (from TOC) for the current progression, or "—" when
+    /// the TOC hasn't loaded yet.
+    private var chapterTitleForCurrent: String {
+        chapterTitle(at: currentLocator?.locations.totalProgression ?? 0)
+    }
+
+    /// "p. 142 / 316" — index of the current locator within the flat positions
+    /// list, plus the total. Falls back to "—" before positions are loaded.
+    private var pageLabel: String {
+        guard !positions.isEmpty else { return "—" }
+        let idx = currentPageIndex
+        return "p. \(idx + 1) / \(positions.count)"
+    }
+
+    /// "p. 142" — short form for the rest strip.
+    private var pageShortLabel: String {
+        guard !positions.isEmpty else { return "—" }
+        return "p. \(currentPageIndex + 1)"
+    }
+
+    private var currentPageIndex: Int {
+        guard let locator = currentLocator,
+              let idx = positions.firstIndex(where: { $0.href == locator.href }) else {
+            return 0
+        }
+        return idx
+    }
+
+    /// "3h 12m left" — extrapolated from time-so-far × (1 − progress) / progress.
+    /// Hidden (nil) until at least one session has landed and the locator is
+    /// past 0.1% (the early-extrapolation singularity).
+    private var timeLeftLabel: String? {
+        let total = sessionsForBook.reduce(0) { $0 + $1.durationSeconds }
+        let progress = currentLocator?.locations.totalProgression ?? 0
+        guard total > 0, progress > 0.001, progress < 1.0 else { return nil }
+        let remaining = Int(Double(total) * (1.0 - progress) / progress)
+        return StatsFormatters.time(seconds: remaining) + " left"
+    }
+
+    /// Roman numeral 1...3999. Past that, returns the arabic numeral — Romans
+    /// run out of letters and books with that many chapters are not a thing.
+    private func romanNumeral(_ n: Int) -> String {
+        guard n > 0, n < 4000 else { return String(n) }
+        let pairs: [(Int, String)] = [
+            (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+            (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+            (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+        ]
+        var n = n
+        var out = ""
+        for (v, sym) in pairs {
+            while n >= v {
+                out += sym
+                n -= v
+            }
+        }
+        return out
     }
 
     @ViewBuilder
@@ -226,15 +429,26 @@ struct ReaderView: View {
         if let pct = fontHUD {
             ReaderFontHUD(pct: pct)
                 .transition(.opacity)
+        } else if let pct = brightnessHUD {
+            ReaderBrightnessHUD(pct: pct)
+                .transition(.opacity)
         } else if let progress = scrubProgress {
             ReaderScrubHUD(progress: progress, chapter: chapterTitle(at: progress))
                 .transition(.opacity)
         }
     }
 
+
     private func swipeDownDismissGesture() -> some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
+                // Drags that start in the left-edge brightness zone belong
+                // to that UIKit pan recognizer — skip dismiss so a brightness
+                // drag doesn't accidentally close the reader.
+                let screenWidth = UIScreen.main.bounds.width
+                if value.startLocation.x < screenWidth * ReaderInputHandlers.brightnessZoneFraction {
+                    return
+                }
                 let translation = CGSize(width: value.translation.width,
                                          height: value.translation.height)
                 let velocity = CGSize(width: value.predictedEndTranslation.width - value.translation.width,

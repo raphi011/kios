@@ -21,6 +21,9 @@ struct ReaderHost: UIViewControllerRepresentable {
     var onPageTurn: () -> Void
     var onPinchUpdate: (Int?) -> Void
     var onPinchCommit: (Int) -> Void
+    /// Live brightness percent while the left-edge pan is active; `nil` on
+    /// release so SwiftUI fades the HUD.
+    var onBrightnessUpdate: (Int?) -> Void
     var onDismissRequested: () -> Void
 
     func makeUIViewController(context: Context) -> UIViewController {
@@ -32,6 +35,7 @@ struct ReaderHost: UIViewControllerRepresentable {
             vc.onPageTurn = onPageTurn
             vc.onPinchUpdate = onPinchUpdate
             vc.onPinchCommitToSwiftUI = onPinchCommit
+            vc.onBrightnessUpdate = onBrightnessUpdate
             vc.onDismissRequested = onDismissRequested
             vc.applyPendingJump(pendingJump)
             return vc
@@ -51,6 +55,7 @@ struct ReaderHost: UIViewControllerRepresentable {
         container.onPageTurn = onPageTurn
         container.onPinchUpdate = onPinchUpdate
         container.onPinchCommitToSwiftUI = onPinchCommit
+        container.onBrightnessUpdate = onBrightnessUpdate
         container.onDismissRequested = onDismissRequested
         container.applyPendingJump(pendingJump)
     }

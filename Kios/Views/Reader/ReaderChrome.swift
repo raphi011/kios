@@ -1,157 +1,408 @@
 import SwiftUI
 import ReadiumShared
 
-/// Top bar shown when chrome is visible. Close button on the left,
-/// truncated title in the middle, nothing on the right.
-struct ReaderTopBar: View {
+// MARK: - Top bar
+
+/// Editorial reader top bar. A floating Liquid Glass pill inset from the
+/// screen edges, with three slots:
+///
+/// - leading: `‹ Library` back action (accent red)
+/// - center: italic serif book title (truncates to a max width)
+/// - trailing: Contents (`list.bullet`) and Type settings (`Aa`)
+///
+/// Contents + Type settings are stubs for now — they accept callbacks so
+/// they're easy to wire up later, but pass `nil` (or a no-op) to render
+/// disabled-looking buttons.
+struct EditorialReaderTopBar: View {
     let title: String
-    let onClose: () -> Void
+    var onLibrary: () -> Void
+    var onContents: () -> Void
+    var onTypeSettings: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var dark: Bool { colorScheme == .dark }
+    private var ink: Color { dark ? EditorialTheme.bg : EditorialTheme.ink }
+    private var muted: Color { dark ? EditorialTheme.muted.opacity(0.8) : EditorialTheme.muted }
 
     var body: some View {
-        HStack {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+        HStack(spacing: 0) {
+            Button(action: onLibrary) {
+                HStack(spacing: 2) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .regular))
+                    Text("Library")
+                        .font(EditorialTheme.sans(size: 17, weight: .medium))
+                }
+                .foregroundStyle(EditorialTheme.accent)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            Spacer(minLength: 0)
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 8)
+
             Text(title)
-                .font(.headline)
+                .font(EditorialTheme.serif(size: 14, weight: .medium))
+                .italic()
+                .foregroundStyle(ink)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Spacer(minLength: 0)
-            // Right-side spacer keeps the title visually centered against the
-            // close button's 44pt hit target.
-            Color.clear.frame(width: 44, height: 44)
+                .frame(maxWidth: 160)
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 0) {
+                Button(action: onContents) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(ink)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onTypeSettings) {
+                    Text("Aa")
+                        .font(EditorialTheme.serif(size: 18, weight: .semibold))
+                        .foregroundStyle(ink)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.horizontal, 8)
-        .frame(height: 44)
-        .background(.regularMaterial)
-        // Absorb taps anywhere in the bar so they don't reach the page
-        // beneath (otherwise a tap on empty title area would turn the page).
+        .frame(height: 52)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(dark ? 0.30 : 0.08), radius: 12, x: 0, y: 6)
+        // Absorb taps — the underlying page would otherwise turn on a missed
+        // icon tap inside the bar.
         .contentShape(Rectangle())
         .onTapGesture {}
     }
 }
 
-/// Bottom strip with progress bar and `34% • Chapter 4` label. Scrubbable:
-/// dragging the bar previews a target progression (caller renders a HUD via
-/// `onScrubUpdate`) and commits the jump on release via `onScrubCommit`.
-struct ReaderBottomProgressBar: View {
+// MARK: - Bottom bar
+
+/// Editorial reader bottom bar. A floating Liquid Glass card containing the
+/// chapter info row, a scrubbable progress slider with TOC tick marks, and a
+/// trailing AI quick-action row separated by a hairline.
+///
+/// Most fields are display-only strings the caller resolves from the locator
+/// and TOC. The slider is fully wired: drag updates `scrubProgress`, release
+/// commits via `onScrubCommit`.
+struct EditorialReaderBottomBar: View {
+    let chapterEyebrow: String         // e.g. "CHAPTER IV"
+    let chapterTitle: String           // e.g. "The Platonic Fold"
+    let pageLabel: String              // e.g. "p. 142 / 316"
+    let timeLeftLabel: String?         // e.g. "3h 12m left" (nil hides line)
+
     let locator: Locator?
-    /// Non-nil while the user is dragging — display reflects the scrub
-    /// position, not the navigator's actual locator. Reset to nil after commit.
     let scrubProgress: Double?
-    /// Resolves the TOC heading for a given whole-book progression.
-    let chapterTitle: (Double) -> String
+    let tocProgressions: [Double]      // 0...1 progressions for tick marks
+    let resolveChapterTitle: (Double) -> String
     var onScrubUpdate: (Double) -> Void
     var onScrubCommit: (Double) -> Void
     var onScrubCancel: () -> Void
+    var onSummarise: () -> Void
 
-    var body: some View {
-        VStack(spacing: 4) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.3))
-                    Capsule()
-                        .fill(Color.accentColor)
-                        .frame(width: max(0, geo.size.width * CGFloat(displayProgress)))
-                }
-                .frame(height: 4)
-                .contentShape(Rectangle())
-                .gesture(scrubGesture(in: geo.size.width))
-            }
-            // Tall hit area for the drag — the visible capsule is only 4pt,
-            // but the gesture treats the whole 28pt strip as draggable so a
-            // moving fingertip isn't lost between samples.
-            .frame(height: 28)
-            HStack {
-                Text("\(Int(displayProgress * 100))%")
-                    .font(.caption.monospacedDigit())
-                Text("•")
-                    .font(.caption)
-                Text(displayChapterLabel)
-                    .font(.caption)
-                    .lineLimit(1)
-                Spacer()
-            }
-            .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(.regularMaterial)
-        .contentShape(Rectangle())
-    }
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var dark: Bool { colorScheme == .dark }
+    private var ink: Color { dark ? EditorialTheme.bg : EditorialTheme.ink }
+    private var muted: Color { dark ? EditorialTheme.muted.opacity(0.85) : EditorialTheme.muted }
+    private var rule: Color { dark ? Color.white.opacity(0.10) : EditorialTheme.rule }
+    private var trackOff: Color { dark ? Color.white.opacity(0.18) : Color.black.opacity(0.18) }
+    private var tickColor: Color { dark ? Color.white.opacity(0.35) : Color.black.opacity(0.30) }
 
     private var displayProgress: Double {
         scrubProgress ?? (locator?.locations.totalProgression ?? 0)
     }
 
-    private var displayChapterLabel: String {
-        if let sp = scrubProgress {
-            return chapterTitle(sp)
+    var body: some View {
+        VStack(spacing: 0) {
+            chapterRow
+            slider
+                .padding(.top, 12)
+            divider
+                .padding(.vertical, 12)
+            aiActionRow
         }
-        if let title = locator?.title, !title.isEmpty {
-            return title
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(dark ? 0.30 : 0.08), radius: 12, x: 0, y: 6)
+        .contentShape(Rectangle())
+        .onTapGesture {}
+    }
+
+    // MARK: - Rows
+
+    private var chapterRow: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(chapterEyebrow)
+                    .editorialEyebrow(color: muted)
+                Text(displayChapterTitle)
+                    .font(EditorialTheme.serif(size: 16, weight: .medium))
+                    .italic()
+                    .foregroundStyle(ink)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(pageLabel)
+                    .editorialEyebrow(color: muted)
+                if let timeLeftLabel {
+                    Text(timeLeftLabel)
+                        .font(EditorialTheme.serif(size: 13))
+                        .italic()
+                        .foregroundStyle(muted)
+                        .lineLimit(1)
+                }
+            }
         }
-        return chapterTitle(displayProgress)
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(rule)
+            .frame(height: 0.5)
+            .padding(.horizontal, -18)
+    }
+
+    private var aiActionRow: some View {
+        Button(action: onSummarise) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(EditorialTheme.accentSoft)
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(EditorialTheme.accent)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Summarise this chapter")
+                        .font(EditorialTheme.sans(size: 15, weight: .medium))
+                        .foregroundStyle(ink)
+                    Text("~ 8 sec · Claude Haiku")
+                        .editorialEyebrow(color: muted)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(muted)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Slider
+
+    private var slider: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(trackOff)
+                    .frame(height: 2)
+
+                Capsule()
+                    .fill(ink)
+                    .frame(width: max(0, width * CGFloat(displayProgress)), height: 2)
+
+                ForEach(tocProgressions.indices, id: \.self) { i in
+                    let p = tocProgressions[i]
+                    Rectangle()
+                        .fill(tickColor)
+                        .frame(width: 1, height: 6)
+                        .offset(x: width * CGFloat(p) - 0.5)
+                }
+
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 18, height: 18)
+                    .shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 1)
+                    .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 2)
+                    .offset(x: width * CGFloat(displayProgress) - 9)
+            }
+            .frame(height: 22)
+            .contentShape(Rectangle())
+            .gesture(scrubGesture(in: width))
+        }
+        .frame(height: 22)
     }
 
     private func scrubGesture(in width: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                onScrubUpdate(clampedProgress(value.location.x, in: width))
+                onScrubUpdate(clamped(value.location.x, width: width))
             }
             .onEnded { value in
-                onScrubCommit(clampedProgress(value.location.x, in: width))
+                onScrubCommit(clamped(value.location.x, width: width))
             }
     }
 
-    private func clampedProgress(_ x: CGFloat, in width: CGFloat) -> Double {
+    private func clamped(_ x: CGFloat, width: CGFloat) -> Double {
         guard width > 0 else { return 0 }
         return max(0, min(1, Double(x / width)))
     }
+
+    private var displayChapterTitle: String {
+        if let sp = scrubProgress { return resolveChapterTitle(sp) }
+        return chapterTitle
+    }
 }
 
-/// Centered HUD shown during a progress-bar scrub. Mirrors `ReaderFontHUD`'s
-/// translucent rounded surface but stacks percent over the resolved chapter
-/// heading so the reader can see *what* they're scrubbing toward.
+// MARK: - Rest strip (chrome hidden)
+
+/// Subtle bottom strip shown while the reader is in its at-rest state (chrome
+/// hidden). A 1pt hairline progress bar bracketed by mono-cap "ch. N" and
+/// "p. M" labels — just enough wayfinding without breaking immersion.
+struct EditorialReaderRestStrip: View {
+    let chapterShort: String   // e.g. "ch. 4"
+    let pageShort: String      // e.g. "p. 142"
+    let progress: Double       // 0...1
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var muted: Color { colorScheme == .dark ? EditorialTheme.muted.opacity(0.85) : EditorialTheme.muted }
+    private var rule: Color { colorScheme == .dark ? Color.white.opacity(0.10) : EditorialTheme.rule }
+    private var ink: Color { colorScheme == .dark ? EditorialTheme.bg : EditorialTheme.ink }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(chapterShort)
+                .font(EditorialTheme.mono(size: 10))
+                .tracking(1.0)
+                .textCase(.uppercase)
+                .foregroundStyle(muted)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(rule)
+                        .frame(height: 1)
+                    Rectangle()
+                        .fill(ink)
+                        .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 1)
+                }
+            }
+            .frame(height: 1)
+
+            Text(pageShort)
+                .font(EditorialTheme.mono(size: 10))
+                .tracking(1.0)
+                .textCase(.uppercase)
+                .foregroundStyle(muted)
+        }
+        .padding(.horizontal, 30)
+    }
+}
+
+// MARK: - HUDs (overlay state during scrub / pinch)
+
+/// Centered HUD shown during a progress-bar scrub. Translucent rounded
+/// surface stacking the target percentage over the resolved chapter heading,
+/// so the reader can see *what* they're scrubbing toward.
 struct ReaderScrubHUD: View {
     let progress: Double
     let chapter: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             Text("\(Int(progress * 100))%")
-                .font(.title2.weight(.semibold).monospacedDigit())
+                .font(EditorialTheme.serif(size: 32, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(EditorialTheme.ink)
             if !chapter.isEmpty {
                 Text(chapter)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(EditorialTheme.serif(size: 14))
+                    .italic()
+                    .foregroundStyle(EditorialTheme.muted)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .frame(minWidth: 140)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal, 28)
+        .padding(.vertical, 18)
+        .frame(minWidth: 160)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
         .accessibilityLabel("Scrubbing to \(Int(progress * 100)) percent, \(chapter)")
     }
 }
 
-/// Centered HUD shown during a pinch. "120%" inside a rounded background.
+/// Centered HUD shown during a left-edge brightness drag. Sun glyph + the
+/// resulting screen brightness percentage. Same glass + serif treatment as
+/// the font HUD so they read as siblings.
+struct ReaderBrightnessHUD: View {
+    let pct: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sun.max.fill")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(EditorialTheme.ink)
+            Text("\(pct)%")
+                .font(EditorialTheme.serif(size: 32, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(EditorialTheme.ink)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(EditorialTheme.rule, lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
+        .accessibilityLabel("Brightness \(pct) percent")
+    }
+}
+
+/// Centered HUD shown during a pinch. Serif percentage in a rounded glass card.
 struct ReaderFontHUD: View {
     let pct: Int
 
     var body: some View {
         Text("\(pct)%")
-            .font(.title2.weight(.semibold).monospacedDigit())
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .font(EditorialTheme.serif(size: 32, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(EditorialTheme.ink)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(EditorialTheme.rule, lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
             .accessibilityLabel("Font size \(pct) percent")
     }
 }
