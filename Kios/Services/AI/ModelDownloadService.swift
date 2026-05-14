@@ -38,20 +38,44 @@ enum ModelDownloadError: LocalizedError, Sendable, Equatable {
     }
 }
 
+/// Downloads model assets to disk via per-file `URLSessionDownloadTask`s,
+/// driving an internal `URLSessionDownloadDelegate` that bridges the delegate
+/// callbacks to async/await via a per-file `CheckedContinuation`. Supports
+/// background `URLSessionConfiguration` because we do NOT use the async
+/// convenience `download(from:)` method — that one throws on background
+/// configs ("Completion handler blocks are not supported in background
+/// sessions"). The delegate-driven path works for any session configuration.
 @MainActor
 @Observable
-final class ModelDownloadService: ModelDownloadServiceReading {
+final class ModelDownloadService: NSObject, ModelDownloadServiceReading {
     private(set) var progress: DownloadProgress?
     private(set) var lastError: ModelDownloadError?
 
     private let assetStore: ModelAssetStore
     private let configuration: URLSessionConfiguration
-    private var currentTask: Task<Void, Never>?
+
+    // Per-file state. Only mutated from MainActor.
+    private var activeSession: URLSession?
+    private var activeContinuation: CheckedContinuation<URL, Error>?
+    private var fileStartTime: Date = Date()
+    private var bytesBeforeCurrentFile: Int64 = 0
+    private var currentAssetID: String = ""
+    private var currentAssetTotal: Int64 = 0
+
+    /// Serial delegate queue — keeps `didFinishDownloadingTo` and
+    /// `didCompleteWithError` from interleaving for a single task.
+    private let delegateQueue: OperationQueue = {
+        let q = OperationQueue()
+        q.maxConcurrentOperationCount = 1
+        q.name = "kios.aimodel.download.delegate"
+        return q
+    }()
 
     init(assetStore: ModelAssetStore,
-         configuration: URLSessionConfiguration = .background(withIdentifier: "com.raphi011.kios.aimodel.download")) {
+         configuration: URLSessionConfiguration = .default) {
         self.assetStore = assetStore
         self.configuration = configuration
+        super.init()
     }
 
     nonisolated func currentDownload() -> DownloadProgress? {
@@ -73,8 +97,12 @@ final class ModelDownloadService: ModelDownloadServiceReading {
         defer { UIApplication.shared.isIdleTimerDisabled = false }
 
         configuration.allowsCellularAccess = allowCellular
-        let session = URLSession(configuration: configuration)
-        defer { session.finishTasksAndInvalidate() }
+        let session = URLSession(configuration: configuration, delegate: self, delegateQueue: delegateQueue)
+        activeSession = session
+        defer {
+            session.finishTasksAndInvalidate()
+            activeSession = nil
+        }
 
         progress = DownloadProgress(
             assetID: asset.id,
@@ -83,22 +111,28 @@ final class ModelDownloadService: ModelDownloadServiceReading {
             bytesPerSecond: 0
         )
 
+        currentAssetID = asset.id
+        currentAssetTotal = asset.totalBytes
         var bytesSoFar: Int64 = 0
-        let start = Date()
 
         for file in asset.files {
             let url = URL(string: "https://huggingface.co/\(asset.huggingFaceRepo)/resolve/\(asset.revision)/\(file.path)")!
+
+            bytesBeforeCurrentFile = bytesSoFar
+            fileStartTime = Date()
+
             do {
-                let (tempURL, response) = try await session.download(from: url)
-                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                    lastError = .transient(underlying: "HTTP \(http.statusCode) for \(file.path)")
-                    return
+                let stableTempURL: URL = try await withCheckedThrowingContinuation { continuation in
+                    self.activeContinuation = continuation
+                    let task = session.downloadTask(with: url)
+                    task.resume()
                 }
+
                 let dest = dir.appendingPathComponent(file.path)
                 if FileManager.default.fileExists(atPath: dest.path) {
                     try FileManager.default.removeItem(at: dest)
                 }
-                try FileManager.default.moveItem(at: tempURL, to: dest)
+                try FileManager.default.moveItem(at: stableTempURL, to: dest)
 
                 let data = try Data(contentsOf: dest, options: .mappedIfSafe)
                 let sha = ModelAssetStore.sha256Hex(of: data)
@@ -114,12 +148,11 @@ final class ModelDownloadService: ModelDownloadServiceReading {
                 try? mutableDest.setResourceValues(resourceValues)
 
                 bytesSoFar += file.sizeBytes
-                let elapsed = Date().timeIntervalSince(start)
                 progress = DownloadProgress(
                     assetID: asset.id,
                     bytesDownloaded: bytesSoFar,
                     bytesTotal: asset.totalBytes,
-                    bytesPerSecond: elapsed > 0 ? Double(bytesSoFar) / elapsed : 0
+                    bytesPerSecond: 0
                 )
             } catch is CancellationError {
                 lastError = .cancelled
@@ -133,9 +166,87 @@ final class ModelDownloadService: ModelDownloadServiceReading {
     }
 
     func cancel() {
-        currentTask?.cancel()
-        currentTask = nil
+        activeSession?.invalidateAndCancel()
+        if let cont = activeContinuation {
+            activeContinuation = nil
+            cont.resume(throwing: CancellationError())
+        }
         progress = nil
         lastError = .cancelled
+    }
+
+    // MARK: - Delegate-side helpers (MainActor)
+
+    private func resumeContinuationSuccess(_ url: URL) {
+        guard let cont = activeContinuation else { return }
+        activeContinuation = nil
+        cont.resume(returning: url)
+    }
+
+    private func resumeContinuationFailure(_ error: Error) {
+        guard let cont = activeContinuation else { return }
+        activeContinuation = nil
+        cont.resume(throwing: error)
+    }
+
+    private func updateProgress(totalBytesWritten: Int64) {
+        let elapsed = Date().timeIntervalSince(fileStartTime)
+        progress = DownloadProgress(
+            assetID: currentAssetID,
+            bytesDownloaded: bytesBeforeCurrentFile + totalBytesWritten,
+            bytesTotal: currentAssetTotal,
+            bytesPerSecond: elapsed > 0 ? Double(totalBytesWritten) / elapsed : 0
+        )
+    }
+}
+
+// MARK: - URLSessionDownloadDelegate
+
+extension ModelDownloadService: URLSessionDownloadDelegate {
+    nonisolated func urlSession(_ session: URLSession,
+                                downloadTask: URLSessionDownloadTask,
+                                didFinishDownloadingTo location: URL) {
+        // didFinishDownloadingTo fires for ANY response, including 4xx/5xx, with
+        // the response body saved to a temp file. Check the status code first.
+        if let http = downloadTask.response as? HTTPURLResponse,
+           !(200..<300).contains(http.statusCode) {
+            let status = http.statusCode
+            let urlStr = downloadTask.originalRequest?.url?.absoluteString ?? "<unknown>"
+            let error = NSError(
+                domain: "kios.modeldownload",
+                code: status,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP \(status) for \(urlStr)"]
+            )
+            Task { @MainActor in self.resumeContinuationFailure(error) }
+            return
+        }
+        // The temp file at `location` is deleted as soon as this method returns,
+        // so move it to a stable path BEFORE bouncing back to MainActor.
+        let stableURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kios-dl-\(UUID().uuidString)")
+        do {
+            try FileManager.default.moveItem(at: location, to: stableURL)
+            Task { @MainActor in self.resumeContinuationSuccess(stableURL) }
+        } catch {
+            Task { @MainActor in self.resumeContinuationFailure(error) }
+        }
+    }
+
+    nonisolated func urlSession(_ session: URLSession,
+                                task: URLSessionTask,
+                                didCompleteWithError error: (any Error)?) {
+        // Successful downloads route through didFinishDownloadingTo above; only
+        // surface explicit transport errors here. The MainActor helpers already
+        // guard against double-resume via the `activeContinuation = nil` step.
+        guard let error else { return }
+        Task { @MainActor in self.resumeContinuationFailure(error) }
+    }
+
+    nonisolated func urlSession(_ session: URLSession,
+                                downloadTask: URLSessionDownloadTask,
+                                didWriteData bytesWritten: Int64,
+                                totalBytesWritten: Int64,
+                                totalBytesExpectedToWrite: Int64) {
+        Task { @MainActor in self.updateProgress(totalBytesWritten: totalBytesWritten) }
     }
 }

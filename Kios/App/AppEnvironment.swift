@@ -87,7 +87,14 @@ final class AppEnvironment {
         // can read live state without nil-checks.
         self.aiSettings = AISettings()
         self.aiAssetStore = ModelAssetStore(rootDirectory: AppPaths.aiModelsDirectory)
-        self.aiDownloadService = ModelDownloadService(assetStore: self.aiAssetStore)
+        // Background-capable URLSession config: survives app suspension during
+        // the multi-GB Gemma download. Identifier is stable across launches so
+        // iOS can resume any in-flight tasks after a kill + relaunch.
+        let aiDlConfig = URLSessionConfiguration.background(withIdentifier: "com.raphi011.kios.aimodel.download")
+        self.aiDownloadService = ModelDownloadService(
+            assetStore: self.aiAssetStore,
+            configuration: aiDlConfig
+        )
         #if canImport(MLXLLM)
         self.aiModelRuntime = ModelRuntime(loader: MLXRunnerLoader())
         #else
