@@ -177,8 +177,107 @@ final class BookAnalysisService {
         return String(data: data, encoding: .utf8) ?? "[]"
     }
 
+    /// Re-runs only chapters that have no `CharacterMention` rows yet; then
+    /// always re-runs the synthesis pass. Use when the user taps "Resume"
+    /// on a failed analysis.
+    func resume(bookID: UUID, engine: AIEngine) async throws {
+        let allChapters = try await chaptersFor(bookID)
+        let mentions = try modelContext.fetch(FetchDescriptor<CharacterMention>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        let extractedIndices = Set(mentions.map(\.chapterIndex))
+        let rows = try modelContext.fetch(FetchDescriptor<BookAnalysis>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        guard let row = rows.first else {
+            try await start(bookID: bookID, engine: engine)
+            return
+        }
+        let remaining = allChapters.filter { !extractedIndices.contains($0.index) }
+        row.status = "in_progress"
+        row.failureReason = nil
+        try modelContext.save()
+
+        let provider = self.provider
+        let extractor = self.extractor
+        let context = self.modelContext
+
+        task = Task { [weak self] in
+            do {
+                let model = try await provider.languageModel(for: engine)
+                for chapter in remaining {
+                    try Task.checkCancellation()
+                    let text = try await extractor.extract(
+                        bookID: bookID, chapterHref: chapter.href, cutoff: nil
+                    )
+                    let response: ChapterCharactersResponse = try await model.extract(
+                        ChapterCharactersResponse.self,
+                        schema: CharacterExtractionPrompts.charactersSchema,
+                        system: CharacterExtractionPrompts.characterExtractionSystem,
+                        user: text
+                    )
+                    await MainActor.run {
+                        for c in response.characters {
+                            context.insert(CharacterMention(
+                                id: UUID(), bookID: bookID,
+                                chapterIndex: chapter.index, chapterHref: chapter.href,
+                                canonicalName: c.canonicalName,
+                                aliasesInChapter: c.aliases,
+                                descriptionFromChapter: c.descriptionFromChapter,
+                                significance: c.significance,
+                                quote: c.quote, profileID: nil
+                            ))
+                        }
+                        row.chaptersCompleted = max(row.chaptersCompleted, chapter.index + 1)
+                        try? context.save()
+                    }
+                }
+                try await self?.runSynthesisPass(bookID: bookID, model: model, row: row)
+            } catch is CancellationError {
+                await MainActor.run {
+                    row.status = "failed"
+                    row.failureReason = "Canceled"
+                    try? context.save()
+                }
+            } catch {
+                await MainActor.run {
+                    row.status = "failed"
+                    row.failureReason = error.localizedDescription
+                    try? context.save()
+                }
+            }
+        }
+    }
+
+    /// Wipes all prior analysis state for the book and runs from scratch.
+    func restart(bookID: UUID, engine: AIEngine) async throws {
+        let mentions = try modelContext.fetch(FetchDescriptor<CharacterMention>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for m in mentions { modelContext.delete(m) }
+        let profiles = try modelContext.fetch(FetchDescriptor<CharacterProfile>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for p in profiles { modelContext.delete(p) }
+        try modelContext.save()
+        try await start(bookID: bookID, engine: engine)
+    }
+
+    #if DEBUG
+    func resumeAndAwait(bookID: UUID, engine: AIEngine) async throws {
+        try await resume(bookID: bookID, engine: engine)
+        await task?.value
+    }
+    func taskValue() async {
+        await task?.value
+    }
+    #endif
+
+    /// Cancels the in-flight pipeline. The task reference is retained so
+    /// callers can `await taskValue()` after cancel to observe terminal
+    /// state. The catch-block on the task body marks the row "failed" with
+    /// `failureReason = "Canceled"` once cancellation propagates.
     func cancel() {
         task?.cancel()
-        task = nil
     }
 }
