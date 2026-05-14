@@ -19,28 +19,34 @@ This document captures the full set of requirements, decisions, and process step
 
 ## Current state (verified via codebase exploration)
 
+TestFlight internal builds are live as of 2026-05-14, so most Phase 1–4 plumbing is done.
+
 | Area | Status |
 |---|---|
-| Bundle ID | `me.iosreader.iOSReader` (in `project.yml`) |
-| Deployment target | iOS 17+, iPhone + iPad |
-| Code signing | `CODE_SIGN_STYLE = Automatic`, `DEVELOPMENT_TEAM = ""` (unset) |
-| Versioning | `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` **not set** (uses auto-Info.plist) |
-| App icon | **Placeholder** — IconikAI 1024×1024 single-size master at `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`. To be replaced before public launch. |
-| Launch screen | Auto-generated (generic) |
-| Privacy descriptions in Info.plist | None (app uses no camera/photos/location/tracking) |
-| `PrivacyInfo.xcprivacy` | **Missing** |
-| `ITSAppUsesNonExemptEncryption` | Not set (export-compliance prompt blocks every TestFlight build until this is in Info.plist) |
-| `NSAppTransportSecurity` | Not configured (README mentions HTTPS-only; HTTP needs ATS exception) |
+| Bundle ID | ✅ `com.raphi011.kios` (`project.yml:40`) |
+| Deployment target | ✅ iOS 17+, iPhone + iPad |
+| Code signing | ✅ `CODE_SIGN_STYLE = Automatic`, `DEVELOPMENT_TEAM = KVS38S75S8` (`project.yml:14`) |
+| Versioning | ✅ `CFBundleShortVersionString = 1.0`, `CFBundleVersion = 1` (`Kios/Info.plist:17-20`). Bump `CFBundleVersion` for every TestFlight upload. |
+| App icon | ⚠️ **Placeholder only** — IconikAI 1024×1024 master at `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`. Replace with a real designed mark before public launch. |
+| Launch screen | Auto-generated (`UILaunchScreen` empty dict in Info.plist). Skippable for v1. |
+| Privacy descriptions in Info.plist | n/a — app uses no camera/photos/location/tracking |
+| `PrivacyInfo.xcprivacy` | ✅ `Kios/Resources/PrivacyInfo.xcprivacy` — declares `UserDefaults` (CA92.1) + `FileTimestamp` (C617.1) Required-Reason APIs; tracking false; no data collected |
+| `ITSAppUsesNonExemptEncryption` | ✅ `false` in `Kios/Info.plist:21-22` |
+| `NSAppTransportSecurity` | ❌ Not configured. README still hedges (HTTPS strongly recommended, HTTP requires ATS exception). Decide before submission — see Phase 1.5. |
+| EPUB document handler | ✅ `CFBundleDocumentTypes` for `org.idpf.epub-container` + `public.epub` (`Kios/Info.plist:52-67`) |
+| Local EPUB import | ✅ `LocalImportService.swift` + `.fileImporter` in `LibraryRootView` and `SettingsView`; two sample books bundled (`frankenstein.epub`, `moby-dick.epub`) for offline reviewer testing |
 | Capabilities/entitlements | None declared (no iCloud, push, IAP, App Groups, Sign in with Apple) |
-| Third-party SDKs | Readium (swift-toolkit), ZIPFoundation; **no analytics, no ad SDKs, no trackers** |
-| CI/CD | Makefile only; no fastlane, no GitHub Actions, no `ExportOptions.plist` |
-| App Store Connect metadata | None (no `fastlane/metadata/`, no `marketing/`) |
+| Third-party SDKs | Readium (swift-toolkit 3.9+), ZIPFoundation; **no analytics, no ad SDKs, no trackers** |
+| CI/CD | Makefile only; no fastlane, no GitHub Actions, no `ExportOptions.plist`. TestFlight uploads currently manual via Xcode Organizer. |
+| App Store Connect metadata | App record exists (TestFlight works). Marketing copy / screenshots / public-listing metadata still to write. |
 
 ---
 
-## Phase 0a — Picking a name
+## Phase 0a — Picking a name — ✅ DONE (name: **Kios**)
 
-The current `iOSReader` working title is generic, low-distinctiveness in App Store search, and ineligible for trademark protection. Apple also rejects names that are descriptive-only (Guideline 4.1 "Copycats" treats generic device-prefixed names as low-quality). A real name is needed **before** Phase 0b, because the choice cascades into bundle ID, App Store Connect record, domain, privacy policy URL, marketing copy, and icon design.
+> Decision-trail preserved below for posterity. The "current recommendation" subsection still pitches *Aldus* and is now historical context only — Kios was chosen instead. See the doc preamble for the rationale.
+
+The original working title `iOSReader` was generic, low-distinctiveness in App Store search, and ineligible for trademark protection. Apple also rejects names that are descriptive-only (Guideline 4.1 "Copycats" treats generic device-prefixed names as low-quality). A real name is needed **before** Phase 0b, because the choice cascades into bundle ID, App Store Connect record, domain, privacy policy URL, marketing copy, and icon design.
 
 ### Naming criteria
 
@@ -151,8 +157,9 @@ If you'd rather scope under a product domain (e.g. you buy `aldus.app`), then `a
 
 Things you can pin down today; they all become inputs to App Store Connect later.
 
-- [ ] **Confirm bundle ID** to match the chosen name (see Phase 0a). **Important: once you upload the first build to App Store Connect, this ID is locked forever** — you can never rename it, only retire it.
-- [ ] **App display name** — the name from Phase 0a (currently **Aldus**), plus a **subtitle** (up to 30 chars) that appears under the name in the App Store listing. Example: "Aldus — Self-hosted EPUB reader" or "Aldus — Your library, beautifully read".
+- [x] **Confirm bundle ID** — locked to `com.raphi011.kios`.
+- [x] **App display name** — home screen `CFBundleDisplayName` = `Kios`; App Store listing name = `Kios Reader`.
+- [ ] **Subtitle** (up to 30 chars) — appears under the name in the App Store listing. Examples to consider: `Self-hosted EPUB reader`, `Your library, beautifully read`, `Calibre-Web reader for iOS`.
 - [ ] **Primary category + secondary category** — likely Primary: *Books*, Secondary: *Productivity*.
 - [ ] **Pricing model** — free, paid, or free with IAP? (IAP requires StoreKit work; free is simplest for v1.)
 - [ ] **Age rating** — App Store Connect asks a 20-question questionnaire. Likely 4+ for this app.
@@ -163,56 +170,38 @@ Things you can pin down today; they all become inputs to App Store Connect later
 
 ---
 
-## Phase 1 — Code/config prep (still no Apple account needed)
+## Phase 1 — Code/config prep — 🟡 MOSTLY DONE
 
-These changes get the codebase to a state where, the moment you have a Developer team ID, you can archive and upload.
+What landed: local EPUB import (1.1), versioning (1.2), export-compliance flag (1.3), privacy manifest (1.4), placeholder app icon (1.6). What's left: an ATS decision (1.5) and the real designed app icon to replace the placeholder (1.6). Phase 1.7 (custom launch screen) is optional.
 
-### 1.1 Local EPUB file import (the new feature you want)
+### 1.1 Local EPUB file import — ✅ DONE
 
-Add a "Open file…" / Files-app integration so users (and Apple reviewers) can read EPUBs without setting up a server. This is the **single highest-impact change** for review approval.
+Implemented via `Kios/Services/LocalImportService.swift`, with `.fileImporter` entry points in `Kios/Views/LibraryRootView.swift` (library "+" button) and `Kios/Views/SettingsView.swift`. Also supports inbound `Open in…` via `Kios/Views/RootView.swift:63` (filters on `.epub` path extension) and the `CFBundleDocumentTypes` declaration in `Kios/Info.plist`. Two sample books (`frankenstein.epub`, `moby-dick.epub`) are bundled under `Kios/Resources/SampleBooks/` and seeded on first launch via `AppEnvironment.swift`, so a reviewer can install, launch in airplane mode, and read a book without configuring anything.
 
-- New screen entry point: a button/menu item in the library view that opens `UIDocumentPickerViewController` with content types `[.epub]` (and `.pdf`, `.cbz` if you want, though README notes only EPUB has a reader).
-- On pick: copy the file into the app's sandbox (`Application Support/LocalBooks/`), parse metadata with Readium's `Publication.OpeningParser`, and insert a `BookEntity` into SwiftData with `source: .local`.
-- Support iOS Share Sheet entry too (`UIDocumentInteractionController` / `Open in…` from Mail/Safari/Files) by declaring the EPUB UTI in `Info.plist`:
-  - `CFBundleDocumentTypes` → EPUB (`org.idpf.epub-container`)
-  - `LSItemContentTypes` likewise
-- Make sure the local books path appears in the same library list as Calibre-Web books, with a small badge/icon to distinguish source.
-- Test: the app must be fully usable end-to-end with zero network — fresh install → import EPUB → read → close → reopen → progress preserved.
+### 1.2 Versioning — ✅ DONE
 
-This belongs in its own implementation plan, but flagging it here because **the submission depends on it**.
+Lives in `Kios/Info.plist` (not `project.yml`, since `INFOPLIST_FILE: Kios/Info.plist` is set): `CFBundleShortVersionString = 1.0`, `CFBundleVersion = 1`. Bump `CFBundleVersion` for every TestFlight upload (App Store Connect rejects duplicate build numbers); bump `CFBundleShortVersionString` for each user-facing release.
 
-### 1.2 Versioning
+### 1.3 Export compliance — ✅ DONE
 
-In `project.yml`, add to the `iOSReader` target's `settings.base:`
-```yaml
-MARKETING_VERSION: "1.0"
-CURRENT_PROJECT_VERSION: "1"
-```
-Then `make xcodegen`. Bump `CURRENT_PROJECT_VERSION` for every TestFlight upload (App Store Connect rejects duplicate build numbers); bump `MARKETING_VERSION` for each user-facing release.
+`ITSAppUsesNonExemptEncryption = false` is set in `Kios/Info.plist:21-22`. The app uses only HTTPS (Apple-provided TLS) and standard system crypto APIs — no custom encryption — so this is accurate. Skips the export-compliance prompt on every TestFlight upload.
 
-### 1.3 Export compliance
+### 1.4 Privacy manifest (`PrivacyInfo.xcprivacy`) — ✅ DONE
 
-Add to Info.plist (via `project.yml` `INFOPLIST_KEY_*` or a real Info.plist):
-```
-ITSAppUsesNonExemptEncryption = false
-```
-Reasoning: the app uses only HTTPS (Apple-provided TLS) and standard system crypto APIs — no custom encryption. This single key skips the export-compliance prompt on every TestFlight upload. If you ever ship custom crypto, you'll need to set it to `true` and file an ECCN — not the case here.
+`Kios/Resources/PrivacyInfo.xcprivacy` declares:
+- `NSPrivacyTracking` = `false`, `NSPrivacyTrackingDomains` = `[]`, `NSPrivacyCollectedDataTypes` = `[]`
+- `NSPrivacyAccessedAPICategoryUserDefaults` with reason `CA92.1` (access info from the app itself — covers `AuthStore` and the sample-book seed flag in `AppEnvironment`)
+- `NSPrivacyAccessedAPICategoryFileTimestamp` with reason `C617.1` (display to user — covers `FileManager.attributesOfItem(atPath:)` in `LibraryRootView`, `HomeRootView`, and `ReaderView`, which surfaces file size in library rows / debug overlays)
 
-### 1.4 Privacy manifest (`PrivacyInfo.xcprivacy`)
+Audit confirmed no first-party use of disk-space, system-boot-time, or active-keyboards APIs, so those categories are intentionally omitted. Readium and ZIPFoundation ship their own `PrivacyInfo.xcprivacy` — App Store Connect aggregates all three at upload time.
 
-Apple **requires** this since May 2024 for apps that use any of the "Required Reason APIs" (`NSPrivacyAccessedAPITypes`). The Core package likely uses some of these (UserDefaults, file timestamps, disk space, system boot time). Create `iOSReader/Resources/PrivacyInfo.xcprivacy` with:
-- `NSPrivacyTracking` = `false`
-- `NSPrivacyTrackingDomains` = `[]`
-- `NSPrivacyCollectedDataTypes` = `[]` (you don't collect anything in the Apple sense — user-entered server URLs/credentials stored in keychain don't count as "data collection")
-- `NSPrivacyAccessedAPITypes` = list each API category you use with a reason code. Likely entries: `NSPrivacyAccessedAPICategoryUserDefaults` (reason `CA92.1`), `NSPrivacyAccessedAPICategoryFileTimestamp` (reason `C617.1` or `DDA9.1`), `NSPrivacyAccessedAPICategoryDiskSpace` (reason `E174.1`), `NSPrivacyAccessedAPICategorySystemBootTime` (reason `35F9.1`).
+### 1.5 App Transport Security — ⏳ OPEN (needs decision)
 
-Audit `Core/Sources/` and `iOSReader/` for `Date()`/`FileManager.attributesOfItem`/`UserDefaults`/`ProcessInfo.systemUptime` calls to confirm. Readium and ZIPFoundation already ship their own `PrivacyInfo.xcprivacy` (you confirmed this in build artifacts) — yours covers only first-party code.
+The `README.md` still hedges: "HTTPS strongly recommended either way. Plain HTTP requires an `NSAppTransportSecurity` exception in `Info.plist` for the specific host." No exception is currently in `Kios/Info.plist`. Pick one before submission:
 
-### 1.5 App Transport Security
-
-The README says HTTP needs an exception. Two options:
-- **Recommended**: Don't add ATS exceptions. Require HTTPS. Document in the README/setup that users must serve Calibre-Web over HTTPS. Apple grants HTTPS-only apps the cleanest review.
-- **Permissive**: Add `NSAppTransportSecurity` with `NSAllowsArbitraryLoads = true`. This **requires a justification in App Review Notes** ("users connect to self-hosted servers they configure, which may be on local networks without TLS"). Reviewers sometimes accept this for self-hosted-server apps, sometimes don't. Higher review risk.
+- **Option A — HTTPS-only**: Don't add ATS exceptions. Tighten the README to "HTTPS required". Cleanest review path. Cost: users with HTTP-only home setups need to put a reverse proxy / Tailscale / Caddy in front of their Calibre-Web server.
+- **Option B — Permissive**: Add `NSAppTransportSecurity` with `NSAllowsArbitraryLoads = true`, plus a justification in App Review Notes ("users connect to self-hosted servers they configure, which may be on local networks without TLS"). Reviewers sometimes accept this for self-hosted-server apps, sometimes don't. Higher review risk.
+- **Option C — Per-host exception via UI**: Don't whitelist globally; let users configure the host in-app and add an exception narrowly when they do. Most complex; probably overkill for v1.
 
 ### 1.6 App icon assets
 
@@ -273,64 +262,62 @@ For the iOS 17+ single-size approach already in use, the packager step is option
 
 Auto-generated is fine for v1 but looks generic. Optionally add a `LaunchScreen.storyboard` with the app icon centered on a brand color. Not blocking for submission.
 
-### 1.8 Files to touch
+### 1.8 Files to touch (remaining work only)
 
 | File | Change |
 |---|---|
-| `project.yml` | Add `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, eventually `DEVELOPMENT_TEAM`. Add `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: false`. Add `sources:` entry for new `Resources/` folder. |
-| `iOSReader/Resources/PrivacyInfo.xcprivacy` (NEW) | First-party privacy manifest |
-| `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` | App icon (currently the IconikAI placeholder; replace before launch) |
-| `iOSReader/App/` — new view for document picker | Local file import UI |
-| `Info.plist` keys via `project.yml` | `CFBundleDocumentTypes` for EPUB; optionally `NSAppTransportSecurity` |
-| `README.md` | Document HTTPS-only requirement (if going that route) |
+| `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` | Replace the IconikAI placeholder with the real designed mark before public launch |
+| `Kios/Info.plist` | Optionally add `NSAppTransportSecurity` per Phase 1.5 decision |
+| `README.md` | Tighten to "HTTPS required" if Option A wins; otherwise leave as-is |
+
+Items completed earlier (no further action needed): `project.yml` (bundle ID, dev team, resources path), `Kios/Info.plist` (versioning, encryption flag, EPUB document types), `Kios/Resources/PrivacyInfo.xcprivacy`, `Kios/Services/LocalImportService.swift` and related views.
 
 ---
 
-## Phase 2 — Apple Developer Program enrollment
+## Phase 2 — Apple Developer Program enrollment — ✅ DONE
 
-When you're ready to ship. Allow **1–3 days** end-to-end.
-
-- [ ] Sign in at [developer.apple.com](https://developer.apple.com) with a personal Apple ID; enable two-factor auth (required).
-- [ ] Enroll in the Apple Developer Program — $99/year, **annual recurring**, charged immediately. Individual vs Organization: individual is faster (no D-U-N-S required) but your developer name shows as your legal name on the App Store listing. Organization requires a D-U-N-S number (free to request from Dun & Bradstreet, can take a week) and shows your company name.
-- [ ] Apple verifies the enrollment (24–48hr typical, can be slower).
-- [ ] Once approved: note your **Team ID** (10-character alphanumeric) — visible at developer.apple.com → Membership. You'll plug this into `project.yml` as `DEVELOPMENT_TEAM`.
+Team `KVS38S75S8` is enrolled and wired into `project.yml:14`. Renewal note: Developer Program membership is $99/year recurring — set a calendar reminder for the renewal date so the account doesn't lapse and pull the app from sale.
 
 ---
 
-## Phase 3 — App Store Connect setup
+## Phase 3 — App Store Connect setup — 🟡 PARTIAL
 
-After enrollment, log in to [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
+The bundle ID and app record exist (proof: TestFlight builds upload and install). The public-listing metadata still needs filling in before the final submission step.
 
-- [ ] **Register the bundle ID** at developer.apple.com → Certificates, IDs & Profiles → Identifiers → "+" → App IDs → App. Use the bundle ID decided in Phase 0a (e.g., `com.raphaelgruber.aldus`) — **not** the working-title `me.iosreader.iOSReader`. Enable only the capabilities you actually use (currently none).
-- [ ] **Create the app record** in App Store Connect → My Apps → "+" → New App. Platform: iOS. Name: the App Store name (e.g., `Aldus`). Primary language. Bundle ID: select the one you just registered. SKU: any unique string (e.g., `aldus-1`).
-- [ ] **App Information**: category (Books / Productivity), content rights ("Does your app contain, show, or access third-party content?" — yes if Calibre-Web is treated as third-party; the safer answer is yes with the user-supplied-URL justification), age rating questionnaire (20 questions, fill honestly — expect 4+).
-- [ ] **Pricing & Availability**: free vs paid tier, countries/regions.
-- [ ] **App Privacy**: declare data types collected. For ios-reader: select "Data Not Collected" if no analytics and no server side telemetry. Even with Calibre-Web sync, the data goes to the user's own server, not yours, so it's not "collected by the developer."
+- [x] **Register the bundle ID** — `com.raphi011.kios` is registered.
+- [x] **Create the app record** — name `Kios Reader`, bundle ID `com.raphi011.kios`.
+- [ ] **App Information**: category (Primary: Books, Secondary: Productivity), content rights questionnaire, age rating questionnaire (20 questions, expect 4+).
+- [ ] **Pricing & Availability**: free vs paid tier, country/region availability.
+- [ ] **App Privacy**: declare data types collected. Recommended answer: "Data Not Collected" — no analytics, no server-side telemetry, Calibre-Web sync goes to the user's own server, not yours.
 - [ ] **(Optional) Create an App Store Connect API key** at App Store Connect → Users and Access → Integrations → App Store Connect API. Generate a `.p8` key, save it (download is one-time only), note the Issuer ID and Key ID. Needed for fastlane/CI uploads.
 
 ---
 
-## Phase 4 — Signing, archive, upload
+## Phase 4 — Signing, archive, upload — ✅ DONE (one-shot setup; repeat per upload)
 
-- [ ] In `project.yml`, set `DEVELOPMENT_TEAM` to your Team ID. Run `make xcodegen`.
-- [ ] In Xcode: open `iOSReader.xcworkspace`, select the iOSReader target → Signing & Capabilities → confirm "Automatically manage signing" is checked, team is selected. Xcode auto-creates the distribution certificate and provisioning profile on demand.
-- [ ] Verify build number is unique (`CURRENT_PROJECT_VERSION` higher than the last upload).
-- [ ] Archive: Xcode → Product → Archive (must be a real device or "Any iOS Device (arm64)" — not a simulator). Equivalent CLI:
-  ```bash
-  xcodebuild -workspace iOSReader.xcworkspace -scheme iOSReader \
-    -configuration Release -archivePath build/iOSReader.xcarchive archive
-  ```
-- [ ] Validate the archive against App Store Connect from the Organizer (catches metadata/signing issues before upload).
-- [ ] Upload via Organizer → Distribute App → App Store Connect → Upload. Or via CLI with an `ExportOptions.plist` and `xcrun altool` / `notarytool`. Or via fastlane (`pilot upload`).
+Automatic signing is in place and uploads succeed. The recurring workflow per TestFlight build:
+
+1. Bump `CFBundleVersion` in `Kios/Info.plist` (App Store Connect rejects duplicate build numbers).
+2. Archive: Xcode → Product → Archive. CLI equivalent:
+   ```bash
+   xcodebuild -project Kios.xcodeproj -scheme Kios \
+     -configuration Release -archivePath build/Kios.xcarchive archive
+   ```
+3. Validate the archive against App Store Connect from the Organizer (catches metadata/signing issues before upload).
+4. Upload via Organizer → Distribute App → App Store Connect → Upload. (Fastlane / `xcrun altool` / `notarytool` are optional later automation.)
+
+Note: there is no `.xcworkspace` here — `make xcodegen` generates `Kios.xcodeproj` directly, and Swift packages resolve as project dependencies.
 
 ---
 
-## Phase 5 — TestFlight beta
+## Phase 5 — TestFlight beta — 🟡 INTERNAL DONE; EXTERNAL OPEN
 
-- [ ] Wait for App Store Connect to process the build (5–30 min usually; sometimes hours).
-- [ ] Fill out **Test Information** in TestFlight tab: beta app description, email, marketing URL, privacy policy URL.
-- [ ] **Internal testing** (no Apple review): add up to 100 internal testers (must be members of your Developer team). Install via TestFlight app immediately.
-- [ ] Test on **real devices** — at minimum one iPhone and one iPad. Verify: cold launch, local EPUB import, Calibre-Web sync, reading a book, progress persistence, killing and relaunching, offline behavior, iOS rotation, dark mode.
+Internal testing is live as of 2026-05-14.
+
+- [x] Build processed by App Store Connect.
+- [x] Internal tester(s) installed via TestFlight app.
+- [ ] Fill out **Test Information** in TestFlight tab: beta app description, email, marketing URL, privacy policy URL (some of these are also required for external review).
+- [ ] **Real-device coverage** — confirm at least one iPhone *and* one iPad have been used end-to-end: cold launch, local EPUB import, Calibre-Web sync, reading a book, progress persistence, killing and relaunching, offline behavior, iOS rotation, dark mode.
 - [ ] **External testing** (optional, requires Apple "Beta App Review" — first build only, ~24hr): up to 10,000 testers via public link or email invite. Useful for catching edge cases your devices don't have (older iPhones, locales, accessibility settings).
 - [ ] Iterate: each fix → bump build number → re-archive → re-upload → re-test. TestFlight builds expire after 90 days.
 
@@ -368,40 +355,43 @@ When rejected: respond in App Store Connect → Resolution Center within a day. 
 
 ---
 
-## Effort estimate (calendar time)
+## Effort estimate (remaining)
 
 | Phase | Effort | Wall clock |
 |---|---|---|
-| 0. Decisions & copy | 0.5–1 day of writing | Async, do anytime |
-| 1. Code prep (local files + privacy + icon + version) | 3–5 dev days | Can start now |
-| 2. Apple Dev enrollment | ~30 min of forms | 1–3 days approval wait |
-| 3. App Store Connect setup | 1–2 hours | Same day |
-| 4. Archive + upload | 30 min once configured | Same day |
-| 5. TestFlight beta | 1 hour setup + 1 week real-device baking | 1 week |
-| 6. Screenshots + submission | 0.5–1 day | Same day to submit |
+| 0a. Name & bundle ID | ✅ done | — |
+| 0b. Marketing copy, subtitle, support/privacy URLs | 0.5–1 day of writing | Async |
+| 1. Code prep (local files + privacy + version + encryption) | ✅ done | — |
+| 1.5 ATS decision | ~30 min once decided | Same day |
+| 1.6 Real app icon (replacing placeholder) | 0.5–1 day | Async |
+| 2. Apple Dev enrollment | ✅ done | — |
+| 3. App Store Connect listing metadata (categories, age rating, App Privacy, pricing) | 1–2 hours | Same day |
+| 4. Archive + upload | ✅ done; recurring 30 min per build | Same day |
+| 5. TestFlight beta | ✅ internal live; external optional (~24hr review) | 1 week real-device baking |
+| 6. Screenshots (6.9" iPhone + 13" iPad) + submission | 0.5–1 day | Same day to submit |
 | 7. Review wait | n/a | 24–48 hrs typical |
-| **Total** | **~7–10 dev days of work** | **~2–3 weeks elapsed** assuming nothing goes sideways |
+| **Total remaining** | **~2–4 dev days of work** | **~1–2 weeks elapsed** to public launch |
 
 ---
 
-## Critical files that will need changes
+## Critical files (remaining changes)
 
 | Path | Purpose |
 |---|---|
-| `project.yml` | Versioning, dev team, Info.plist keys, Resources path |
-| `iOSReader/Resources/PrivacyInfo.xcprivacy` (NEW) | Privacy manifest |
-| `Kios/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json` + `icon-1024.png` | App icon — wired today with IconikAI placeholder; replace `icon-1024.png` before launch |
-| `iOSReader/App/` (new files for document picker / local library) | Local EPUB import feature |
-| `README.md` | HTTPS-only documentation |
-| `fastlane/` (optional, NEW) | Automated upload pipeline |
+| `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` | Replace IconikAI placeholder with the real designed mark |
+| `Kios/Info.plist` | Optionally `NSAppTransportSecurity` once Phase 1.5 is decided; bump `CFBundleVersion` per upload |
+| `README.md` | Tighten HTTPS guidance to match the Phase 1.5 decision |
+| `fastlane/` (optional, NEW) | Automated upload pipeline — not required for v1 |
+
+Already in their final v1 shape (no further action needed): `project.yml`, `Kios/Resources/PrivacyInfo.xcprivacy`, `Kios/Services/LocalImportService.swift`, `Kios/Views/LibraryRootView.swift`, `Kios/Views/SettingsView.swift`, `Kios/Views/RootView.swift`, `Kios/App/AppEnvironment.swift`, sample books under `Kios/Resources/SampleBooks/`.
 
 ## Definition of "done" per phase (verification rubric)
 
-- **Phase 1 done** when `make build-ios` produces an `.ipa` with valid app icon, correct version, no warnings about missing privacy manifest, and local EPUB import works end-to-end on a simulator with airplane mode on.
-- **Phase 2 done** when you can sign in to App Store Connect.
-- **Phase 3 done** when the app record exists and shows "Prepare for Submission" status.
-- **Phase 4 done** when the build appears under TestFlight → Builds with status "Ready to Test."
-- **Phase 5 done** when you've installed it from TestFlight on a real iPhone *and* iPad, used it for a full day, and found no crashes.
+- **Phase 1 done** ✅ — build produces a valid `.app` / `.ipa` with placeholder icon, correct version, privacy manifest bundled, and local EPUB import works end-to-end on a simulator with airplane mode on. (Real icon is the only Phase 1 item still outstanding before public launch.)
+- **Phase 2 done** ✅ — Team ID `KVS38S75S8` active.
+- **Phase 3 done** 🟡 — app record exists; listing metadata still being filled in.
+- **Phase 4 done** ✅ — build appears under TestFlight → Builds with status "Ready to Test."
+- **Phase 5 done** when you've installed from TestFlight on a real iPhone *and* iPad, used it for a full day, and found no crashes.
 - **Phase 6 done** when status is "Waiting for Review" → "In Review" → "Ready for Sale" (or "Pending Developer Release" if manual).
 
 ---
@@ -416,9 +406,11 @@ When rejected: respond in App Store Connect → Resolution Center within a day. 
 
 Each of the above is a follow-up planning task when the time comes.
 
-## Suggested next steps
+## Suggested next steps (ordered by blocking impact)
 
-1. **Trademark clearance for Aldus** — USPTO TESS search in Class 9 (downloadable software) and Class 42 (SaaS); flat-fee attorney review (~$300–500) recommended before any App Store filing. Primary risk: Adobe's legacy Aldus marks (Aldus Corp acquired 1994).
-2. **Domain acquisition** — `aldus.com` is parked-for-sale (premium pricing likely); cheaper viable alternatives: `aldus.app` (if buyable from current holder), `aldusapp.com`, `getaldus.com`, `aldus.io`.
-3. **Decide individual vs organization Apple Developer enrollment** so you know what info to gather (organization needs a D-U-N-S number).
-4. **Sketch the local EPUB import UX** — that becomes the next implementation plan to write, and is the single highest-impact Phase 1 work item for review approval.
+1. **Decide ATS direction** (Phase 1.5) — HTTPS-only vs `NSAllowsArbitraryLoads`. Tightening to HTTPS-only is the cleanest review path; the README's hedge needs to match whichever choice wins.
+2. **Real app icon** (Phase 1.6) — the IconikAI placeholder is fine for internal TestFlight but is the single visible "this is unfinished" signal at public launch. Workflow recommendation: Ideogram 3 + Recraft for concept variants → Flux 2 Pro for refinement → Affinity/Figma polish → drop into `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`.
+3. **App Store Connect listing metadata** (Phase 3) — categories, age-rating questionnaire, App Privacy declaration ("Data Not Collected"), pricing & availability, support URL, privacy policy URL.
+4. **Marketing copy** (Phase 0b) — subtitle (≤30 chars), short description (170), full description (4000), keywords (100), promotional text (170), what's new in version (4000).
+5. **Screenshots** (Phase 6) — 6.9" iPhone (1290×2796) + 13" iPad (2064×2752), 3–10 per device class. Consider: hero "what is this app", local-files import, Calibre-Web library, reading view, settings.
+6. **External TestFlight + final submission** (Phases 5–6).
