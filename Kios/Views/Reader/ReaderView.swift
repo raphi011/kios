@@ -304,6 +304,12 @@ struct ReaderView: View {
         if let book {
             if book.fileURL != nil, let publication {
                 let id = book.id
+                // Snapshot href→index outside the @Sendable closure so we
+                // don't capture the non-Sendable `Publication`. The reading
+                // order is static for the duration of the reader session.
+                let chapterIndexByHref: [String: Int] = Dictionary(
+                    uniqueKeysWithValues: publication.readingOrder.enumerated().map { ($1.href, $0) }
+                )
                 ReaderHost(
                     publication: publication,
                     initialLocator: initialLocator,
@@ -314,6 +320,17 @@ struct ReaderView: View {
                         Task { @MainActor in
                             currentLocator = locator
                             await pushLocator(bookID: id, locator: locator)
+                            // Track furthest chapter the user has reached.
+                            // Drives "analyze up to here" gating on the
+                            // Characters tab so spoilers are clipped to the
+                            // user's read horizon. Re-fetch the book row
+                            // from the @Query result instead of capturing
+                            // the non-Sendable `Book` instance.
+                            let idx = chapterIndexByHref[locator.href.string] ?? 0
+                            if let book = books.first, idx > book.maxChapterIndexReached {
+                                book.maxChapterIndexReached = idx
+                                try? context.save()
+                            }
                         }
                     },
                     onCenterTap: { withAnimation(.easeOut(duration: 0.2)) { uiVisible.toggle() } },
