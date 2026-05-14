@@ -22,6 +22,20 @@ public protocol LanguageModel: Sendable {
     ) async throws -> T
 }
 
+public extension LanguageModel {
+    /// Default implementation so conformers that have no extraction story yet
+    /// continue to compile. Real adapters (FM via `@Generable`, Gemma via
+    /// JSON-prompt + parse) override this. Mock and test doubles override too.
+    func extract<T: Decodable & Sendable>(
+        _ type: T.Type,
+        schema: String,
+        system: String,
+        user: String
+    ) async throws -> T {
+        throw ExtractionError.unsupportedType(String(describing: type))
+    }
+}
+
 public enum SummaryScope: String, Sendable, Codable, CaseIterable {
     case full
     case readSoFar
