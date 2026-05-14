@@ -145,7 +145,7 @@ Kios/Services/AI/
 ├── ModelDownloadService.swift           # URLSession background download
 ├── ModelRuntime.swift                   # actor: load/idle/evict + MLX runner
 ├── GemmaChatTemplate.swift              # pure prompt formatter
-├── FoundationModelsLanguageModel.swift  # adapter — iOS 26+ FM
+├── FoundationModelsLanguageModel.swift  # adapter — iOS 26+ FM (+ FoundationModelsError translation)
 ├── MLXGemmaLanguageModel.swift          # adapter — MLX Gemma
 ├── AILanguageModelProvider.swift        # concrete provider routing FM or MLX
 ├── PublicationChapterTextExtractor.swift # adapter — Publication+href → plain text
@@ -171,6 +171,8 @@ Kios/Views/Settings/
 ```
 
 The `LanguageModel` protocol lives in `Core/` because it must stay pure-Foundation: neither `FoundationModels` nor `MLXLLM` is imported in `Core/`. `Kios/` provides the two adapters and the orchestrator.
+
+`FoundationModelsLanguageModel.swift` also hosts a `FoundationModelsError: LocalizedError` translation type. Apple's `LanguageModelSession.GenerationError` cases (`assetsUnavailable`, `exceededContextWindowSize`, `guardrailViolation`, `rateLimited`, `concurrentRequests`, `unsupportedLanguageOrLocale`, `unsupportedGuide`, `decodingFailure`, `refusal`) all surface as a generic `error -1` via `localizedDescription`. The adapter catches them and maps each to an actionable user-facing message (e.g., `assetsUnavailable` → "open Settings → Apple Intelligence & Siri and let it finish downloading"). Anything we throw from the FM path is wrapped in `FoundationModelsError`, so the summary sheet's error card always says something useful.
 
 ## How a summary actually flows
 
@@ -212,6 +214,101 @@ Manual hookup points (not yet wired into app lifecycle — TODO if this matters)
 - `UIApplication.didReceiveMemoryWarningNotification` → call `release()` immediately
 
 The Built-in engine doesn't go through `ModelRuntime` — `LanguageModelSession` is cheap to construct, one per request.
+
+## Framework gotchas (load-bearing patterns)
+
+The bugs we hit while wiring this feature up landed permanent decisions in the code. Each one is short and easy to "simplify" by accident — these are the ones to leave alone.
+
+### `AISettings` must use stored properties with `didSet`, not computed UserDefaults accessors
+
+`@Observable` only emits change notifications for *stored* property mutations. An earlier version of `AISettings` used computed properties that read/wrote `UserDefaults`:
+
+```swift
+// WRONG — toggling featuresEnabled writes to UserDefaults but
+// SwiftUI never re-renders, so the engine picker stays hidden.
+var featuresEnabled: Bool {
+    get { defaults.bool(forKey: Keys.featuresEnabled) }
+    set { defaults.set(newValue, forKey: Keys.featuresEnabled) }
+}
+```
+
+Correct pattern (current code):
+
+```swift
+@ObservationIgnored private let defaults: UserDefaults
+
+var featuresEnabled: Bool {
+    didSet { defaults.set(featuresEnabled, forKey: Keys.featuresEnabled) }
+}
+
+init(defaults: UserDefaults = .standard) {
+    self.defaults = defaults
+    self.featuresEnabled = defaults.bool(forKey: Keys.featuresEnabled)
+    // ...other keys hydrated the same way
+}
+```
+
+If you add a new setting, follow this shape. If `defaults` itself is observed by mistake (no `@ObservationIgnored`), that's also a bug — it's not part of the public state.
+
+### `ModelDownloadService` must use `URLSessionDownloadDelegate`, not `download(from:)`
+
+`URLSessionConfiguration.background(withIdentifier:)` does not support the async convenience methods. Calling `await session.download(from: url)` on a background session throws an `NSException` with the message *"Completion handler blocks are not supported in background sessions"* and aborts the process. Symptom: the user taps Download and the app instantly crashes with an `EXC_CRASH (SIGABRT)` deep inside `__NSURLBackgroundSession`.
+
+The current implementation uses a delegate-driven path that works for any session config (background, default, or ephemeral): per-file `session.downloadTask(with: url).resume()`, with a per-file `CheckedContinuation<URL, Error>` that the delegate methods resume. The delegate also moves the temp file to a stable path *before* bouncing back to MainActor — `URLSession` deletes its temp file the moment `didFinishDownloadingTo` returns.
+
+If you ever switch back to `await session.download(from:)`, you must also drop the background config — and you'll lose download-survives-app-suspension. Don't.
+
+### MLX cannot run on the iOS Simulator
+
+`mlx-swift-examples`'s Metal kernels require Apple Silicon GPU features that the iOS Simulator's Metal subset doesn't provide. Loading a model crashes the process inside `mlx::core::metal::Device::Device()` constructor.
+
+`AILanguageModelProvider` short-circuits this with a compile-time guard:
+
+```swift
+case .gemma3_4b:
+    #if targetEnvironment(simulator)
+    throw ProviderError.gemmaUnsupportedOnSimulator
+    #else
+    // ...real load path...
+    #endif
+```
+
+Result: on the simulator, tapping Summarize with Gemma selected shows an error card explaining the limitation and pointing the user at the Built-in engine. Settings still allows the full download/install/delete flow on simulator (so that path can be tested), just not inference. Real-device path is unchanged.
+
+### Don't clear `summaryService` in `ReaderView.onDisappear`
+
+SwiftUI fires `.onDisappear` on the parent view when a `.sheet(item:)` covers it. An earlier version of `ReaderView` had:
+
+```swift
+// WRONG — clears the service at the exact moment the sheet wants to read it.
+.onDisappear { summaryService = nil }
+```
+
+This made the sheet render completely blank. The cleanup wasn't necessary anyway — `ReaderView` is recreated on each `fullScreenCover` presentation, so its `@State` is fresh per book open.
+
+### Bundle the service into the sheet's context, not a separate `@State`
+
+Even after removing the `onDisappear` clearing, the sheet still rendered blank in some races. Setting `summaryService` and `summarySheet` synchronously *did not* guarantee the sheet's content closure observed them together — `.sheet(item:)` evaluated its closure with stale sibling state.
+
+Fix: the service is bundled into `SummarySheetContext` / `AskSheetContext`:
+
+```swift
+struct SummarySheetContext: Identifiable {
+    let id = UUID()
+    let bookID: UUID
+    let chapterHref: String
+    // ...
+    let service: AISummaryService   // ← bundled here, not read from sibling @State
+}
+```
+
+The sheet content closure now reads `context.service`, so there's no inter-state synchronization to get wrong. Don't refactor this back to a separate `@State` "for cleanliness" — the bundling is what makes the sheet render reliably.
+
+### `ChapterSummarySheet` uses `hasStartedFirstRun` to avoid a blank moment
+
+When the sheet first appears, `service.summaryState` is `.idle` and `.streaming(...)` hasn't fired yet — but the `.task(id: scope)` is already running. Without a flag, the body renders the placeholder *"Tap Summarize to begin."* even though summarization is in flight. Looks broken.
+
+The sheet keeps a local `@State private var hasStartedFirstRun: Bool` that flips to `true` inside `runSummary()` before awaiting. The body then shows a `Preparing summary…` `ProgressView` for the `.idle` and `.streaming("")` cases once a run is in flight. The `.idle` placeholder copy only shows on the very first appear, before the task fires. Removing this flag will make the sheet look broken during model load (especially noticeable on Gemma's ~1 s initial weight load).
 
 ## Testing
 
@@ -306,7 +403,11 @@ Check Console for `jetsam` log entries. iOS killed the process for memory pressu
 
 ### "I want to test on simulator but FM isn't available"
 
-Apple Intelligence on the simulator is inconsistent. Don't rely on it. Use a physical iOS 26 device with Apple Intelligence enabled, or restrict your test to Gemma.
+Apple Intelligence on the simulator is inconsistent — most simulators report `assetsUnavailable` even after toggling AI on in iOS Settings. The summary sheet will say *"Apple Intelligence assets aren't ready on this device."* (translated by `FoundationModelsError`). Don't rely on it. Use a physical iOS 26 device with Apple Intelligence enabled.
+
+### "I want to test Gemma on simulator"
+
+You can't run Gemma inference on the simulator at all — MLX requires real Apple Silicon Metal kernels. The provider returns `gemmaUnsupportedOnSimulator`; the sheet shows a clear error. The download/install/delete flow does work on simulator, so you can exercise the asset pipeline there. For inference, you need a physical iPhone 15 Pro / 16 / 17 with iOS 17+ and ≥ 8 GB RAM.
 
 ### "I want to verify gating without touching the simulator"
 
