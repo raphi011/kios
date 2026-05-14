@@ -35,6 +35,12 @@ struct SettingsView: View {
     // toggle is flipped on. Subsequent toggles are silent.
     @State private var showFirstEnableSheet = false
 
+    /// Bumped after operations that mutate on-disk model state (delete,
+    /// download completion). The asset store reads the filesystem on each
+    /// access but isn't `@Observable`, so we need a manual nudge to make
+    /// SwiftUI re-evaluate `aiAvailability` and refresh the download cell.
+    @State private var modelStateVersion = 0
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -198,7 +204,7 @@ struct SettingsView: View {
                 }
                 // On devices without 8 GB of RAM, snap preference to FM so
                 // the picker never advertises an engine the device can't run.
-                if !DeviceCapability.current.supportsGemma3_4b {
+                if !DeviceCapability.current.supportsGemma4_e4b {
                     env.aiSettings.preferredEngine = .foundationModels
                 }
             }
@@ -235,24 +241,34 @@ struct SettingsView: View {
                 .padding(.horizontal, EditorialTheme.rowSidePad)
                 .padding(.vertical, 12)
 
-                if env.aiSettings.preferredEngine == .gemma3_4b
-                    && DeviceCapability.current.supportsGemma3_4b {
+                EditorialHairline()
+                EditorialRow(
+                    label: "Device RAM",
+                    value: DeviceCapability.current.ramDisplay
+                )
+
+                if env.aiSettings.preferredEngine == .gemma4_e4b
+                    && DeviceCapability.current.supportsGemma4_e4b {
                     EditorialHairline()
                     ModelDownloadCell(
-                        asset: ModelCatalog.gemma3_4b,
-                        status: env.aiAssetStore.installationStatus(for: ModelCatalog.gemma3_4b),
+                        asset: ModelCatalog.gemma4_e4b,
+                        status: env.aiAssetStore.installationStatus(for: ModelCatalog.gemma4_e4b),
                         progress: env.aiDownloadService.progress,
                         onDownload: {
                             Task {
                                 await env.aiDownloadService.startDownload(
-                                    of: ModelCatalog.gemma3_4b,
+                                    of: ModelCatalog.gemma4_e4b,
                                     allowCellular: env.aiSettings.allowCellularDownload
                                 )
                             }
                         },
                         onCancel: { env.aiDownloadService.cancel() },
-                        onDelete: { try? env.aiAssetStore.delete(ModelCatalog.gemma3_4b) }
+                        onDelete: {
+                            try? env.aiAssetStore.delete(ModelCatalog.gemma4_e4b)
+                            modelStateVersion += 1
+                        }
                     )
+                    .id(modelStateVersion)
                     .padding(.horizontal, EditorialTheme.rowSidePad)
                     .padding(.vertical, 12)
 

@@ -10,8 +10,11 @@
 CORE_TEST  := cd Core && swift test --no-parallel
 SWIFT_BUILD := cd Core && swift build -Xswiftc -warnings-as-errors
 IOS_DEST   := platform=iOS Simulator,name=iPhone 17 Pro
-IOS_TEST   := xcodebuild test -project Kios.xcodeproj -scheme Kios -destination '$(IOS_DEST)'
-IOS_BUILD  := xcodebuild build -project Kios.xcodeproj -scheme Kios -destination '$(IOS_DEST)'
+# `-skipMacroValidation` accepts the Swift macros vendored by mlx-swift-lm
+# (`MLXHuggingFaceMacros`) without an interactive trust prompt. Required for
+# headless builds; Xcode itself prompts the developer on first open.
+IOS_TEST   := xcodebuild test -project Kios.xcodeproj -scheme Kios -destination '$(IOS_DEST)' -skipMacroValidation
+IOS_BUILD  := xcodebuild build -project Kios.xcodeproj -scheme Kios -destination '$(IOS_DEST)' -skipMacroValidation
 
 test: test-core test-ios
 

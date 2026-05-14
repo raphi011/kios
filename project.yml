@@ -25,9 +25,20 @@ packages:
   ZIPFoundation:
     url: https://github.com/readium/ZIPFoundation.git
     from: "3.0.1"
-  MLXSwift:
-    url: https://github.com/ml-explore/mlx-swift-examples.git
-    from: "2.29.1"
+  # mlx-swift-lm is the maintained successor of mlx-swift-examples — the LLM/VLM
+  # code split out of the examples repo with the 3.x major bump. The Gemma 4
+  # architecture (and a per-layer-intermediate-size fix Gemma 3n also benefits
+  # from) only lives in this package, not in mlx-swift-examples ≤ 2.31.
+  MLXSwiftLM:
+    url: https://github.com/ml-explore/mlx-swift-lm.git
+    from: "3.31.3"
+  # The `#huggingFaceTokenizerLoader()` macro from MLXHuggingFace expands to
+  # code that depends on `Tokenizers.AutoTokenizer` from huggingface/
+  # swift-transformers. The macro doesn't pull this transitively — consumers
+  # must add it themselves.
+  SwiftTransformers:
+    url: https://github.com/huggingface/swift-transformers.git
+    from: "1.3.2"
 
 targets:
   Kios:
@@ -60,8 +71,16 @@ targets:
         product: ReadiumOPDS
       - package: ZIPFoundation
         product: ReadiumZIPFoundation
-      - package: MLXSwift
+      - package: MLXSwiftLM
         product: MLXLLM
+      # MLXHuggingFace exposes the `#huggingFaceTokenizerLoader()` macro that
+      # the new `_load` API in mlx-swift-lm 3.x needs to read the tokenizer
+      # from a local model directory.
+      - package: MLXSwiftLM
+        product: MLXHuggingFace
+      # Required by the macro expansion above.
+      - package: SwiftTransformers
+        product: Tokenizers
       - target: KiosControls
     scheme:
       testTargets:

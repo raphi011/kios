@@ -23,7 +23,7 @@ final class AILanguageModelProvider: AILanguageModelProviding, @unchecked Sendab
             } else {
                 throw ProviderError.fmUnavailable
             }
-        case .gemma3_4b:
+        case .gemma4_e4b:
             // MLX's Metal kernels aren't supported by the iOS Simulator's Metal
             // subset; loading the model crashes the process inside
             // `mlx::core::metal::Device::Device()`. Fail fast with a clear
@@ -31,7 +31,7 @@ final class AILanguageModelProvider: AILanguageModelProviding, @unchecked Sendab
             #if targetEnvironment(simulator)
             throw ProviderError.gemmaUnsupportedOnSimulator
             #else
-            let asset = ModelCatalog.gemma3_4b
+            let asset = ModelCatalog.gemma4_e4b
             guard case .installed = assetStore.installationStatus(for: asset) else {
                 throw ProviderError.gemmaNotInstalled
             }
@@ -53,7 +53,7 @@ final class AILanguageModelProvider: AILanguageModelProviding, @unchecked Sendab
             case .gemmaNotInstalled:
                 return "Gemma model is not installed."
             case .gemmaUnsupportedOnSimulator:
-                return "MLX-based engines (including Gemma 3 4B) can't run in the iOS Simulator. Test on a real device, or switch to the Built-in engine in Settings."
+                return "MLX-based engines (including Gemma 4 E4B) can't run in the iOS Simulator. Test on a real device, or switch to the Built-in engine in Settings."
             }
         }
     }

@@ -87,6 +87,12 @@ final class AppEnvironment {
         // can read live state without nil-checks.
         self.aiSettings = AISettings()
         self.aiAssetStore = ModelAssetStore(rootDirectory: AppPaths.aiModelsDirectory)
+        // Drop any on-disk model directory that isn't in the current catalog.
+        // Triggers on every launch — cheap (one directory listing) and makes
+        // asset-ID renames clean up after themselves automatically.
+        try? self.aiAssetStore.cleanupOrphanDirectories(
+            keepingAssetIDs: ModelCatalog.allKnownAssetIDs
+        )
         // Background-capable URLSession config: survives app suspension during
         // the multi-GB Gemma download. Identifier is stable across launches so
         // iOS can resume any in-flight tasks after a kill + relaunch.
@@ -104,6 +110,33 @@ final class AppEnvironment {
             assetStore: self.aiAssetStore,
             runtime: self.aiModelRuntime
         )
+
+        // Subscribe to MetricKit so jetsam OOM kills (which write no .ips
+        // file and never appear in Xcode Organizer's Crashes tab) and real
+        // crash payloads are persisted under Application Support/kios/
+        // diagnostics/ for offline retrieval via `Xcode → Devices → Download
+        // Container`. Registration happens on every launch — MetricKit does
+        // not buffer payloads while we're unsubscribed.
+        AICrashDiagnosticsLogger.shared.install()
+
+        // Release the heavy MLX model on memory pressure or backgrounding.
+        // The container holds ~5 GB of Metal-resident weights + KV cache;
+        // dropping it on pressure prevents jetsam from killing the whole
+        // process for a transient spike, and backgrounding the app while
+        // the model is resident is a near-guaranteed jetsam on return.
+        let runtime = self.aiModelRuntime
+        for name in [
+            UIApplication.didReceiveMemoryWarningNotification,
+            UIApplication.didEnterBackgroundNotification,
+        ] {
+            NotificationCenter.default.addObserver(
+                forName: name,
+                object: nil,
+                queue: .main
+            ) { _ in
+                Task { await runtime.release() }
+            }
+        }
 
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory

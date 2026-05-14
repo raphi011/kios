@@ -33,7 +33,7 @@ struct AISummaryServiceTests {
             chapterTitle: "Ch1",
             cutoff: nil,
             scope: .full,
-            engine: .gemma3_4b
+            engine: .gemma4_e4b
         )
         guard case .done(let text) = service.summaryState else {
             Issue.record("expected .done; got \(service.summaryState)")
@@ -42,7 +42,7 @@ struct AISummaryServiceTests {
         #expect(text == "Hello world.")
         let rows = try ctx.fetch(FetchDescriptor<ChapterSummary>())
         #expect(rows.count == 1)
-        #expect(rows.first?.engine == "gemma3_4b")
+        #expect(rows.first?.engine == "gemma4_e4b")
     }
 
     @Test("cache hit returns cached text without calling model")
@@ -52,11 +52,11 @@ struct AISummaryServiceTests {
         let mock = MockLanguageModel(responses: [.fail(TestError.shouldNotBeCalled)])
         let bookID = UUID()
         let cached = ChapterSummary(
-            id: ChapterSummary.makeID(bookID: bookID, chapterHref: "ch1", scope: .full, engine: .gemma3_4b),
+            id: ChapterSummary.makeID(bookID: bookID, chapterHref: "ch1", scope: .full, engine: .gemma4_e4b),
             bookID: bookID,
             chapterHref: "ch1",
             scope: SummaryScope.full.rawValue,
-            engine: AIEngine.gemma3_4b.rawValue,
+            engine: AIEngine.gemma4_e4b.rawValue,
             text: "Cached text.",
             createdAt: Date(),
             sourceHash: ModelAssetStore.sha256Hex(of: Data("Body.".utf8))
@@ -70,7 +70,7 @@ struct AISummaryServiceTests {
         )
         await service.summarizeCurrentChapter(
             bookID: bookID, chapterHref: "ch1", chapterTitle: "Ch1",
-            cutoff: nil, scope: .full, engine: .gemma3_4b
+            cutoff: nil, scope: .full, engine: .gemma4_e4b
         )
         guard case .done(let text) = service.summaryState else {
             Issue.record("expected .done; got \(service.summaryState)")
@@ -87,9 +87,9 @@ struct AISummaryServiceTests {
         let mock = MockLanguageModel(responses: [.streamChunks(["Fresh."], delayPerChunk: .milliseconds(1))])
         let bookID = UUID()
         let stale = ChapterSummary(
-            id: ChapterSummary.makeID(bookID: bookID, chapterHref: "ch1", scope: .full, engine: .gemma3_4b),
+            id: ChapterSummary.makeID(bookID: bookID, chapterHref: "ch1", scope: .full, engine: .gemma4_e4b),
             bookID: bookID, chapterHref: "ch1",
-            scope: SummaryScope.full.rawValue, engine: AIEngine.gemma3_4b.rawValue,
+            scope: SummaryScope.full.rawValue, engine: AIEngine.gemma4_e4b.rawValue,
             text: "Stale.", createdAt: Date(),
             sourceHash: "0000000000000000000000000000000000000000000000000000000000000000"
         )
@@ -102,7 +102,7 @@ struct AISummaryServiceTests {
         )
         await service.summarizeCurrentChapter(
             bookID: bookID, chapterHref: "ch1", chapterTitle: "Ch1",
-            cutoff: nil, scope: .full, engine: .gemma3_4b
+            cutoff: nil, scope: .full, engine: .gemma4_e4b
         )
         guard case .done(let text) = service.summaryState else {
             Issue.record("expected .done; got \(service.summaryState)")
@@ -125,7 +125,7 @@ struct AISummaryServiceTests {
         let bookID = UUID()
         await service.summarizeCurrentChapter(
             bookID: bookID, chapterHref: "ch1", chapterTitle: "Ch1",
-            cutoff: nil, scope: .full, engine: .gemma3_4b
+            cutoff: nil, scope: .full, engine: .gemma4_e4b
         )
         let mock2 = MockLanguageModel(responses: [.streamChunks(["B."], delayPerChunk: .milliseconds(1))])
         provider.model = mock2
@@ -135,7 +135,7 @@ struct AISummaryServiceTests {
         )
         let rows = try ctx.fetch(FetchDescriptor<ChapterSummary>())
         #expect(rows.count == 2)
-        #expect(Set(rows.map { $0.engine }) == Set(["gemma3_4b", "foundationModels"]))
+        #expect(Set(rows.map { $0.engine }) == Set(["gemma4_e4b", "foundationModels"]))
     }
 }
 

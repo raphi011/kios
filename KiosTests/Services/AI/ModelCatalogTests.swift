@@ -4,12 +4,12 @@ import Testing
 
 @Suite("ModelCatalog")
 struct ModelCatalogTests {
-    @Test("gemma3_4b asset has pinned revision and at least one file")
+    @Test("gemma4_e4b asset has pinned revision and at least one file")
     func gemmaAssetPinned() {
-        let asset = ModelCatalog.gemma3_4b
-        #expect(asset.id == "gemma-3-4b-it-q4-mlx")
-        #expect(asset.engine == .gemma3_4b)
-        #expect(asset.huggingFaceRepo == "mlx-community/gemma-3-4b-it-4bit")
+        let asset = ModelCatalog.gemma4_e4b
+        #expect(asset.id == "gemma-4-e4b-it-4bit")
+        #expect(asset.engine == .gemma4_e4b)
+        #expect(asset.huggingFaceRepo == "mlx-community/gemma-4-e4b-it-4bit")
         #expect(asset.revision.count == 40, "revision must be a full 40-char commit SHA")
         #expect(!asset.files.isEmpty, "files must be populated")
         let expectedTotal = asset.files.reduce(0) { $0 + $1.sizeBytes }
@@ -24,7 +24,7 @@ struct ModelCatalogTests {
 
     @Test("asset(for:) maps engines correctly")
     func assetFor() {
-        #expect(ModelCatalog.asset(for: .gemma3_4b)?.id == ModelCatalog.gemma3_4b.id)
+        #expect(ModelCatalog.asset(for: .gemma4_e4b)?.id == ModelCatalog.gemma4_e4b.id)
         #expect(ModelCatalog.asset(for: .foundationModels) == nil)
     }
 }

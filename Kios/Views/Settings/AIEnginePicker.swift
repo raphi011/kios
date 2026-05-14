@@ -7,22 +7,25 @@ struct AIEnginePicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Engine", selection: $preferredEngine) {
-                Text("Bigger context (recommended)").tag(AIEngine.gemma3_4b)
-                Text("Built-in").tag(AIEngine.foundationModels)
-            }
-            .pickerStyle(.segmented)
+            EditorialSegmented(
+                items: [
+                    (label: "Bigger context", value: AIEngine.gemma4_e4b),
+                    (label: "Built-in",       value: AIEngine.foundationModels),
+                ],
+                selection: $preferredEngine
+            )
             .disabled(disabledMessage != nil)
+            .opacity(disabledMessage == nil ? 1.0 : 0.5)
 
             if let msg = disabledMessage {
                 Text(msg)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(EditorialTheme.sans(size: 13))
+                    .foregroundStyle(EditorialTheme.muted)
             }
             if let footnote = perEngineFootnote {
                 Text(footnote)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(EditorialTheme.sans(size: 13))
+                    .foregroundStyle(EditorialTheme.muted)
             }
         }
     }
@@ -34,22 +37,27 @@ struct AIEnginePicker: View {
         return nil
     }
 
+    /// Per-engine state hint. Intentionally omits the `modelDownloading`
+    /// case — the `ModelDownloadCell` below shows the live progress bar +
+    /// rate + Cancel button, so a duplicate text footnote here would just
+    /// add visual noise. Same for `available`, which doesn't need a hint.
     private var perEngineFootnote: String? {
         switch preferredEngine {
-        case .gemma3_4b:
+        case .gemma4_e4b:
             switch availability.gemma {
-            case .unsupportedDevice: return "Bigger context requires 8 GB of RAM."
+            case .unsupportedDevice: return "Bigger context requires roughly 8 GB of RAM."
             case .modelNotDownloaded: return "Download the model below to use this engine."
-            case .modelDownloading(let p): return "Downloading… \(Int(p * 100))%"
             case .modelCorrupt: return "Model files are corrupt. Re-download below."
-            case .available, .userDisabled, .unsupportedOS, .modelNotReady: return nil
+            case .available, .modelDownloading, .userDisabled, .unsupportedOS, .modelNotReady:
+                return nil
             }
         case .foundationModels:
             switch availability.fm {
             case .unsupportedOS: return "Built-in requires iOS 26 or later."
             case .unsupportedDevice: return "Built-in requires Apple Intelligence."
-            case .modelNotReady: return "Apple Intelligence is still preparing on this device."
-            case .available, .userDisabled, .modelNotDownloaded, .modelDownloading, .modelCorrupt: return nil
+            case .modelNotReady: return "Apple Intelligence isn't enabled. Open iOS Settings → Apple Intelligence & Siri."
+            case .available, .userDisabled, .modelNotDownloaded, .modelDownloading, .modelCorrupt:
+                return nil
             }
         }
     }

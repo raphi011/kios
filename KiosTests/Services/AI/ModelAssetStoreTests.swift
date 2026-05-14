@@ -19,7 +19,7 @@ struct ModelAssetStoreTests {
         return ModelAsset(
             id: "test-asset",
             displayName: "Test",
-            engine: .gemma3_4b,
+            engine: .gemma4_e4b,
             huggingFaceRepo: "test/test",
             revision: String(repeating: "a", count: 40),
             files: assetFiles,
@@ -101,5 +101,31 @@ struct ModelAssetStoreTests {
         try Data("a".utf8).write(to: dir.appendingPathComponent("a.bin"))
         try store.delete(asset)
         #expect(!FileManager.default.fileExists(atPath: dir.path))
+    }
+
+    @Test("cleanupOrphanDirectories drops unknown dirs but keeps known ones")
+    func cleanupOrphans() throws {
+        let root = try makeTempRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = ModelAssetStore(rootDirectory: root)
+        let keep = root.appendingPathComponent("keep-this", isDirectory: true)
+        let drop = root.appendingPathComponent("drop-this", isDirectory: true)
+        try FileManager.default.createDirectory(at: keep, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: drop, withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: drop.appendingPathComponent("orphan.bin"))
+
+        try store.cleanupOrphanDirectories(keepingAssetIDs: ["keep-this"])
+
+        #expect(FileManager.default.fileExists(atPath: keep.path))
+        #expect(!FileManager.default.fileExists(atPath: drop.path))
+    }
+
+    @Test("cleanupOrphanDirectories no-ops when root doesn't exist")
+    func cleanupRootMissing() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kios-mas-missing-\(UUID().uuidString)")
+        let store = ModelAssetStore(rootDirectory: root)
+        // Should not throw even though `root` was never created.
+        try store.cleanupOrphanDirectories(keepingAssetIDs: ["anything"])
     }
 }

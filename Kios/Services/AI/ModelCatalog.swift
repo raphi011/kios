@@ -2,57 +2,62 @@
 import Foundation
 
 enum ModelCatalog {
-    static let gemma3_4b: ModelAsset = ModelAsset(
-        id: "gemma-3-4b-it-q4-mlx",
-        displayName: "Gemma 3 4B (4-bit)",
-        engine: .gemma3_4b,
-        huggingFaceRepo: "mlx-community/gemma-3-4b-it-4bit",
-        revision: "93724907d4ed1745d2fe50baadf3b0b01a65abf2",
+    /// Google's Gemma 4 E4B (instruct-tuned, 4-bit MLX quantization).
+    /// Multimodal weights — vision and audio towers are bundled but unused
+    /// here; mlx-community has not yet published a text-only conversion the
+    /// way they did for Gemma 3n's `-lm-` variant. 128 K-token context, ~5.2 GB
+    /// on-disk. KV-cache memory (not the model card's context claim) is what
+    /// actually limits usable prompt size on iPhone; `MLXGemmaLanguageModel`
+    /// pairs this with 4-bit KV-cache quantization to keep the cache footprint
+    /// roughly 4× smaller than the fp16 default.
+    static let gemma4_e4b: ModelAsset = ModelAsset(
+        id: "gemma-4-e4b-it-4bit",
+        displayName: "Gemma 4 E4B (4-bit)",
+        engine: .gemma4_e4b,
+        huggingFaceRepo: "mlx-community/gemma-4-e4b-it-4bit",
+        revision: "cc3b666c01c20395e0dcebd53854504c7d9821f9",
         files: [
-            AssetFile(path: "added_tokens.json",
-                      sha256: "50b2f405ba56a26d4913fd772089992252d7f942123cc0a034d96424221ba946",
-                      sizeBytes: 35),
-            AssetFile(path: "chat_template.json",
-                      sha256: "fe16baf728db49457cde32802cd7efc0ac8a7a9877dbe22fe3322b2d9dc6ccd9",
-                      sizeBytes: 1615),
+            AssetFile(path: "chat_template.jinja",
+                      sha256: "781d10940fbc44be40064b5d43a056fc486c84ceaa55538226368b57314132bf",
+                      sizeBytes: 16_317),
             AssetFile(path: "config.json",
-                      sha256: "5ccdde91da736e6e6f8f138268c620adcbf1219c973b884240b719a54122465b",
-                      sizeBytes: 1072),
+                      sha256: "18521c2237729a659a3b821eeb706f088e46518d8698f8e357df7bf7300e7041",
+                      sizeBytes: 6_229),
             AssetFile(path: "generation_config.json",
-                      sha256: "e04ecb65db447404710114fb282baaac482d22a95e2244ecaab428b81672ba78",
-                      sizeBytes: 192),
+                      sha256: "d4226bbe3117d2d253ba4609720ba82c6c4ce4627a9a6ae05387c78983ac03de",
+                      sizeBytes: 208),
             AssetFile(path: "model.safetensors",
-                      sha256: "94d3d701367d78584a9334ca00672b1c86e4aefa6a94167556c0485381e74af3",
-                      sizeBytes: 3_400_569_562),
+                      sha256: "339409bd18494955556e1fde6ccc15faaa9f707b911b74791fe290b9d722beed",
+                      sizeBytes: 5_217_361_182),
             AssetFile(path: "model.safetensors.index.json",
-                      sha256: "77f4b67de084c31c7bcd373b039908108eee6c6181607e6d53da730e5f0bc659",
-                      sizeBytes: 90_558),
-            AssetFile(path: "preprocessor_config.json",
-                      sha256: "f688d6bb20c5017601c4011de7ca656da8485b540b05013efdaf986c0fcc918d",
-                      sizeBytes: 570),
+                      sha256: "50c54ba1baf793652f8f85fb61cf9bedfafdc2ea7b59f80cf56611c9912fccd0",
+                      sizeBytes: 251_749),
             AssetFile(path: "processor_config.json",
-                      sha256: "3ffd5f11778dc73e2b69b3c00535e4121e1badf7018136263cd17b5b34fbaa53",
-                      sizeBytes: 70),
-            AssetFile(path: "special_tokens_map.json",
-                      sha256: "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397",
-                      sizeBytes: 662),
+                      sha256: "1bd0d00776284f369c1eff5fb631e865dfcdca861e0b7d60dbef27fcf37436a8",
+                      sizeBytes: 902),
             AssetFile(path: "tokenizer.json",
-                      sha256: "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795",
-                      sizeBytes: 33_384_568),
-            AssetFile(path: "tokenizer.model",
-                      sha256: "1299c11d7cf632ef3b4e11937501358ada021bbdf7c47638d13c0ee982f2e79c",
-                      sizeBytes: 4_689_074),
+                      sha256: "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+                      sizeBytes: 32_169_626),
             AssetFile(path: "tokenizer_config.json",
-                      sha256: "0d95398b39395e5cfb290683a78f3fb0551223c672d8b033333c1a5307473760",
-                      sizeBytes: 1_157_007),
+                      sha256: "90c3a3ba5bf53818383a58e1a776cbcacd2a038d4812eaa373e1522f2d06f3df",
+                      sizeBytes: 2_095),
         ],
-        totalBytes: 3_439_894_985
+        totalBytes: 5_249_808_308
     )
 
     static func asset(for engine: AIEngine) -> ModelAsset? {
         switch engine {
         case .foundationModels: return nil
-        case .gemma3_4b:        return gemma3_4b
+        case .gemma4_e4b:       return gemma4_e4b
         }
+    }
+
+    /// IDs of every on-disk asset the catalog currently knows about. Used
+    /// by `ModelAssetStore.cleanupOrphanDirectories(...)` at launch so an
+    /// asset rename (or removal) auto-evicts the prior directory — e.g.
+    /// the previous `gemma-3n-e4b-it-lm-4bit` directory disappears on
+    /// next launch after this catalog update.
+    static var allKnownAssetIDs: Set<String> {
+        Set(AIEngine.allCases.compactMap { asset(for: $0)?.id })
     }
 }

@@ -28,10 +28,10 @@ struct AISettingsTests {
         #expect(s2.featuresEnabled == true)
     }
 
-    @Test("preferredEngine defaults to gemma3_4b")
+    @Test("preferredEngine defaults to gemma4_e4b")
     func preferredDefaultGemma() {
         let s = AISettings(defaults: makeSuite())
-        #expect(s.preferredEngine == .gemma3_4b)
+        #expect(s.preferredEngine == .gemma4_e4b)
     }
 
     @Test("preferredEngine round-trips")

@@ -6,7 +6,7 @@ import Foundation
 struct ModelRuntimeTests {
     private final class StubRunner: ModelRunner {
         let id = UUID()
-        func generate(prompt: String, maxNewTokens: Int, onToken: @Sendable @escaping (String) -> Void) async throws {
+        func generate(prompt: AIChatPrompt, maxNewTokens: Int, onToken: @Sendable @escaping (String) -> Void) async throws {
             onToken("ok")
         }
     }

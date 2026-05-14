@@ -133,6 +133,15 @@ struct ReaderView: View {
         let service: AISummaryService
     }
 
+    /// Populated when the user taps an AI affordance but neither engine is
+    /// currently usable. Drives the `.alert(item:)` below — the user sees
+    /// *why* the action didn't proceed instead of a silent no-op.
+    struct AIUnavailableAlert: Identifiable {
+        let id = UUID()
+        let message: String
+    }
+    @State private var aiUnavailableAlert: AIUnavailableAlert?
+
     var body: some View {
         ZStack {
             // EPUB content stretches edge-to-edge horizontally and behind the
@@ -145,7 +154,13 @@ struct ReaderView: View {
             chromeOverlay
             hudOverlay
         }
-        .background(Color(.systemBackground).ignoresSafeArea())
+        // Pin to white instead of `Color(.systemBackground)`: in dark mode the
+        // system background is black, but Readium renders the EPUB on a white
+        // page. The mismatch shows up as a black bar in the home-indicator
+        // safe area where the navigator stops painting. Revisit when we ship
+        // a dark EPUB theme — at that point this needs to track the active
+        // Readium theme's body background.
+        .background(Color.white.ignoresSafeArea())
         .simultaneousGesture(swipeDownDismissGesture())
         .task(id: book?.fileURL) {
             async let p: Void = loadPublicationIfReady()
@@ -223,6 +238,13 @@ struct ReaderView: View {
                 service: context.service
             )
         }
+        .alert(item: $aiUnavailableAlert) { ctx in
+            Alert(
+                title: Text("AI engine unavailable"),
+                message: Text(ctx.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         // NB: do NOT clear `summaryService` in `.onDisappear` — SwiftUI fires
         // onDisappear on this view when the AI sheet (`.sheet(item:)`) covers
         // it, which clears the service before the sheet body reads it and
@@ -287,7 +309,7 @@ struct ReaderView: View {
                     initialLocator: initialLocator,
                     pendingJump: pendingJump,
                     fontSizePct: fontSizePct,
-                    canAskAI: resolvedAIEngine != nil,
+                    canAskAI: env.aiSettings.featuresEnabled,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in
                             currentLocator = locator
@@ -349,7 +371,7 @@ struct ReaderView: View {
                     onLibrary: { dismiss() },
                     onContents: { showContents = true },
                     onTypeSettings: { /* stub — Type settings sheet not implemented yet */ },
-                    canSummarize: resolvedAIEngine != nil,
+                    canSummarize: env.aiSettings.featuresEnabled,
                     onSummarize: { presentSummarySheet() }
                 )
                 .padding(.horizontal, 12)
@@ -378,12 +400,14 @@ struct ReaderView: View {
                         scrubProgress = nil
                     },
                     onSummarise: { presentSummarySheet() },
-                    canSummarize: resolvedAIEngine != nil,
+                    canSummarize: env.aiSettings.featuresEnabled,
                     engineLabel: {
-                        switch resolvedAIEngine {
+                        // When no engine resolves, label with the user's
+                        // *preferred* engine so the eyebrow doesn't read
+                        // empty. Tapping surfaces the explainer alert.
+                        switch resolvedAIEngine ?? env.aiSettings.preferredEngine {
                         case .foundationModels: return "Built-in (Apple Intelligence)"
-                        case .gemma3_4b: return "Gemma 3 4B (on-device)"
-                        case nil: return ""
+                        case .gemma4_e4b: return "Gemma 4 E4B (on-device)"
                         }
                     }()
                 )
@@ -507,14 +531,70 @@ struct ReaderView: View {
         )
     }
 
+    /// Builds a human-readable explanation for `aiUnavailableAlert` from the
+    /// current per-engine availability. Reads the user's preferred engine
+    /// first (because that's what they expect to work) and falls back to
+    /// describing the other engine's state so the message points to whatever
+    /// fix is closest at hand.
+    private func aiUnavailableMessage() -> String {
+        let availability = AIAvailability.resolve(
+            userEnabled: env.aiSettings.featuresEnabled,
+            preferredEngine: env.aiSettings.preferredEngine,
+            capability: .current,
+            assetStore: env.aiAssetStore,
+            downloads: env.aiDownloadService
+        )
+        let preferred = env.aiSettings.preferredEngine
+        return Self.explanation(
+            for: preferred == .foundationModels ? availability.fm : availability.gemma,
+            engine: preferred
+        )
+    }
+
+    private static func explanation(for state: EngineAvailability, engine: AIEngine) -> String {
+        let prefix: String = {
+            switch engine {
+            case .foundationModels: return "Built-in (Apple Intelligence)"
+            case .gemma4_e4b:       return "Bigger context (Gemma 4 E4B)"
+            }
+        }()
+        switch state {
+        case .available:
+            return "\(prefix) is available, but the request couldn't complete. Try again."
+        case .userDisabled:
+            return "Enable AI in Settings → AI to use \(prefix)."
+        case .unsupportedOS:
+            return "\(prefix) requires iOS 26 or later. Update your device or switch engine in Settings → AI."
+        case .unsupportedDevice:
+            switch engine {
+            case .foundationModels:
+                return "Apple Intelligence isn't supported on this device. Switch to Bigger context in Settings → AI."
+            case .gemma4_e4b:
+                return "Bigger context requires roughly 8 GB of RAM. Switch to Built-in in Settings → AI."
+            }
+        case .modelNotReady:
+            return "Apple Intelligence isn't ready yet. Open the iOS Settings app → Apple Intelligence & Siri, make sure it's on, and let it finish downloading."
+        case .modelNotDownloaded:
+            return "The Bigger context model isn't downloaded yet. Open Settings → AI to install it (~5.2 GB)."
+        case .modelDownloading(let p):
+            return "The Bigger context model is still downloading (\(Int(p * 100))%). Try again once it's installed."
+        case .modelCorrupt:
+            return "The Bigger context model files don't match the catalog. Open Settings → AI, delete the model, and re-download."
+        }
+    }
+
     /// Captures the current chapter context, lazily builds the per-reader
-    /// `AISummaryService`, and triggers `.sheet(item:)`. No-ops if no engine
-    /// resolved, the publication hasn't loaded yet, or the locator isn't
-    /// inside a known reading-order entry.
+    /// `AISummaryService`, and triggers `.sheet(item:)`. When no engine
+    /// resolves, presents `aiUnavailableAlert` with a specific explanation
+    /// instead of silently no-op'ing — the user opted in, so we owe them
+    /// feedback. Still no-ops when the publication isn't loaded yet.
     private func presentSummarySheet() {
-        guard let engine = resolvedAIEngine,
-              let publication,
+        guard let publication,
               let locator = currentLocator ?? initialLocator else {
+            return
+        }
+        guard let engine = resolvedAIEngine else {
+            aiUnavailableAlert = AIUnavailableAlert(message: aiUnavailableMessage())
             return
         }
         let service = summaryService ?? AISummaryService(
@@ -538,13 +618,13 @@ struct ReaderView: View {
     /// Snapshot the current chapter context for the supplied selection text
     /// and present `AskAboutSelectionSheet`. Reuses the same lazily-built
     /// `AISummaryService` as the chapter summary path — both rely on it
-    /// streaming through the resolved engine's `LanguageModel`. No-ops if AI
-    /// isn't currently usable (the action shouldn't have been visible in that
-    /// case, but availability can change between menu show + tap).
+    /// streaming through the resolved engine's `LanguageModel`. Shows the
+    /// `aiUnavailableAlert` when AI is enabled but no engine resolves, so
+    /// the user understands why the action didn't proceed.
     private func presentAskSheet(selection: String) {
-        guard let engine = resolvedAIEngine,
-              let publication,
-              !selection.isEmpty else {
+        guard let publication, !selection.isEmpty else { return }
+        guard let engine = resolvedAIEngine else {
+            aiUnavailableAlert = AIUnavailableAlert(message: aiUnavailableMessage())
             return
         }
         let service = summaryService ?? AISummaryService(

@@ -42,7 +42,7 @@ final class AISettings {
            let engine = AIEngine(rawValue: raw) {
             self.preferredEngine = engine
         } else {
-            self.preferredEngine = .gemma3_4b
+            self.preferredEngine = .gemma4_e4b
         }
     }
 }

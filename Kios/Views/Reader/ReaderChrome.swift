@@ -137,7 +137,7 @@ struct EditorialReaderBottomBar: View {
     var canSummarize: Bool = false
     /// Displayed in the AI quick-action row's eyebrow line — names the
     /// engine that will actually run the summary (e.g. "Built-in (Apple
-    /// Intelligence)" or "Gemma 3 4B (on-device)"). Ignored when
+    /// Intelligence)" or "Gemma 4 E4B (on-device)"). Ignored when
     /// `canSummarize` is false.
     var engineLabel: String = "On-device"
 

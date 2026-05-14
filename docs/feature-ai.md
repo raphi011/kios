@@ -20,11 +20,28 @@ The reader supports two interchangeable engines behind a single `LanguageModel` 
 | Engine | What it is | Where it runs | Download | Context budget | Available on |
 |---|---|---|---|---|---|
 | **Built-in** | Apple's Foundation Model | On-device, via the system framework | None — bundled with iOS | ~12 KB of characters (~3 K tokens) | iOS 26+ on Apple Intelligence-eligible devices |
-| **Bigger context** | Google Gemma 3 4B, 4-bit quantized, via MLX | On-device, via MLX Metal kernels | ~3.4 GB one-time, from Hugging Face | ~96 KB of characters (~32 K tokens) | iOS 17+, devices with ≥ 8 GB RAM |
+| **Bigger context** | Google Gemma 4 E4B, 4-bit quantized, via MLX | On-device, via MLX Metal kernels | ~5.2 GB one-time, from Hugging Face | ~96 KB of characters (~32 K tokens, KV-cache-limited on-device) | iOS 17+, devices with ≥ 8 GB RAM |
 
-**Why both?** Apple's model is small and fast, but its 4 K-token context window forces map-reduce summarization on average chapters (lossy, slow, janky streaming). Gemma fits a typical chapter in one shot, preserves more nuance, and looks identical in token-rate on the iPhone 17 Pro. The cost is the 3.4 GB download and an 8 GB RAM gate.
+**Why both?** Apple's model is small and fast, but its 4 K-token context window forces map-reduce summarization on average chapters (lossy, slow, janky streaming). Gemma fits a typical chapter in one shot — its 128 K-token window means map-reduce is virtually never triggered — preserves more nuance, and looks identical in token-rate on the iPhone 17 Pro. The cost is the 5.2 GB download and an 8 GB RAM gate (plus the `increased-memory-limit` entitlement that lifts the per-process cap).
+
+**Why Gemma 4 E4B specifically?** Gemma 4 is officially supported in `mlx-swift-lm` 3.x (April 2026); the predecessor (Gemma 3n E4B) was on the unmaintained `mlx-swift-examples` line. Same E4B size class, same 128 K-token context. The catch: mlx-community has not (yet) published a text-only `-lm-` conversion of Gemma 4 the way they did for Gemma 3n, so the 4-bit checkpoint we ship bundles the unused vision + audio encoders (~1.3 GB of wasted weights). The text-only path inside mlx-swift-lm (`Gemma4Text.swift`) reads `text_config` from the multimodal config and ignores the other towers at inference time — only the disk footprint pays the multimodal cost.
 
 Once a user has downloaded Gemma, the picker defaults to it. Built-in stays as a fallback for users who haven't downloaded yet or can't (RAM-limited, iOS 17–25 fine, but Apple Intelligence is iOS 26+).
+
+## Stability: the load-bearing iOS knobs
+
+iOS aggressively jetsam-kills processes that exceed the per-process memory cap. Jetsam terminations are SIGKILL — they write no `.ips` crash report, never reach Xcode Organizer's Crashes tab, and look from the user's side like the app just vanished. Three knobs together keep us inside the cap; missing any one of them causes silent crashes:
+
+1. **`com.apple.developer.kernel.increased-memory-limit` entitlement** (`Kios/Kios.entitlements`). On supported devices, this lifts the per-process cap from ~3 GB to ~5–6 GB on 8 GB phones, higher on 12 GB phones. Without it, the 5.2 GB Gemma 4 download crashes the process during *load*, before inference even starts.
+2. **`MLX.Memory.cacheLimit` + `MLX.Memory.memoryLimit`** (`Kios/Services/AI/ModelRuntime.swift`). The Metal buffer-cache and overall-allocation ceilings on MLX. We set `cacheLimit = 32 MB` (LLMEval uses 20 MB for smaller models) and `memoryLimit = 70 % of os_proc_available_memory()` before the first `_load`. Default behavior is unbounded growth until the OS pushes back — which on iOS is a SIGKILL.
+3. **`kvBits: 4` KV-cache quantization** (`GenerateParameters` in `MLXModelRunner.generate`). At 32 K tokens the fp16 KV cache is ~4 GB; quantizing to 4 bits cuts that to ~1 GB with no measurable quality loss for summarization. This is what makes the 96 KB-character prompt budget actually fit in memory.
+
+The corresponding eviction policy:
+
+- `UIApplication.didReceiveMemoryWarningNotification` → `ModelRuntime.release()` immediately.
+- `UIApplication.didEnterBackgroundNotification` → `ModelRuntime.release()` immediately.
+
+Both observers are registered in `AppEnvironment.init`. The container holds ~5 GB of Metal-resident weights; backgrounding the app while loaded is a near-guaranteed jetsam on return without this.
 
 ## The fallback ladder
 
@@ -37,29 +54,49 @@ Once a user has downloaded Gemma, the picker defaults to it. Built-in stays as a
 
 "Unavailable" is per-engine and has named reasons (`unsupportedOS`, `unsupportedDevice`, `modelNotReady`, `modelNotDownloaded`, `modelDownloading`, `modelCorrupt`). The Settings picker grays out each segment with a footnote explaining why the user's device can or can't use it.
 
-This means: a user with a fresh install on an iPhone 17 Pro with iOS 26 sees the picker default to "Bigger context (recommended)" with a download cell beneath. Tapping the sparkles button in the reader works *immediately* via Built-in fallback. As soon as Gemma finishes downloading, the same button switches to Gemma.
+This means: a user with a fresh install on an iPhone 17 Pro (12 GB RAM, not the marketed 16) with iOS 26 sees the picker default to "Bigger context (recommended)" with a download cell beneath. Tapping the sparkles button in the reader works *immediately* via Built-in fallback. As soon as Gemma finishes downloading, the same button switches to Gemma.
 
 ## Where the model files live
 
-Gemma weights, when downloaded, live in:
+Gemma 4 weights, when downloaded, live in:
 
 ```
-<Application Support>/kios/ai-models/gemma-3-4b-it-q4-mlx/
+<Application Support>/kios/ai-models/gemma-4-e4b-it-4bit/
+├── chat_template.jinja
 ├── config.json
-├── tokenizer.json
-├── tokenizer_config.json
-├── model.safetensors
-└── …
+├── generation_config.json
+├── model.safetensors          (5.2 GB)
+├── model.safetensors.index.json
+├── processor_config.json
+├── tokenizer.json             (32 MB)
+└── tokenizer_config.json
 ```
 
-`Application Support`, not `Caches`: iOS doesn't purge it. Each file is flagged `isExcludedFromBackup` at install time, so the 3.4 GB doesn't count against the user's iCloud storage.
+`Application Support`, not `Caches`: iOS doesn't purge it. Each file is flagged `isExcludedFromBackup` at install time, so the 5.2 GB doesn't count against the user's iCloud storage.
 
 The catalog (`Kios/Services/AI/ModelCatalog.swift`) pins:
-- A specific Hugging Face commit SHA (`mlx-community/gemma-3-4b-it-4bit`)
+- A specific Hugging Face commit SHA (`mlx-community/gemma-4-e4b-it-4bit`)
 - Per-file SHA-256 hashes
 - Per-file sizes
 
 Pinning + per-file SHA verification is non-negotiable. Hugging Face's `main` branch can change; without the pin we could silently load anything. SHAs are computed once at plan time and frozen in source.
+
+**Orphan cleanup.** `ModelAssetStore.cleanupOrphanDirectories(keepingAssetIDs:)` runs once at `AppEnvironment.init`, comparing the on-disk children of `kios/ai-models/` against `ModelCatalog.allKnownAssetIDs`. Any directory not in that set is removed. This means: when the catalog's asset ID changes (e.g. the Gemma 3n → Gemma 4 swap), the prior model's gigabytes auto-evict on the next launch — no UX prompt, no Settings dance. The cleanup is best-effort: a removal failure on one entry doesn't abort the rest.
+
+## Crash diagnostics: capturing what Organizer misses
+
+When the app is jetsammed for memory pressure, the only programmatic signal is a counter bump on `MXAppExitMetric.applicationExitMetrics.foregroundExitData.cumulativeMemoryResourceLimitExitCount`. No `.ips` file is written; Xcode Organizer's Crashes tab stays empty even when TestFlight is wired up.
+
+`AICrashDiagnosticsLogger` (subscribed in `AppEnvironment.init`) catches this and full crash payloads via MetricKit:
+
+| MetricKit callback | What it carries | Persisted as |
+|---|---|---|
+| `didReceive([MXMetricPayload])` | Aggregated exit metrics (including jetsam counts), CPU, hangs, disk writes | `Application Support/kios/diagnostics/<timestamp>-metric.json` |
+| `didReceive([MXDiagnosticPayload])` | Real crash diagnostics with stack traces, hang diagnostics, CPU-exception diagnostics, disk-write-exception diagnostics | `Application Support/kios/diagnostics/<timestamp>-diag.json` |
+
+Files are JSON, excluded from iCloud backup. Retrieve them via `Xcode → Window → Devices and Simulators → Kios → ⋯ → Download Container`; the diagnostics folder lives inside the container.
+
+iOS 15+ delivers MetricKit payloads on the next launch after the event (typically within seconds of reopening the app post-crash). This is the *only* way to detect that we jetsammed — the count comparison between two consecutive metric payloads tells the story.
 
 ## Settings UX
 
@@ -77,7 +114,7 @@ The AI section in Settings has one master toggle and, when enabled, an engine pi
 │  └─────────────────┴──────────────────────────┘   │
 │  Bigger context requires 8 GB of RAM. [footnote]  │
 │                                                   │
-│  📥 Download model (~3.4 GB)                      │  shown when Gemma is preferred
+│  📥 Download model (~5.2 GB)                      │  shown when Gemma is preferred
 │  [ Download ]                                     │   and not installed
 │                                                   │
 │  Allow cellular download         [○━━]            │
@@ -97,13 +134,15 @@ Notable UX details:
 
 ## Reader entry points
 
-When AI is enabled *and* `AIAvailability.resolved(...)` returns a non-nil engine:
+When AI is enabled (master toggle ON):
 
-- The **top bar** shows a `sparkles` button left of "Contents". Tap → `ChapterSummarySheet`.
-- The **bottom bar** shows a prominent "Summarise this chapter" row with the resolved engine name in the eyebrow. Tap → `ChapterSummarySheet` (same sheet).
-- The system **edit menu** (long-press on selected text) gains an **Ask AI** entry. Tap → `AskAboutSelectionSheet` with the selection pre-filled.
+- The **top bar** shows a `sparkles` button left of "Contents". Tap → `ChapterSummarySheet` if an engine resolves, otherwise an explainer alert.
+- The **bottom bar** shows a prominent "Summarise this chapter" row with the (preferred, if not resolved) engine name in the eyebrow. Tap → same flow.
+- The system **edit menu** (long-press on selected text) gains an **Ask AI** entry. Tap → `AskAboutSelectionSheet` with the selection pre-filled, or the explainer alert if no engine resolves.
 
-When AI is disabled, or no engine is usable, **none of these surfaces render**. There is zero AI UI visible to a user who hasn't opted in.
+The visibility rule is `featuresEnabled`, not `resolved(...) != nil`. Once the user has opted in, the affordances stay visible even when their preferred engine is in a recoverable bad state (model not downloaded, Apple Intelligence not enabled in iOS Settings, etc.). Tapping shows a specific explanation from `ReaderView.aiUnavailableMessage()` so the user knows what to fix — silent no-op was the prior behavior and confused users who'd just toggled AI on.
+
+**When AI is disabled (master toggle OFF), none of these surfaces render.** That's the load-bearing privacy invariant — no symbol from `FoundationModels` or `MLXLLM` is even constructed unless the user has explicitly opted in. The change above narrows the hidden state to "off", not "off OR misconfigured".
 
 ## What's cached, what isn't
 
@@ -113,6 +152,7 @@ When AI is disabled, or no engine is usable, **none of these surfaces render**. 
 | Ask-about-selection answers | No — ephemeral per sheet. |
 | AI settings (master toggle, preferred engine, etc.) | Yes — `UserDefaults` via `AISettings`. |
 | Gemma model weights | Yes — `Application Support/kios/ai-models/`. |
+| MetricKit crash + exit-metric payloads | Yes — `Application Support/kios/diagnostics/`. |
 
 Composite cache ID:
 
@@ -134,23 +174,26 @@ Core/Sources/Core/AI/
 ├── MapReduceSummarizer.swift  # multi-chunk summary with progress
 └── Testing/MockLanguageModel.swift   # public test helper
 
+Kios/App/
+├── AppEnvironment.swift                # boots services, wires MetricKit + memory observers
+└── AICrashDiagnosticsLogger.swift      # MetricKit → Application Support/kios/diagnostics/
+
 Kios/Services/AI/
-├── AIEngine.swift                       # enum, in Kios so it can reference UI strings
-├── DeviceCapability.swift               # physicalMemory + 7.5 GB Gemma threshold
-├── AIAvailability.swift                 # per-engine availability + fallback ladder
-├── AISettings.swift                     # UserDefaults-backed @Observable
-├── ModelAsset.swift                     # asset descriptor (id, repo, revision, files)
-├── ModelCatalog.swift                   # frozen catalog of pinned assets
-├── ModelAssetStore.swift                # disk truth + SHA-256 integrity
-├── ModelDownloadService.swift           # URLSession background download
-├── ModelRuntime.swift                   # actor: load/idle/evict + MLX runner
-├── GemmaChatTemplate.swift              # pure prompt formatter
-├── FoundationModelsLanguageModel.swift  # adapter — iOS 26+ FM (+ FoundationModelsError translation)
-├── MLXGemmaLanguageModel.swift          # adapter — MLX Gemma
-├── AILanguageModelProvider.swift        # concrete provider routing FM or MLX
+├── AIEngine.swift                      # enum, in Kios so it can reference UI strings
+├── DeviceCapability.swift              # physicalMemory + 6.5 GiB Gemma threshold
+├── AIAvailability.swift                # per-engine availability + fallback ladder
+├── AISettings.swift                    # UserDefaults-backed @Observable
+├── ModelAsset.swift                    # asset descriptor (id, repo, revision, files)
+├── ModelCatalog.swift                  # frozen catalog of pinned assets
+├── ModelAssetStore.swift               # disk truth + SHA-256 integrity
+├── ModelDownloadService.swift          # URLSession background download
+├── ModelRuntime.swift                  # actor: load/idle/evict + MLX runner + Memory limits
+├── FoundationModelsLanguageModel.swift # adapter — iOS 26+ FM (+ FoundationModelsError translation)
+├── MLXGemmaLanguageModel.swift         # adapter — MLX Gemma 4 (structured chat input)
+├── AILanguageModelProvider.swift       # concrete provider routing FM or MLX
 ├── PublicationChapterTextExtractor.swift # adapter — Publication+href → plain text
-├── ChapterTextExtractor.swift           # Readium → plain text with cutoff
-└── AISummaryService.swift               # @MainActor @Observable orchestrator
+├── ChapterTextExtractor.swift          # Readium → plain text with cutoff
+└── AISummaryService.swift              # @MainActor @Observable orchestrator
 
 Kios/Models/
 ├── ChapterSummary.swift                 # @Model, Foundation-only (KiosControls-safe)
@@ -191,7 +234,7 @@ User taps sparkles
           else → continue
       → AILanguageModelProvider.languageModel(for: engine)
           .foundationModels → FoundationModelsLanguageModel()
-          .gemma3_4b        → ModelRuntime.shared.acquire(at: directory) → MLXGemmaLanguageModel
+          .gemma4_e4b       → ModelRuntime.shared.acquire(at: directory) → MLXGemmaLanguageModel
       → if body.count ≤ contextBudgetCharacters: single-shot
         else: MapReduceSummarizer (chunk → partial → reduce)
       → stream tokens → state = .streaming(accumulated)
@@ -200,24 +243,45 @@ User taps sparkles
 
 ## ModelRuntime lifecycle
 
-The Gemma runtime is heavy (a 3.4 GB MLX module + KV cache in Metal memory). To stay a good citizen on a memory-pressured device, `ModelRuntime` is an `actor` that:
+The Gemma runtime is heavy (a 5.2 GB MLX module + KV cache in Metal memory). To stay a good citizen on a memory-pressured device, `ModelRuntime` is an `actor` that:
 
 | Event | What happens |
 |---|---|
-| First `acquire(at:)` | Calls `RunnerLoading.load(from:)` — the MLX implementation loads weights into Metal |
+| First `acquire(at:)` | Calls `RunnerLoading.load(from:)` — the MLX implementation configures `Memory.cacheLimit` / `Memory.memoryLimit`, then `LLMModelFactory._load` reads weights into Metal |
 | Subsequent `acquire(at:)` with same directory | Reuses the loaded runner; updates `lastUsed` |
 | `release()` | Drops the runner immediately |
 | `evictIfIdle()` | Drops the runner if `lastUsed` is older than the idle timeout (default 5 min) |
-
-Manual hookup points (not yet wired into app lifecycle — TODO if this matters):
-- App backgrounded ≥ 30 s → call `release()`
-- `UIApplication.didReceiveMemoryWarningNotification` → call `release()` immediately
+| `didReceiveMemoryWarningNotification` | `release()` (wired in `AppEnvironment.init`) |
+| `didEnterBackgroundNotification` | `release()` (wired in `AppEnvironment.init`) |
 
 The Built-in engine doesn't go through `ModelRuntime` — `LanguageModelSession` is cheap to construct, one per request.
 
 ## Framework gotchas (load-bearing patterns)
 
 The bugs we hit while wiring this feature up landed permanent decisions in the code. Each one is short and easy to "simplify" by accident — these are the ones to leave alone.
+
+### Gemma 4 needs `extraEOSTokens: ["<turn|>"]`
+
+Gemma 4's chat template ends each assistant turn with `<turn|>`. The tokenizer does NOT mark `<turn|>` as an EOS token, and `<turn|>` is also distinct from `<eos>` — so without flagging it via `ResolvedModelConfiguration.extraEOSTokens`, the runner cheerfully emits the literal `<turn|>` as text at the end of every summary.
+
+Because of this requirement, we cannot use the short `LLMModelFactory.loadContainer(from: directory, using:)` API — it constructs a `ResolvedModelConfiguration` internally with empty `extraEOSTokens`. We hand-construct the resolved configuration ourselves and call `LLMModelFactory._load(...)`, then wrap the resulting `ModelContext` into a `ModelContainer`. This is the same path the convenience API takes; we just need to keep control of `extraEOSTokens`.
+
+If `mlx-swift-lm` ever adds a `loadContainer(from: directory, using: ..., configuration:)` overload that accepts a configuration object for local-directory loads, prefer that.
+
+### `MLX.Memory.cacheLimit` / `memoryLimit` (not `MLX.GPU.set(...)`)
+
+The deprecated `MLX.GPU.set(cacheLimit:)` and `MLX.GPU.set(memoryLimit:)` functions still work but produce warnings; the maintained API in `mlx-swift` 0.31+ is the `MLX.Memory` namespace's static properties:
+
+```swift
+MLX.Memory.cacheLimit = 32 * 1024 * 1024
+MLX.Memory.memoryLimit = Int(Double(os_proc_available_memory()) * 0.7)
+```
+
+Set both before the first MLX allocation — i.e. inside `MLXRunnerLoader.load`, before `_load`. Setting them after the model is loaded has no effect on the existing allocation.
+
+### `contextBudgetCharacters` must reflect *device* memory, not the model's stated window
+
+Gemma 4 claims a 128 K-token context. The phone can't actually run prompts that long: KV cache scales linearly with sequence length, and even quantized to 4 bits it grows past comfortable limits at ~50 K tokens. The empirical practical limit with `kvBits: 4` is roughly 32 K tokens (~96 K English characters), which is what `contextBudgetCharacters` is set to. Anything larger goes through `MapReduceSummarizer`. Bumping this number "because the model supports more" reintroduces silent jetsam kills on long chapters.
 
 ### `AISettings` must use stored properties with `didSet`, not computed UserDefaults accessors
 
@@ -260,12 +324,12 @@ If you ever switch back to `await session.download(from:)`, you must also drop t
 
 ### MLX cannot run on the iOS Simulator
 
-`mlx-swift-examples`'s Metal kernels require Apple Silicon GPU features that the iOS Simulator's Metal subset doesn't provide. Loading a model crashes the process inside `mlx::core::metal::Device::Device()` constructor.
+`mlx-swift-lm`'s Metal kernels require Apple Silicon GPU features that the iOS Simulator's Metal subset doesn't provide. Loading a model crashes the process inside `mlx::core::metal::Device::Device()` constructor.
 
 `AILanguageModelProvider` short-circuits this with a compile-time guard:
 
 ```swift
-case .gemma3_4b:
+case .gemma4_e4b:
     #if targetEnvironment(simulator)
     throw ProviderError.gemmaUnsupportedOnSimulator
     #else
@@ -274,6 +338,10 @@ case .gemma3_4b:
 ```
 
 Result: on the simulator, tapping Summarize with Gemma selected shows an error card explaining the limitation and pointing the user at the Built-in engine. Settings still allows the full download/install/delete flow on simulator (so that path can be tested), just not inference. Real-device path is unchanged.
+
+### Macro validation must be skipped in CI
+
+`mlx-swift-lm` bundles a SwiftPM macro target (`MLXHuggingFaceMacros`) that expands the `#huggingFaceTokenizerLoader()` call site at compile time. SwiftPM macros require explicit user trust on first build; in Xcode that's an interactive prompt, in headless `xcodebuild` it's a hard fail. The Makefile passes `-skipMacroValidation` to both `IOS_TEST` and `IOS_BUILD` so CI / `make test` works without intervention. Drop the flag and the build error message ("Macro must be enabled before it can be used") is genuinely useful.
 
 ### Don't clear `summaryService` in `ReaderView.onDisappear`
 
@@ -323,7 +391,6 @@ Core tests use the Swift Testing framework, run via `cd Core && swift test --no-
 | `ModelAssetStore` | `xcodebuild test` | Real `FileManager` against temp `URL`s |
 | `ModelDownloadService` | `xcodebuild test` | Mock `URLProtocol`; ephemeral session config |
 | `ModelRuntime` | `xcodebuild test` | Injected `RunnerLoading` stub (no real MLX) |
-| `GemmaChatTemplate` | `xcodebuild test` | Pure formatter |
 | `ChapterTextExtractor` | `xcodebuild test` | Fixture EPUB at `KiosTests/Fixtures/sample-chapter.epub` |
 | `AISummaryService` | `xcodebuild test` | Mock provider + stub extractor |
 | `ChapterSummary` @Model | `xcodebuild test` | In-memory `ModelContainer` |
@@ -357,12 +424,12 @@ See `Core/Tests/CoreTests/AI/MapReduceSummarizerTests.swift` and `KiosTests/Serv
 
 Each PR that touches AI code should pass these checks. Stage the device/simulator combinations you can:
 
-- **iPhone 17 Pro (16 GB), iOS 26+:**
+- **iPhone 17 Pro (12 GB RAM), iOS 26+:**
   - [ ] Enable AI toggle. First-enable sheet appears.
   - [ ] Picker defaults to "Bigger context"; download cell visible.
-  - [ ] Tap Download — Wi-Fi-only by default, progress visible, ~3 min on Wi-Fi.
+  - [ ] Tap Download — Wi-Fi-only by default, progress visible, ~4 min on Wi-Fi for 5.2 GB.
   - [ ] After install, picker shows installed state.
-  - [ ] Summarize a short chapter. Single-shot streams smoothly. Footer reads "Gemma 3 4B".
+  - [ ] Summarize a short chapter. Single-shot streams smoothly, no `<turn|>` leaks at the end. Footer reads "Gemma 4 E4B".
   - [ ] Switch picker to "Built-in". Summarize same chapter — separate cache row, footer reads "Apple Intelligence".
 - **iPhone 15 (base, 6 GB) or older, iOS 26+:**
   - [ ] Picker greys "Bigger context" with "Requires 8 GB RAM" footnote.
@@ -370,11 +437,11 @@ Each PR that touches AI code should pass these checks. Stage the device/simulato
 - **iPhone 12 (4 GB), iOS 17–18:**
   - [ ] Master toggle disabled with explanation row. Reader has no AI UI.
 - **Storage edge cases:**
-  - [ ] Fill device to < 4 GB free, attempt download. `notEnoughStorage` error shown.
+  - [ ] Fill device to < 6 GB free, attempt download. `notEnoughStorage` error shown.
   - [ ] Cancel mid-download. Disk reports partial. Re-tap Download → resumes (URLSession background session).
   - [ ] Lose Wi-Fi mid-download with cellular off. Pauses cleanly. Resumes on Wi-Fi return.
 - **Memory hygiene:**
-  - [ ] Summarize with Gemma, background the app for 1 min, foreground, summarize again. First call has model-reload latency (~1 s); subsequent calls warm.
+  - [ ] Summarize with Gemma, background the app for 1 min, foreground, summarize again. First call has model-reload latency (~1 s); subsequent calls warm. Verify no jetsam between foreground/background by checking `Application Support/kios/diagnostics/` for fresh `*-metric.json` payloads with a non-zero `cumulativeMemoryResourceLimitExitCount`.
 - **Delete:**
   - [ ] Hit Delete model. Confirm. Weights gone. Picker reflects new state.
 - **Cache survives switch:**
@@ -382,6 +449,14 @@ Each PR that touches AI code should pass these checks. Stage the device/simulato
   - [ ] Master toggle OFF then ON. Cache rows survive.
 - **Master toggle off:**
   - [ ] **Every AI surface disappears**: sparkles in top bar, "Summarise" row in bottom bar, "Ask AI" in edit menu. None of them appear. **This is load-bearing for the opt-in privacy story.**
+
+## Pulling crash logs without TestFlight
+
+TestFlight's Organizer integration is slow and unreliable — jetsam OOM kills in particular never reach the Crashes tab. The faster local loop:
+
+1. **Real crashes** (signal-based, with stack trace): `Xcode → Window → Devices and Simulators → <device> → View Device Logs`. Filter by `com.raphi011.kios`. Export the `.ips` and drag into Xcode for symbolication. Works for any build installed via Xcode directly, no TestFlight needed.
+2. **Jetsam OOM kills** (no `.ips` file): re-open the app. On the next launch MetricKit delivers the payload, and `AICrashDiagnosticsLogger` persists it. Pull via `Xcode → Devices and Simulators → <device> → Kios → ⋯ → Download Container`, then look in `AppData/Library/Application Support/kios/diagnostics/`. Sort by date, the most recent `*-metric.json` carries the jetsam counter bump.
+3. **Deeper inspection** (full sysdiagnose): hold Volume Up + Volume Down + Side button for ~1 s on the iPhone. Settings → Privacy & Security → Analytics & Improvements → Analytics Data → most recent sysdiagnose. Contains `JetsamEvent-*.ips.synced` with `largestProcess`, `footprint`, and the per-process memory snapshot at kill time.
 
 ## Gotchas and debugging
 
@@ -395,7 +470,7 @@ Map-reduce. Apple FM's 4 K-token context window forces multi-step summarization 
 
 ### "MLX model crashed the app"
 
-Check Console for `jetsam` log entries. iOS killed the process for memory pressure. Apple's Foundation Model is more conservative; if you're hitting jetsam on Gemma, dial down concurrent work (close other apps), or fall back to Built-in for that session.
+Check `Application Support/kios/diagnostics/` after reopening. A bumped `cumulativeMemoryResourceLimitExitCount` means iOS jetsammed us for memory pressure — usually means `Memory.memoryLimit` was set too high, the entitlement isn't being honored, or another app pushed the device into a low-memory state. Apple's Foundation Model is more conservative; falling back to Built-in for that session is the right move while investigating.
 
 ### "I keep seeing 'Re-download required'"
 
@@ -424,13 +499,16 @@ The reader does not send any text to a server when AI features are used. There a
 - **Built-in:** Apple's on-device Foundation Model. No network. Apple offers a "Private Cloud Compute" path for its own features, but third-party apps (us) only get the on-device runtime.
 - **Bigger context:** Gemma weights are downloaded once from Hugging Face's public CDN. After that, inference is local Metal compute. No telemetry, no upload of prompts or outputs.
 
+MetricKit diagnostics are persisted **locally only** — they never leave the device. Retrieve them via Xcode if you need them for debugging.
+
 The master toggle defaults to OFF, and **no AI framework symbol is touched at runtime until the user enables it**. This is verifiable: `AILanguageModelProvider.languageModel(for:)` is the only code path that constructs a real `FoundationModelsLanguageModel` or `MLXGemmaLanguageModel`, and it isn't called from any view body unless `aiSettings.featuresEnabled == true`. Set a breakpoint there if you want to confirm.
 
 ## What's deliberately not built
 
-- **Whole-book summarization** — even Gemma's 32 K-token context can't fit a 300-page novel (~80–100 K words). Revisit when there's a credible local model with >100 K-token usable context.
+- **Whole-book summarization** — even Gemma's 32 K-token usable context can't fit a 300-page novel (~80–100 K words). Revisit when there's a credible local model with >100 K-token usable context.
 - **Cross-device sync of summaries** — neither kosync nor Kobo carries arbitrary blobs.
 - **Cloud model fallback** — local-only by design.
 - **Multi-turn chat for selection Q&A** — single-shot is enough for "what does this paragraph mean?"
-- **Multimodal Gemma** — Gemma 3 4B can take images; we don't.
-- **Lower-tier Gemma weights** — we don't ship Gemma 3 1B for < 8 GB devices. They get Built-in (if eligible) or no AI.
+- **Multimodal Gemma usage** — the 4-bit MLX checkpoint bundles vision + audio encoders (mlx-community has no text-only `-lm-` Gemma 4 conversion yet), but `Gemma4Text` inside mlx-swift-lm reads only `text_config` at inference time. The vision/audio towers cost disk space, not runtime memory.
+- **Lower-tier Gemma weights** — we don't ship Gemma 4 E2B (~3.6 GB) for < 8 GB devices. They get Built-in (if eligible) or no AI.
+- **Speculative decoding** — `mlx-swift-lm` 3.x supports it with `*-assistant-bf16` draft models, but the latency improvement on chapter-length summarization is marginal compared to the added complexity. Revisit if real-time chat ever becomes a use case.

@@ -50,7 +50,7 @@ struct AIAvailability: Sendable, Equatable {
 
     func resolved(preferred: AIEngine, userEnabled: Bool) -> AIEngine? {
         guard userEnabled else { return nil }
-        let other: AIEngine = (preferred == .gemma3_4b) ? .foundationModels : .gemma3_4b
+        let other: AIEngine = (preferred == .gemma4_e4b) ? .foundationModels : .gemma4_e4b
         if engineState(preferred) == .available { return preferred }
         if engineState(other) == .available { return other }
         return nil
@@ -59,7 +59,7 @@ struct AIAvailability: Sendable, Equatable {
     private func engineState(_ engine: AIEngine) -> EngineAvailability {
         switch engine {
         case .foundationModels: return fm
-        case .gemma3_4b:        return gemma
+        case .gemma4_e4b:       return gemma
         }
     }
 
@@ -78,13 +78,13 @@ struct AIAvailability: Sendable, Equatable {
         let fm = fmProbe.probe()
 
         let gemma: EngineAvailability
-        if !capability.supportsGemma3_4b {
+        if !capability.supportsGemma4_e4b {
             gemma = .unsupportedDevice
         } else if let progress = downloads.currentDownload(),
-                  progress.assetID == ModelCatalog.gemma3_4b.id {
+                  progress.assetID == ModelCatalog.gemma4_e4b.id {
             gemma = .modelDownloading(progress: progress.fractionComplete)
         } else {
-            switch assetStore.installationStatus(for: ModelCatalog.gemma3_4b) {
+            switch assetStore.installationStatus(for: ModelCatalog.gemma4_e4b) {
             case .installed: gemma = .available
             case .notInstalled, .partial: gemma = .modelNotDownloaded
             case .corrupt: gemma = .modelCorrupt

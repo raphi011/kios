@@ -3,7 +3,7 @@ import SwiftData
 
 /// Persisted AI-generated summary of one EPUB chapter. Keyed by a composite
 /// ID that includes the engine, so swapping between `foundationModels` and
-/// `gemma3_4b` produces independent rows for the same chapter+scope.
+/// `gemma4_e4b` produces independent rows for the same chapter+scope.
 ///
 /// The typed `makeID(bookID:chapterHref:scope:engine:)` helper lives in
 /// `Kios/Services/AI/ChapterSummary+ID.swift` so this @Model file stays free of

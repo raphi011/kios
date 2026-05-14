@@ -43,7 +43,7 @@ struct ModelDownloadServiceTests {
         return ModelAsset(
             id: "dl-test",
             displayName: "DL Test",
-            engine: .gemma3_4b,
+            engine: .gemma4_e4b,
             huggingFaceRepo: "test/test",
             revision: String(repeating: "a", count: 40),
             files: assetFiles,
@@ -113,7 +113,7 @@ struct ModelDownloadServiceTests {
     @MainActor
     func notEnoughStorage() async throws {
         let asset = ModelAsset(
-            id: "huge", displayName: "Huge", engine: .gemma3_4b,
+            id: "huge", displayName: "Huge", engine: .gemma4_e4b,
             huggingFaceRepo: "t/t", revision: String(repeating: "a", count: 40),
             files: [AssetFile(path: "f", sha256: String(repeating: "0", count: 64), sizeBytes: Int64.max - 1)],
             totalBytes: Int64.max - 1

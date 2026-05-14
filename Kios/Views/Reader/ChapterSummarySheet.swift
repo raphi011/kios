@@ -121,7 +121,7 @@ struct ChapterSummarySheet: View {
     private var footerAttribution: String {
         switch engine {
         case .foundationModels: return "Generated with Apple Intelligence"
-        case .gemma3_4b:        return "Generated with Gemma 3 4B (on-device)"
+        case .gemma4_e4b:       return "Generated with Gemma 4 E4B (on-device)"
         }
     }
 }

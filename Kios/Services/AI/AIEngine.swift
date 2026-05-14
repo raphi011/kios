@@ -3,14 +3,14 @@ import Foundation
 
 enum AIEngine: String, Sendable, Codable, CaseIterable, Identifiable {
     case foundationModels
-    case gemma3_4b
+    case gemma4_e4b
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .foundationModels: return "Built-in"
-        case .gemma3_4b:        return "Bigger context"
+        case .gemma4_e4b:       return "Bigger context"
         }
     }
 }

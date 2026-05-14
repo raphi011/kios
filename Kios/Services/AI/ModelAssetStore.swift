@@ -69,6 +69,24 @@ final class ModelAssetStore: ModelAssetStoreReading, @unchecked Sendable {
         }
     }
 
+    /// Removes any directory under `rootDirectory` whose name isn't in
+    /// `knownIDs`. Called at launch from `AppEnvironment.init` so an asset
+    /// rename in the catalog (e.g. swapping the active model) doesn't leak
+    /// gigabytes of orphan files. Best-effort: a per-entry failure does not
+    /// abort the remaining cleanup.
+    func cleanupOrphanDirectories(keepingAssetIDs knownIDs: Set<String>) throws {
+        var isDir: ObjCBool = false
+        guard fileManager.fileExists(atPath: rootDirectory.path, isDirectory: &isDir),
+              isDir.boolValue else {
+            return
+        }
+        let names = try fileManager.contentsOfDirectory(atPath: rootDirectory.path)
+        for name in names where !knownIDs.contains(name) {
+            let url = rootDirectory.appendingPathComponent(name, isDirectory: true)
+            try? fileManager.removeItem(at: url)
+        }
+    }
+
     func diskFreeBytes() -> Int64 {
         guard let values = try? rootDirectory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
               let free = values.volumeAvailableCapacityForImportantUsage else {

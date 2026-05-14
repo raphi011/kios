@@ -16,7 +16,7 @@ struct AIAvailabilityTests {
 
     private func resolve(
         userEnabled: Bool = true,
-        preferred: AIEngine = .gemma3_4b,
+        preferred: AIEngine = .gemma4_e4b,
         ramGB: Double = 8.0,
         fm: EngineAvailability = .available,
         status: InstallationStatus = .installed(at: URL(fileURLWithPath: "/tmp/x")),
@@ -37,14 +37,14 @@ struct AIAvailabilityTests {
         let a = resolve(userEnabled: false)
         #expect(a.fm == .userDisabled)
         #expect(a.gemma == .userDisabled)
-        #expect(a.resolved(preferred: .gemma3_4b, userEnabled: false) == nil)
+        #expect(a.resolved(preferred: .gemma4_e4b, userEnabled: false) == nil)
     }
 
     @Test("everything fine: prefers Gemma when set")
     func preferGemmaAvailable() {
-        let a = resolve(preferred: .gemma3_4b)
+        let a = resolve(preferred: .gemma4_e4b)
         #expect(a.gemma == .available)
-        #expect(a.resolved(preferred: .gemma3_4b, userEnabled: true) == .gemma3_4b)
+        #expect(a.resolved(preferred: .gemma4_e4b, userEnabled: true) == .gemma4_e4b)
     }
 
     @Test("prefer Gemma not downloaded, FM available → falls back to FM")
@@ -52,32 +52,32 @@ struct AIAvailabilityTests {
         let a = resolve(status: .notInstalled)
         #expect(a.gemma == .modelNotDownloaded)
         #expect(a.fm == .available)
-        #expect(a.resolved(preferred: .gemma3_4b, userEnabled: true) == .foundationModels)
+        #expect(a.resolved(preferred: .gemma4_e4b, userEnabled: true) == .foundationModels)
     }
 
     @Test("prefer Gemma not downloaded, FM unsupportedOS → nil")
     func gemmaNotDownloadedFmUnavail() {
         let a = resolve(fm: .unsupportedOS, status: .notInstalled)
-        #expect(a.resolved(preferred: .gemma3_4b, userEnabled: true) == nil)
+        #expect(a.resolved(preferred: .gemma4_e4b, userEnabled: true) == nil)
     }
 
     @Test("<8GB device → Gemma unsupportedDevice, falls back to FM")
     func lowRamFallback() {
         let a = resolve(ramGB: 6.0)
         #expect(a.gemma == .unsupportedDevice)
-        #expect(a.resolved(preferred: .gemma3_4b, userEnabled: true) == .foundationModels)
+        #expect(a.resolved(preferred: .gemma4_e4b, userEnabled: true) == .foundationModels)
     }
 
     @Test("Gemma installed but corrupt → modelCorrupt; FM if avail")
     func corrupt() {
         let a = resolve(status: .corrupt(reason: "x"))
         #expect(a.gemma == .modelCorrupt)
-        #expect(a.resolved(preferred: .gemma3_4b, userEnabled: true) == .foundationModels)
+        #expect(a.resolved(preferred: .gemma4_e4b, userEnabled: true) == .foundationModels)
     }
 
     @Test("download in progress → modelDownloading with fraction")
     func downloading() {
-        let progress = DownloadProgress(assetID: ModelCatalog.gemma3_4b.id, bytesDownloaded: 50, bytesTotal: 100, bytesPerSecond: 1)
+        let progress = DownloadProgress(assetID: ModelCatalog.gemma4_e4b.id, bytesDownloaded: 50, bytesTotal: 100, bytesPerSecond: 1)
         let a = resolve(status: .partial(installedBytes: 50), download: progress)
         if case .modelDownloading(let f) = a.gemma {
             #expect(f == 0.5)
