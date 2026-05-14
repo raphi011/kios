@@ -50,8 +50,6 @@ final class AISummaryService {
         bookID: UUID,
         chapterHref: String,
         chapterTitle: String,
-        cutoff: Double?,
-        scope: SummaryScope,
         engine: AIEngine
     ) async {
         summaryTask?.cancel()
@@ -60,13 +58,13 @@ final class AISummaryService {
 
         let body: String
         do {
-            body = try await textExtractor.extract(bookID: bookID, chapterHref: chapterHref, cutoff: cutoff)
+            body = try await textExtractor.extract(bookID: bookID, chapterHref: chapterHref, cutoff: nil)
         } catch {
             summaryState = .failed(error)
             return
         }
         let hash = Self.sha256Hex(of: Data(body.utf8))
-        let id = ChapterSummary.makeID(bookID: bookID, chapterHref: chapterHref, scope: scope, engine: engine)
+        let id = ChapterSummary.makeID(bookID: bookID, chapterHref: chapterHref, engine: engine)
 
         var descriptor = FetchDescriptor<ChapterSummary>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
@@ -93,7 +91,7 @@ final class AISummaryService {
                 var accumulated = ""
                 if body.count <= model.contextBudgetCharacters {
                     let (system, user) = PromptTemplates.chapterSummary(
-                        chapterTitle: chapterTitle, bookTitle: "", body: body, scope: scope
+                        chapterTitle: chapterTitle, bookTitle: "", body: body
                     )
                     for try await tok in model.complete(system: system, user: user) {
                         try Task.checkCancellation()
@@ -119,7 +117,7 @@ final class AISummaryService {
                 }
                 let row = ChapterSummary(
                     id: id, bookID: bookID, chapterHref: chapterHref,
-                    scope: scope.rawValue, engine: engine.rawValue,
+                    engine: engine.rawValue,
                     text: accumulated, createdAt: Date(), sourceHash: hash
                 )
                 modelContext.insert(row)

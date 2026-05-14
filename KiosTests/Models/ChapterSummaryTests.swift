@@ -6,23 +6,22 @@ import Core
 
 @Suite("ChapterSummary")
 struct ChapterSummaryTests {
-    @Test("makeID composes book, href, scope, engine deterministically")
+    @Test("makeID composes book, href, engine deterministically")
     func makeID() {
         let id = UUID()
         let composed = ChapterSummary.makeID(
             bookID: id,
             chapterHref: "ch1.xhtml",
-            scope: .readSoFar,
             engine: .gemma4_e4b
         )
-        #expect(composed == "\(id.uuidString)|ch1.xhtml|readSoFar|gemma4_e4b")
+        #expect(composed == "\(id.uuidString)|ch1.xhtml|gemma4_e4b")
     }
 
     @Test("different engines produce different IDs for same chapter")
     func engineSeparation() {
         let id = UUID()
-        let a = ChapterSummary.makeID(bookID: id, chapterHref: "ch1", scope: .full, engine: .gemma4_e4b)
-        let b = ChapterSummary.makeID(bookID: id, chapterHref: "ch1", scope: .full, engine: .foundationModels)
+        let a = ChapterSummary.makeID(bookID: id, chapterHref: "ch1", engine: .gemma4_e4b)
+        let b = ChapterSummary.makeID(bookID: id, chapterHref: "ch1", engine: .foundationModels)
         #expect(a != b)
     }
 
@@ -36,7 +35,6 @@ struct ChapterSummaryTests {
             id: "test-id",
             bookID: UUID(),
             chapterHref: "ch1",
-            scope: SummaryScope.full.rawValue,
             engine: AIEngine.gemma4_e4b.rawValue,
             text: "Summary text.",
             createdAt: Date(),

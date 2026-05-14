@@ -36,11 +36,6 @@ public extension LanguageModel {
     }
 }
 
-public enum SummaryScope: String, Sendable, Codable, CaseIterable {
-    case full
-    case readSoFar
-}
-
 public enum ExtractionError: LocalizedError, Sendable {
     case unsupportedType(String)
     case malformedOutput(attempts: Int, underlying: String)

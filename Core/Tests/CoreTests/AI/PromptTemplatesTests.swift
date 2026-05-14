@@ -3,29 +3,16 @@ import Testing
 
 @Suite("PromptTemplates")
 struct PromptTemplatesTests {
-    @Test("chapterSummary readSoFar includes scope hint")
-    func chapterReadSoFar() {
+    @Test("chapterSummary mentions chapter and body")
+    func chapterSummary() {
         let (system, user) = PromptTemplates.chapterSummary(
             chapterTitle: "The Beginning",
             bookTitle: "The Great Book",
-            body: "Once upon a time...",
-            scope: .readSoFar
+            body: "Once upon a time..."
         )
         #expect(system.contains("summary"))
         #expect(user.contains("The Beginning"))
         #expect(user.contains("Once upon a time"))
-        #expect(system.localizedCaseInsensitiveContains("only") || system.localizedCaseInsensitiveContains("provided"))
-    }
-
-    @Test("chapterSummary full does not promise spoiler-free behavior")
-    func chapterFull() {
-        let (system, _) = PromptTemplates.chapterSummary(
-            chapterTitle: "X",
-            bookTitle: "Y",
-            body: "Z",
-            scope: .full
-        )
-        #expect(!system.isEmpty)
     }
 
     @Test("mapStep prompts mention chapter title")

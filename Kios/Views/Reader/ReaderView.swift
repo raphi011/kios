@@ -114,7 +114,6 @@ struct ReaderView: View {
         let bookID: UUID
         let chapterHref: String
         let chapterTitle: String
-        let cutoff: Double?
         let engine: AIEngine
         let service: AISummaryService
     }
@@ -221,7 +220,6 @@ struct ReaderView: View {
                 bookID: context.bookID,
                 chapterHref: context.chapterHref,
                 chapterTitle: context.chapterTitle,
-                cutoff: context.cutoff,
                 engine: context.engine,
                 onClose: { summarySheet = nil },
                 service: context.service
@@ -626,7 +624,6 @@ struct ReaderView: View {
             bookID: bookID,
             chapterHref: href,
             chapterTitle: title,
-            cutoff: locator.locations.progression,
             engine: engine,
             service: service
         )

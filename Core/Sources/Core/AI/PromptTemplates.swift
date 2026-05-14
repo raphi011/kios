@@ -5,18 +5,10 @@ public enum PromptTemplates {
     public static func chapterSummary(
         chapterTitle: String,
         bookTitle: String,
-        body: String,
-        scope: SummaryScope
+        body: String
     ) -> (system: String, user: String) {
-        let scopeNote: String
-        switch scope {
-        case .readSoFar:
-            scopeNote = "The reader has only read up to a certain point in this chapter. Summarize only what is in the provided passage. Do NOT speculate about what happens later."
-        case .full:
-            scopeNote = "Summarize the full chapter."
-        }
         let system = """
-        You are a careful book-summarization assistant. Given a chapter passage, produce a clear, concise summary. \(scopeNote) Use the passage as the sole source of truth. Do not invent details. Aim for 3 to 6 short paragraphs.
+        You are a careful book-summarization assistant. Given a chapter passage, produce a clear, concise summary. Summarize the full chapter. Use the passage as the sole source of truth. Do not invent details. Aim for 3 to 6 short paragraphs.
         """
         let user = """
         Book: "\(bookTitle)"

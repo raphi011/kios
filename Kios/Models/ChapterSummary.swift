@@ -3,9 +3,9 @@ import SwiftData
 
 /// Persisted AI-generated summary of one EPUB chapter. Keyed by a composite
 /// ID that includes the engine, so swapping between `foundationModels` and
-/// `gemma4_e4b` produces independent rows for the same chapter+scope.
+/// `gemma4_e4b` produces independent rows for the same chapter.
 ///
-/// The typed `makeID(bookID:chapterHref:scope:engine:)` helper lives in
+/// The typed `makeID(bookID:chapterHref:engine:)` helper lives in
 /// `Kios/Services/AI/ChapterSummary+ID.swift` so this @Model file stays free of
 /// `Core` / AI-engine dependencies — the `KiosControls` app extension shares
 /// this file via the schema and does not need (or have) those types in scope.
@@ -14,7 +14,6 @@ final class ChapterSummary {
     @Attribute(.unique) var id: String
     var bookID: UUID
     var chapterHref: String
-    var scope: String       // SummaryScope.rawValue
     var engine: String      // AIEngine.rawValue
     var text: String
     var createdAt: Date
@@ -24,7 +23,6 @@ final class ChapterSummary {
         id: String,
         bookID: UUID,
         chapterHref: String,
-        scope: String,
         engine: String,
         text: String,
         createdAt: Date,
@@ -33,7 +31,6 @@ final class ChapterSummary {
         self.id = id
         self.bookID = bookID
         self.chapterHref = chapterHref
-        self.scope = scope
         self.engine = engine
         self.text = text
         self.createdAt = createdAt

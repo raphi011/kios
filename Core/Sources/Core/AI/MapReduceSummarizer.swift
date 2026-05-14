@@ -24,8 +24,7 @@ public struct MapReduceSummarizer: Sendable {
                         let (system, user) = PromptTemplates.chapterSummary(
                             chapterTitle: chapterTitle,
                             bookTitle: "",
-                            body: body,
-                            scope: .full
+                            body: body
                         )
                         for try await partial in model.complete(system: system, user: user) {
                             try Task.checkCancellation()

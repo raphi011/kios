@@ -6,26 +6,15 @@ struct ChapterSummarySheet: View {
     let bookID: UUID
     let chapterHref: String
     let chapterTitle: String
-    let cutoff: Double?
     let engine: AIEngine
     let onClose: () -> Void
 
-    @State private var scope: SummaryScope = .readSoFar
     @State private var hasStartedFirstRun: Bool = false
     @Bindable var service: AISummaryService
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                Picker("Scope", selection: $scope) {
-                    Text("Through what you've read").tag(SummaryScope.readSoFar)
-                    Text("Full chapter").tag(SummaryScope.full)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-
-                Divider()
-
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         if let p = service.progress {
@@ -77,7 +66,7 @@ struct ChapterSummarySheet: View {
                     Button("Done", action: onClose)
                 }
             }
-            .task(id: scope) { await runSummary() }
+            .task { await runSummary() }
         }
     }
 
@@ -87,8 +76,6 @@ struct ChapterSummarySheet: View {
             bookID: bookID,
             chapterHref: chapterHref,
             chapterTitle: chapterTitle,
-            cutoff: scope == .readSoFar ? cutoff : nil,
-            scope: scope,
             engine: engine
         )
     }
