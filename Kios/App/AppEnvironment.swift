@@ -175,9 +175,10 @@ final class AppEnvironment {
         ImageMemoryCache.shared.removeAll()
         URLCache.shared.removeAllCachedResponses()
 
-        // Delete catalog-only Book rows (no local file).
+        // Delete catalog-only synced Book rows (no local file). Leave
+        // `.local` books alone — they belong to the device, not the account.
         if let books = try? context.fetch(FetchDescriptor<Book>()) {
-            for book in books where book.filename == nil {
+            for book in books where book.filename == nil && book.source == .synced {
                 context.delete(book)
             }
         }
@@ -216,17 +217,22 @@ final class AppEnvironment {
     /// proceed with the stale URL and surface a real download error rather
     /// than blocking on the refresh.
     func refreshAcquisitionURL(for book: Book) async {
+        guard book.source == .synced,
+              let serverID = book.serverID,
+              let currentURL = book.acquisitionURL else {
+            return
+        }
         do {
             let name = UIDevice.current.name
             let (_, catalog) = try BackendFactory.build(
                 auth: authStore, deviceID: deviceID, deviceName: name
             )
             let entry = CatalogEntry(
-                serverID: book.serverID,
+                serverID: serverID,
                 title: book.title,
                 authors: book.authors,
                 identity: book.identity,
-                downloadURL: book.acquisitionURL,
+                downloadURL: currentURL,
                 format: book.format,
                 thumbnailURL: book.thumbnailURL
             )

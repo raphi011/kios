@@ -77,6 +77,7 @@ targets:
       - path: Kios/App/BookOpenCoordinator.swift
       - path: Kios/App/ModelContainerFactory.swift
       - path: Kios/Models/Book.swift
+      - path: Kios/Models/BookSource.swift
       - path: Kios/Models/Download.swift
       - path: Kios/Models/DownloadState.swift
       - path: Kios/Models/ReadingProgress.swift

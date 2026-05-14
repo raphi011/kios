@@ -34,6 +34,10 @@ enum BookActions {
                            context: ModelContext) -> Book {
         if let existing = findBook(serverID: entry.serverID,
                                    format: chosen.format, context: context) {
+            precondition(
+                existing.source == .synced,
+                "BookActions.upsertBook matched a .local book — should have been deduped earlier"
+            )
             existing.title = entry.title
             existing.authors = entry.authors
             existing.acquisitionURL = chosen.href

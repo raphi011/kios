@@ -74,19 +74,30 @@ private struct BookCoverThumb: View {
 
     var body: some View {
         Group {
-            if book.serverIDProtocol == SyncProtocol.kosync.rawValue,
-               let creds = try? env.authStore.load() {
-                AuthenticatedAsyncImage(
-                    url: book.thumbnailURL,
-                    http: Core.HTTPClient(credentials: creds.basic)
-                ) { placeholder }
-                    .scaledToFill()
-            } else if let url = book.thumbnailURL {
-                AsyncImage(url: url) { img in
-                    img.resizable().scaledToFill()
-                } placeholder: { placeholder }
-            } else {
-                placeholder
+            switch book.source {
+            case .local:
+                if let url = book.coverFileURL {
+                    AsyncImage(url: url) { img in
+                        img.resizable().scaledToFill()
+                    } placeholder: { placeholder }
+                } else {
+                    placeholder
+                }
+            case .synced:
+                if book.serverIDProtocol == SyncProtocol.kosync.rawValue,
+                   let creds = try? env.authStore.load() {
+                    AuthenticatedAsyncImage(
+                        url: book.thumbnailURL,
+                        http: Core.HTTPClient(credentials: creds.basic)
+                    ) { placeholder }
+                        .scaledToFill()
+                } else if let url = book.thumbnailURL {
+                    AsyncImage(url: url) { img in
+                        img.resizable().scaledToFill()
+                    } placeholder: { placeholder }
+                } else {
+                    placeholder
+                }
             }
         }
     }

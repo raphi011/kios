@@ -80,10 +80,12 @@ struct LibraryRootView: View {
             env.openReader(book.id)
             return
         }
-        // Catalog-only — kick off a download. The reader shows a downloading
-        // state until the file lands. For Kobo we first try to refresh the
-        // pre-signed CDN URL through the catalog backend, since the one we
-        // captured at listLibrary time may have expired.
+        // Local books always have filename non-nil (set at import). If we hit
+        // this branch with a local book, that's a bug — local books don't
+        // have an acquisitionURL to download from.
+        guard book.source == .synced, let _ = book.acquisitionURL else {
+            return
+        }
         Task {
             if book.serverIDProtocol == SyncProtocol.kobo.rawValue {
                 await env.refreshAcquisitionURL(for: book)

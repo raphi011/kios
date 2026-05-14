@@ -59,15 +59,33 @@ struct BookRow: View {
     @ViewBuilder
     private var thumbnail: some View {
         Group {
-            if book.serverIDProtocol == SyncProtocol.kosync.rawValue {
-                kosyncThumbnail
-            } else {
-                koboThumbnail
+            switch book.source {
+            case .local:
+                localThumbnail
+            case .synced:
+                if book.serverIDProtocol == SyncProtocol.kosync.rawValue {
+                    kosyncThumbnail
+                } else {
+                    koboThumbnail
+                }
             }
         }
         .frame(width: 56, height: 84)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    @ViewBuilder
+    private var localThumbnail: some View {
+        if let url = book.coverFileURL {
+            AsyncImage(url: url) { img in
+                img.resizable().scaledToFill()
+            } placeholder: {
+                placeholder
+            }
+        } else {
+            placeholder
+        }
     }
 
     @ViewBuilder
