@@ -59,10 +59,39 @@ targets:
         product: ReadiumOPDS
       - package: ZIPFoundation
         product: ReadiumZIPFoundation
+      - target: KiosControls
     scheme:
       testTargets:
         - KiosTests
       gatherCoverageData: false
+
+  KiosControls:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: KiosControls
+      - path: Kios/Intents/OpenMostRecentBookIntent.swift
+      - path: Kios/Intents/MostRecentBookSelector.swift
+      - path: Kios/App/AppPaths.swift
+      - path: Kios/App/BookOpenCoordinator.swift
+      - path: Kios/App/ModelContainerFactory.swift
+      - path: Kios/Models/Book.swift
+      - path: Kios/Models/Download.swift
+      - path: Kios/Models/DownloadState.swift
+      - path: Kios/Models/ReadingProgress.swift
+      - path: Kios/Models/ReadingSession.swift
+      - path: Kios/Views/Home/StatsAggregator.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.raphi011.kios.Controls
+        INFOPLIST_FILE: KiosControls/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        SKIP_INSTALL: YES
+    dependencies:
+      - package: Core
+        product: Core
 
   KiosTests:
     type: bundle.unit-test
