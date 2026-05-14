@@ -86,6 +86,80 @@ struct BookAnalysisServicePerChapterTests {
     }
 }
 
+@MainActor
+@Suite("BookAnalysisService — synthesis", .serialized)
+struct BookAnalysisServiceSynthesisTests {
+    @Test("synthesis pass writes CharacterProfile rows + back-links mentions")
+    func synthesisLinks() async throws {
+        let container = try ModelContainer.kiosInMemory()
+        let ctx = container.mainContext
+        let bookID = UUID()
+        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        try ctx.save()
+
+        let mock = MockLanguageModel()
+        mock.enqueueExtract(.value(ChapterCharactersResponse(characters: [
+            ExtractedCharacter(canonicalName: "Alice", aliases: [],
+                               descriptionFromChapter: "d", significance: "major",
+                               quote: "alice quote")
+        ])))
+        mock.enqueueExtract(.value(ChapterCharactersResponse(characters: [
+            ExtractedCharacter(canonicalName: "Bob", aliases: [],
+                               descriptionFromChapter: "d", significance: "minor",
+                               quote: "bob quote")
+        ])))
+        // For the synthesis call, dynamically resolve actual mention IDs by
+        // hopping to MainActor to read SwiftData.
+        mock.setExtractInterceptor { type, _, _ in
+            if type == ProfilesSynthesisResponse.self {
+                let resolved: ProfilesSynthesisResponse? = await MainActor.run {
+                    let mentions = (try? ctx.fetch(FetchDescriptor<CharacterMention>(
+                        predicate: #Predicate { $0.bookID == bookID }
+                    ))) ?? []
+                    guard let alice = mentions.first(where: { $0.canonicalName == "Alice" })?.id,
+                          let bob = mentions.first(where: { $0.canonicalName == "Bob" })?.id
+                    else { return nil }
+                    return ProfilesSynthesisResponse(profiles: [
+                        ExtractedProfile(canonicalName: "Alice", allAliases: [],
+                                         synthesizedDescription: "A.",
+                                         mentionIDs: [alice]),
+                        ExtractedProfile(canonicalName: "Bob", allAliases: [],
+                                         synthesizedDescription: "B.",
+                                         mentionIDs: [bob])
+                    ])
+                }
+                return resolved
+            }
+            return nil
+        }
+
+        let service = BookAnalysisService(
+            modelContext: ctx,
+            provider: AnalysisStubProvider(model: mock),
+            extractor: AnalysisStubExtractor(textPerChapter: ["ch1": "a", "ch2": "b"]),
+            chaptersFor: { _ in [
+                ChapterRef(index: 0, href: "ch1"),
+                ChapterRef(index: 1, href: "ch2"),
+            ] }
+        )
+        try await service.startAndAwait(bookID: bookID, engine: .gemma4_e4b)
+
+        let profiles = try ctx.fetch(FetchDescriptor<CharacterProfile>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        #expect(profiles.count == 2)
+        let mentions = try ctx.fetch(FetchDescriptor<CharacterMention>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        #expect(mentions.allSatisfy { $0.profileID != nil })
+
+        let analysis = try ctx.fetch(FetchDescriptor<BookAnalysis>(
+            predicate: #Predicate { $0.bookID == bookID }
+        )).first
+        #expect(analysis?.status == "completed")
+    }
+}
+
 // MARK: - Test stubs
 
 struct AnalysisStubProvider: AILanguageModelProviding {

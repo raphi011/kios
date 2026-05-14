@@ -120,12 +120,61 @@ final class BookAnalysisService {
     private func runSynthesisPass(
         bookID: UUID, model: any LanguageModel, row: BookAnalysis
     ) async throws {
-        // Real impl in Task 14.
+        let serialized: String = try await MainActor.run {
+            let mentions = (try? modelContext.fetch(FetchDescriptor<CharacterMention>(
+                predicate: #Predicate { $0.bookID == bookID }
+            ))) ?? []
+            return try serializeMentions(mentions)
+        }
+        let response: ProfilesSynthesisResponse = try await model.extract(
+            ProfilesSynthesisResponse.self,
+            schema: CharacterExtractionPrompts.profilesSchema,
+            system: CharacterExtractionPrompts.profileSynthesisSystem,
+            user: serialized
+        )
         await MainActor.run {
+            // Re-fetch mentions for the back-link write since we can't carry the
+            // @Model instances across the await boundary.
+            let mentions = (try? modelContext.fetch(FetchDescriptor<CharacterMention>(
+                predicate: #Predicate { $0.bookID == bookID }
+            ))) ?? []
+            for p in response.profiles {
+                let merged = mentions.filter { p.mentionIDs.contains($0.id) }
+                let profile = CharacterProfile(
+                    id: UUID(), bookID: bookID,
+                    canonicalName: p.canonicalName,
+                    allAliases: p.allAliases,
+                    synthesizedDescription: p.synthesizedDescription,
+                    earliestChapterIndex: merged.map(\.chapterIndex).min() ?? 0,
+                    latestChapterIndex: merged.map(\.chapterIndex).max() ?? 0
+                )
+                modelContext.insert(profile)
+                for m in merged { m.profileID = profile.id }
+            }
             row.status = "completed"
             row.completedAt = Date()
             try? modelContext.save()
         }
+    }
+
+    private func serializeMentions(_ mentions: [CharacterMention]) throws -> String {
+        struct WireMention: Codable {
+            let id: UUID
+            let canonicalName: String
+            let aliases: [String]
+            let descriptionFromChapter: String
+            let chapterIndex: Int
+        }
+        let wire = mentions.map {
+            WireMention(
+                id: $0.id, canonicalName: $0.canonicalName,
+                aliases: $0.aliasesInChapter,
+                descriptionFromChapter: $0.descriptionFromChapter,
+                chapterIndex: $0.chapterIndex
+            )
+        }
+        let data = try JSONEncoder().encode(wire)
+        return String(data: data, encoding: .utf8) ?? "[]"
     }
 
     func cancel() {

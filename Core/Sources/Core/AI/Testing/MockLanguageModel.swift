@@ -14,12 +14,19 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
         case fail(any Error)
     }
 
+    /// Dynamic interceptor for `extract<T>`. Receives the requested type plus
+    /// the prompts. Return a value to use as the response, or `nil` to fall
+    /// back to the next queued `ExtractResponse`. `async throws` so test code
+    /// can sleep / await inside (used for cancellation tests).
+    public typealias ExtractInterceptor = @Sendable (Any.Type, String, String) async throws -> (any Codable & Sendable)?
+
     public let contextBudgetCharacters: Int
     private let lock = NSLock()
     private var _calls: [(system: String, user: String)] = []
     private var _responseIndex: Int = 0
     private let _responses: [Response]
     private var _extractResponses: [ExtractResponse] = []
+    private var _interceptor: ExtractInterceptor?
 
     public var calls: [(system: String, user: String)] {
         lock.lock(); defer { lock.unlock() }
@@ -34,6 +41,11 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
     public func enqueueExtract(_ response: ExtractResponse) {
         lock.lock(); defer { lock.unlock() }
         _extractResponses.append(response)
+    }
+
+    public func setExtractInterceptor(_ block: @escaping ExtractInterceptor) {
+        lock.lock(); defer { lock.unlock() }
+        _interceptor = block
     }
 
     public func complete(system: String, user: String) -> AsyncThrowingStream<String, Error> {
@@ -74,6 +86,23 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
         system: String,
         user: String
     ) async throws -> T {
+        let interceptor: ExtractInterceptor? = {
+            lock.lock(); defer { lock.unlock() }
+            return _interceptor
+        }()
+
+        if let interceptor {
+            if let value = try await interceptor(type, system, user) {
+                guard let typed = value as? T else {
+                    throw ExtractionError.unsupportedType(
+                        "interceptor returned \(Swift.type(of: value)), wanted \(T.self)"
+                    )
+                }
+                return typed
+            }
+            // Interceptor returned nil — fall through to the queue.
+        }
+
         let next: ExtractResponse = try {
             lock.lock(); defer { lock.unlock() }
             guard !_extractResponses.isEmpty else {
@@ -81,7 +110,11 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
             }
             return _extractResponses.removeFirst()
         }()
-        switch next {
+        return try unwrap(next, as: T.self)
+    }
+
+    private func unwrap<T: Decodable & Sendable>(_ response: ExtractResponse, as: T.Type) throws -> T {
+        switch response {
         case .value(let v):
             guard let typed = v as? T else {
                 throw ExtractionError.unsupportedType(
