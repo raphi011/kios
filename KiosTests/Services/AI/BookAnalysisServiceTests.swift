@@ -33,6 +33,59 @@ struct BookAnalysisServiceBasicsTests {
     }
 }
 
+@MainActor
+@Suite("BookAnalysisService — per-chapter", .serialized)
+struct BookAnalysisServicePerChapterTests {
+    @Test("each chapter's extract response persists CharacterMention rows")
+    func extractionPersists() async throws {
+        let container = try ModelContainer.kiosInMemory()
+        let ctx = container.mainContext
+        let bookID = UUID()
+        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        try ctx.save()
+
+        let mock = MockLanguageModel()
+        for name in ["Alice", "Bob"] {
+            mock.enqueueExtract(.value(
+                ChapterCharactersResponse(characters: [
+                    ExtractedCharacter(
+                        canonicalName: name, aliases: [],
+                        descriptionFromChapter: "d", significance: "major",
+                        quote: "verbatim quote here"
+                    )
+                ])
+            ))
+        }
+        // Synthesis pass enqueue is harmless for Task 13 — runSynthesisPass
+        // stub doesn't consume a queue entry yet. The Task 14 impl will.
+        mock.enqueueExtract(.value(ProfilesSynthesisResponse(profiles: [])))
+
+        let service = BookAnalysisService(
+            modelContext: ctx,
+            provider: AnalysisStubProvider(model: mock),
+            extractor: AnalysisStubExtractor(textPerChapter: [
+                "ch1": "Alice text", "ch2": "Bob text"
+            ]),
+            chaptersFor: { _ in [
+                ChapterRef(index: 0, href: "ch1"),
+                ChapterRef(index: 1, href: "ch2"),
+            ] }
+        )
+        try await service.startAndAwait(bookID: bookID, engine: .gemma4_e4b)
+
+        let mentions = try ctx.fetch(FetchDescriptor<CharacterMention>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        #expect(mentions.count == 2)
+        #expect(Set(mentions.map(\.canonicalName)) == Set(["Alice", "Bob"]))
+
+        let analysis = try ctx.fetch(FetchDescriptor<BookAnalysis>(
+            predicate: #Predicate { $0.bookID == bookID }
+        )).first
+        #expect(analysis?.chaptersCompleted == 2)
+    }
+}
+
 // MARK: - Test stubs
 
 struct AnalysisStubProvider: AILanguageModelProviding {

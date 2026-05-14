@@ -55,7 +55,77 @@ final class BookAnalysisService {
         )
         modelContext.insert(row)
         try modelContext.save()
-        // Pipeline Task spawn comes in Task 13.
+
+        let provider = self.provider
+        let extractor = self.extractor
+        let context = self.modelContext
+
+        task = Task { [weak self] in
+            do {
+                let model = try await provider.languageModel(for: engine)
+                for chapter in chapters {
+                    try Task.checkCancellation()
+                    let text = try await extractor.extract(
+                        bookID: bookID, chapterHref: chapter.href, cutoff: nil
+                    )
+                    let response: ChapterCharactersResponse = try await model.extract(
+                        ChapterCharactersResponse.self,
+                        schema: CharacterExtractionPrompts.charactersSchema,
+                        system: CharacterExtractionPrompts.characterExtractionSystem,
+                        user: text
+                    )
+                    await MainActor.run {
+                        for c in response.characters {
+                            let mention = CharacterMention(
+                                id: UUID(), bookID: bookID,
+                                chapterIndex: chapter.index, chapterHref: chapter.href,
+                                canonicalName: c.canonicalName,
+                                aliasesInChapter: c.aliases,
+                                descriptionFromChapter: c.descriptionFromChapter,
+                                significance: c.significance,
+                                quote: c.quote, profileID: nil
+                            )
+                            context.insert(mention)
+                        }
+                        row.chaptersCompleted = chapter.index + 1
+                        try? context.save()
+                    }
+                }
+                try await self?.runSynthesisPass(bookID: bookID, model: model, row: row)
+            } catch is CancellationError {
+                await MainActor.run {
+                    row.status = "failed"
+                    row.failureReason = "Canceled"
+                    try? context.save()
+                }
+            } catch {
+                await MainActor.run {
+                    row.status = "failed"
+                    row.failureReason = error.localizedDescription
+                    try? context.save()
+                }
+            }
+        }
+    }
+
+    /// Test-only sugar: awaits the spawned Task. Production callers don't
+    /// await — they let SwiftData propagate state into views.
+    #if DEBUG
+    func startAndAwait(bookID: UUID, engine: AIEngine) async throws {
+        try await start(bookID: bookID, engine: engine)
+        await task?.value
+    }
+    #endif
+
+    private func runSynthesisPass(
+        bookID: UUID, model: any LanguageModel, row: BookAnalysis
+    ) async throws {
+        // Real impl in Task 14.
+        await MainActor.run {
+            row.status = "completed"
+            row.completedAt = Date()
+            try? modelContext.save()
+        }
     }
 
     func cancel() {
