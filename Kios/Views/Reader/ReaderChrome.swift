@@ -131,6 +131,15 @@ struct EditorialReaderBottomBar: View {
     var onScrubCommit: (Double) -> Void
     var onScrubCancel: () -> Void
     var onSummarise: () -> Void
+    /// When `false`, the AI quick-action row (divider + "Summarise this
+    /// chapter" button) is suppressed entirely. Gated by the caller on AI
+    /// being enabled and a usable engine being available.
+    var canSummarize: Bool = false
+    /// Displayed in the AI quick-action row's eyebrow line — names the
+    /// engine that will actually run the summary (e.g. "Built-in (Apple
+    /// Intelligence)" or "Gemma 3 4B (on-device)"). Ignored when
+    /// `canSummarize` is false.
+    var engineLabel: String = "On-device"
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -150,9 +159,11 @@ struct EditorialReaderBottomBar: View {
             chapterRow
             slider
                 .padding(.top, 12)
-            divider
-                .padding(.vertical, 12)
-            aiActionRow
+            if canSummarize {
+                divider
+                    .padding(.vertical, 12)
+                aiActionRow
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -221,7 +232,7 @@ struct EditorialReaderBottomBar: View {
                     Text("Summarise this chapter")
                         .font(EditorialTheme.sans(size: 15, weight: .medium))
                         .foregroundStyle(ink)
-                    Text("~ 8 sec · Claude Haiku")
+                    Text(engineLabel)
                         .editorialEyebrow(color: muted)
                 }
                 Spacer(minLength: 0)

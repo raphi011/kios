@@ -373,7 +373,15 @@ struct ReaderView: View {
                         scrubCommitPending = false
                         scrubProgress = nil
                     },
-                    onSummarise: { presentSummarySheet() }
+                    onSummarise: { presentSummarySheet() },
+                    canSummarize: resolvedAIEngine != nil,
+                    engineLabel: {
+                        switch resolvedAIEngine {
+                        case .foundationModels: return "Built-in (Apple Intelligence)"
+                        case .gemma3_4b: return "Gemma 3 4B (on-device)"
+                        case nil: return ""
+                        }
+                    }()
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
