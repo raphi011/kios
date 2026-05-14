@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 import Core
 
 /// Unified catalog view across sync protocols. Backed by the local
@@ -18,6 +19,8 @@ struct LibraryRootView: View {
     @Environment(AppEnvironment.self) private var env
 
     @State private var isRefreshing: Bool = false
+    @State private var showFileImporter: Bool = false
+    @State private var importError: String?
 
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
@@ -55,23 +58,85 @@ struct LibraryRootView: View {
             .navigationTitle("Library")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        Task {
-                            isRefreshing = true
-                            try? await env.refreshLibrary()
-                            isRefreshing = false
+                    Menu {
+                        Button {
+                            showFileImporter = true
+                        } label: {
+                            Label("Import file…", systemImage: "doc.badge.plus")
                         }
+                        Button {
+                            Task {
+                                isRefreshing = true
+                                try? await env.refreshLibrary()
+                                isRefreshing = false
+                            }
+                        } label: {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                        }
+                        .disabled(isRefreshing)
                     } label: {
                         if isRefreshing {
                             ProgressView()
                         } else {
-                            Image(systemName: "arrow.clockwise")
+                            Image(systemName: "plus")
                         }
                     }
-                    .disabled(isRefreshing)
-                    .accessibilityLabel("Refresh library")
+                    .accessibilityLabel("Import or refresh library")
                 }
             }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.epub],
+                allowsMultipleSelection: false
+            ) { result in
+                Task { await handleImport(result) }
+            }
+            .alert(
+                "Import failed",
+                isPresented: Binding(
+                    get: { importError != nil },
+                    set: { if !$0 { importError = nil } }
+                )
+            ) {
+                Button("OK") { importError = nil }
+            } message: {
+                Text(importError ?? "")
+            }
+        }
+    }
+
+    private func handleImport(_ result: Result<[URL], Error>) async {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            do {
+                let outcome = try await env.localImporter.import(from: url)
+                switch outcome {
+                case .imported(let book), .existing(let book):
+                    env.openReader(book.id)
+                }
+            } catch let err as LocalImportError {
+                importError = userFacingMessage(for: err)
+            } catch {
+                importError = error.localizedDescription
+            }
+        case .failure(let error):
+            importError = error.localizedDescription
+        }
+    }
+
+    private func userFacingMessage(for error: LocalImportError) -> String {
+        switch error {
+        case .unsupportedFormat:
+            return "Kios can only import EPUB files right now."
+        case .readFailed(let detail):
+            return "Couldn't read the file. \(detail)"
+        case .parseFailed:
+            return "This EPUB seems to be damaged."
+        case .copyFailed(let detail):
+            return "Couldn't save the file. \(detail)"
+        case .noTitle:
+            return "This EPUB has no title metadata and can't be imported."
         }
     }
 
