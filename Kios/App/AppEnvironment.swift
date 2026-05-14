@@ -23,6 +23,10 @@ final class AppEnvironment {
     /// Eagerly constructed: pure-local, no credentials required.
     let stats: ReadingStatsService
 
+    /// Imports local EPUB files. Stateless beyond `modelContext`, so we
+    /// construct it eagerly at init.
+    let localImporter: LocalImportService
+
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
     private(set) var sync: SyncService?
     private(set) var downloads: DownloadService?
@@ -54,6 +58,7 @@ final class AppEnvironment {
         self.authStore = AuthStore()
         self.library = LibraryService(context: self.modelContext)
         self.stats = ReadingStatsService(context: self.modelContext)
+        self.localImporter = LocalImportService(context: self.modelContext)
 
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory
