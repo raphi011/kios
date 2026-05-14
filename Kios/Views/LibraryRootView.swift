@@ -80,10 +80,11 @@ struct LibraryRootView: View {
             env.openReader(book.id)
             return
         }
-        // Local books always have filename non-nil (set at import). If we hit
-        // this branch with a local book, that's a bug — local books don't
-        // have an acquisitionURL to download from.
-        guard book.source == .synced, let _ = book.acquisitionURL else {
+        // Reaching this point means filename is nil. For a synced book, that
+        // is the catalog-only state we resolve by downloading. For a local
+        // book it would mean a row was inserted without bytes — a future bug,
+        // not something we can fix here. Bail in that case.
+        guard book.source == .synced, book.acquisitionURL != nil else {
             return
         }
         Task {

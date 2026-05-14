@@ -47,5 +47,7 @@ struct BookV2DefaultsTests {
         #expect(book.serverIDProtocol == nil)
         #expect(book.acquisitionURL == nil)
         #expect(book.koboBookUUID == nil)
+        #expect(book.thumbnailURL == nil)
+        #expect(book.archived == false)
     }
 }

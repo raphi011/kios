@@ -8,9 +8,10 @@ import Core
 /// - Downloaded + no progress yet     → blank trailing area
 /// - Catalog-only (not yet downloaded) → cloud-download icon
 ///
-/// Thumbnail loading branches on `serverIDProtocol` because kosync thumbnails
-/// require Basic auth (Calibre-Web OPDS) while Kobo serves pre-signed CDN URLs
-/// that reject any Authorization header.
+/// Thumbnail loading branches first on `book.source`: `.local` reads bytes
+/// from disk via `coverFileURL`; `.synced` then branches on `serverIDProtocol`
+/// because kosync thumbnails require Basic auth (Calibre-Web OPDS) while Kobo
+/// serves pre-signed CDN URLs that reject any Authorization header.
 struct BookRow: View {
     let book: Book
     /// 0...1. Ignored for catalog-only books. Pass 0 if unknown.

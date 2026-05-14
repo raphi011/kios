@@ -63,12 +63,12 @@ final class DownloadService: NSObject {
     /// Throws if the download fails or the file move fails.
     func download(book: Book) async throws -> URL {
         let bookID = book.id
-        precondition(
-            book.acquisitionURL != nil,
-            "DownloadService.download called for a book with no acquisitionURL "
-            + "(source=\(book.source))"
-        )
-        let url = book.acquisitionURL!
+        guard let url = book.acquisitionURL else {
+            preconditionFailure(
+                "DownloadService.download called for a book with no acquisitionURL "
+                + "(source=\(book.source))"
+            )
+        }
         return try await withCheckedThrowingContinuation { cont in
             var req = URLRequest(url: url)
             // Kobo mode (credentials == nil) intentionally sends no

@@ -1,4 +1,3 @@
-// Kios/Models/Book.swift
 import Foundation
 import SwiftData
 import Core
@@ -126,7 +125,7 @@ final class Book {
         coverFilename: String? = nil,
         addedAt: Date = .now
     ) {
-        precondition(source == .local, "use the catalog initializer for synced books")
+        precondition(source == .local, "use the synced initializer for catalog-sourced books")
         self.id = id
         self.source = source
         self.serverID = nil
