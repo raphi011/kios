@@ -306,6 +306,83 @@ struct LibraryServiceRefreshTests {
     }
 }
 
+// MARK: - Local-book helper
+
+@MainActor
+private func makeLocalBook(
+    title: String = "Local",
+    partialMD5: String? = nil,
+    addedAt: Date = .now
+) -> Book {
+    Book(
+        source: .local,
+        title: title,
+        authors: ["A"],
+        format: .epub,
+        filename: "local-\(UUID().uuidString).epub",
+        partialMD5: partialMD5,
+        addedAt: addedAt
+    )
+}
+
+// MARK: - Local-book interaction suite
+
+@Suite("LibraryService.refresh (local-book interactions)", .serialized)
+@MainActor
+struct LibraryServiceLocalTests {
+
+    @Test func refreshDoesNotArchiveLocalBooks() async throws {
+        let ctx = try makeContext()
+        let local = makeLocalBook(title: "Just-imported")
+        let synced = makeBook(serverID: "srv-1", partialMD5: "hash-synced")
+        ctx.insert(local)
+        ctx.insert(synced)
+        try ctx.save()
+
+        let svc = LibraryService(context: ctx)
+        // Catalog has neither book: synced should be archived, local untouched.
+        try await svc.refresh(
+            using: MockCatalogBackend(entries: []),
+            activeProtocol: .kosync
+        )
+
+        let rows = try ctx.fetch(FetchDescriptor<Book>())
+        let localRow = try #require(rows.first { $0.title == "Just-imported" })
+        let syncedRow = try #require(rows.first { $0.serverID == "srv-1" })
+        #expect(localRow.archived == false)
+        #expect(localRow.source == .local)
+        #expect(syncedRow.archived == true)
+    }
+
+    @Test func refreshPromotesLocalToSyncedOnPartialMD5Match() async throws {
+        let ctx = try makeContext()
+        let local = makeLocalBook(title: "T", partialMD5: "deadbeef")
+        ctx.insert(local)
+        try ctx.save()
+
+        let svc = LibraryService(context: ctx)
+        let entry = makeEntry(
+            serverID: "srv-promoted",
+            title: "T",
+            authors: ["A"],
+            partialMD5: "deadbeef"
+        )
+        try await svc.refresh(
+            using: MockCatalogBackend(entries: [entry]),
+            activeProtocol: .kosync
+        )
+
+        let rows = try ctx.fetch(FetchDescriptor<Book>())
+        #expect(rows.count == 1)
+        let promoted = try #require(rows.first)
+        #expect(promoted.source == .synced)
+        #expect(promoted.serverID == "srv-promoted")
+        #expect(promoted.serverIDProtocol == "kosync")
+        #expect(promoted.acquisitionURL?.absoluteString == "https://x")
+        #expect(promoted.archived == false)
+    }
+}
+
 // MARK: - normalize helper
 
 @Suite("LibraryService.normalize")

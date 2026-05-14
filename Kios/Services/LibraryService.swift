@@ -36,6 +36,22 @@ final class LibraryService {
                 if let uuid = entry.identity.koboBookUUID, book.koboBookUUID == nil {
                     book.koboBookUUID = uuid
                 }
+                // Nil-fill catalog fields. Never overwrite non-nil values — the rule
+                // is "fill in what's missing"; promotion of a .local book happens
+                // entirely through this path.
+                if book.serverID == nil {
+                    book.serverID = entry.serverID
+                }
+                if book.serverIDProtocol == nil {
+                    book.serverIDProtocol = activeProtocol.rawValue
+                }
+                if book.acquisitionURL == nil {
+                    book.acquisitionURL = entry.downloadURL
+                }
+                // Promote .local → .synced if we just filled in catalog identity.
+                if book.source == .local {
+                    book.source = .synced
+                }
                 // Un-archive on re-appearance so a book restored on the server
                 // comes back to the main shelf without manual intervention.
                 book.archived = false
@@ -59,7 +75,7 @@ final class LibraryService {
             }
         }
 
-        for book in existing where !matchedIDs.contains(book.id) {
+        for book in existing where !matchedIDs.contains(book.id) && book.source != .local {
             book.archived = true
         }
 
