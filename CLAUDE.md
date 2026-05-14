@@ -21,6 +21,8 @@ Two modules:
 
 Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 
+- **`Kios/Views/Editorial/`** — shared design system (tokens, nav bar, list, segmented, book row, settings row). Newsreader/Geist are stubbed via system `.serif` / default — swap in `EditorialTheme.swift` when bundling fonts; call sites stay untouched.
+
 ## Key Gotchas
 
 - **`project.yml` is source of truth** — `.xcodeproj` is generated and gitignored. Run `make xcodegen` after changing targets/deps.
@@ -29,6 +31,8 @@ Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 - **SwiftData models are NOT Sendable** — pass `PersistentIdentifier` across actor boundaries, re-fetch on the other side. See `Kios/Models/CONVENTIONS.md`.
 - **First build resolves ~1 GB of Readium deps** — subsequent builds are incremental.
 - **No installed users yet — no SwiftData migrations needed.** The app has not shipped or been installed anywhere outside this dev machine. Schema changes (adding/removing fields, changing optionality, renaming) can land as direct edits to the `@Model` classes; do not introduce `VersionedSchema` / `SchemaMigrationPlan` / migration tests. When the app ships, revisit this and add migrations from that point forward.
+- **`ReaderView` chrome below `ReaderHost`** — use `.ignoresSafeArea(edges: [.top, .horizontal])` + `.safeAreaInset(edge: .bottom) { … }`. Blanket `.ignoresSafeArea()` lets EPUB body text bleed under the bottom strip/floating bar.
+- **`git mv` only survives in history if you don't later add a new file at the old path** — if you rename `A.swift → B.swift` then create a fresh `A.swift`, git stages it as delete-old + add-two-new and the rename arrow is lost.
 
 ## Code Style
 
@@ -42,3 +46,10 @@ Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 - Core: Swift Testing framework, `MockURLProtocol` for HTTP stubbing
 - iOS: XCTest via xcodebuild against simulator
 - Fixtures in `KiosTests/Fixtures/`
+
+## Visual verification
+
+- Screenshot booted sim: `xcrun simctl io <UDID> screenshot /tmp/x.png`
+- App bundle: `~/Library/Developer/Xcode/DerivedData/Kios-*/Build/Products/Debug-iphonesimulator/Kios.app`
+- Cycle: `xcodebuild … build && xcrun simctl terminate $SIM …kios; xcrun simctl install $SIM <app> && xcrun simctl launch $SIM com.raphi011.kios`
+- No CLI tap/scroll exists; AppleScript needs Accessibility — to view non-default tabs/states, temporarily flip `@State` defaults (e.g. `selectedTab`, `uiVisible`) and revert before committing
