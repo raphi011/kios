@@ -196,6 +196,27 @@ final class AppEnvironment {
         activeReader = ReaderRoute(id: bookID)
     }
 
+    /// On first launch, import any bundled Gutenberg sample EPUBs into the
+    /// library so the user has something to read before configuring a sync
+    /// backend. Idempotent — gated by a UserDefaults flag so the seed runs
+    /// at most once per fresh install. If the user later deletes the
+    /// seeded books, they do not return: we record "we tried" rather than
+    /// "the books are present."
+    func seedSampleBooksIfNeeded() async {
+        let key = "kios.hasSeededSampleBooks"
+        if UserDefaults.standard.bool(forKey: key) { return }
+
+        let bundle = Bundle.main
+        let candidates = ["moby-dick", "frankenstein"]
+        for name in candidates {
+            let url = bundle.url(forResource: name, withExtension: "epub")
+                ?? bundle.url(forResource: name, withExtension: "epub", subdirectory: "SampleBooks")
+            guard let url else { continue }
+            _ = try? await localImporter.import(from: url)
+        }
+        UserDefaults.standard.set(true, forKey: key)
+    }
+
     /// Pulls a fresh catalog snapshot for the active protocol and reconciles
     /// it against the local Book store. Throws if credentials are absent or
     /// the network call fails. Used by `LibraryRootView`'s pull-to-refresh

@@ -52,6 +52,9 @@ struct RootView: View {
             guard newValue != nil, let id = coordinator.consume() else { return }
             env.openReader(id)
         }
+        .task {
+            await env.seedSampleBooksIfNeeded()
+        }
         .onAppear {
             // Cold launch: the intent may have set `pendingBookID` before
             // RootView mounted. Consume it on first appear.
