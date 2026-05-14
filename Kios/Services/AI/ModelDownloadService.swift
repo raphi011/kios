@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 protocol ModelDownloadServiceReading: Sendable {
-    @MainActor func currentDownload() -> DownloadProgress?
+    func currentDownload() -> DownloadProgress?
 }
 
 struct DownloadProgress: Sendable, Equatable {
@@ -54,8 +54,8 @@ final class ModelDownloadService: ModelDownloadServiceReading {
         self.configuration = configuration
     }
 
-    func currentDownload() -> DownloadProgress? {
-        progress
+    nonisolated func currentDownload() -> DownloadProgress? {
+        MainActor.assumeIsolated { progress }
     }
 
     func startDownload(of asset: ModelAsset, allowCellular: Bool) async {
