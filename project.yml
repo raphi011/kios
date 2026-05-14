@@ -99,6 +99,7 @@ targets:
       - path: Kios/App/BookOpenCoordinator.swift
       - path: Kios/App/ModelContainerFactory.swift
       - path: Kios/Models/Book.swift
+      - path: Kios/Models/BookAnalysis.swift
       - path: Kios/Models/BookSource.swift
       - path: Kios/Models/ChapterSummary.swift
       - path: Kios/Models/Download.swift
