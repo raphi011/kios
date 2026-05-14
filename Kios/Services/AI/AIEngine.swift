@@ -13,11 +13,4 @@ enum AIEngine: String, Sendable, Codable, CaseIterable, Identifiable {
         case .gemma3_4b:        return "Bigger context"
         }
     }
-
-    var downloadSizeBytes: Int64? {
-        switch self {
-        case .foundationModels: return nil
-        case .gemma3_4b:        return 2_500_000_000
-        }
-    }
 }
