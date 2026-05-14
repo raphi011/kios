@@ -13,39 +13,32 @@ struct RootView: View {
     var body: some View {
         @Bindable var env = env
 
-        Group {
-            // First-run gate: any active-protocol credentials present rebuilds
-            // SyncService. Library is a SwiftData @Query and shows for both
-            // protocols — it's safe even when `env.opds == nil` (Kobo mode).
-            if env.sync == nil {
-                NavigationStack { SyncSetupView() }
-            } else {
-                TabView(selection: $selectedTab) {
-                    HomeRootView()
-                        .tabItem { Label("Home", systemImage: "house") }
-                        .tag(0)
-                    LibraryRootView()
-                        .tabItem { Label("Library", systemImage: "books.vertical") }
-                        .tag(1)
-                    NavigationStack { SettingsView() }
-                        .tabItem { Label("Settings", systemImage: "gearshape") }
-                        .tag(2)
-                }
-                .editorialTabBarStyling()
-                .onChange(of: scenePhase) { _, newPhase in
-                    if newPhase == .active {
-                        Task { await env.sync?.flushAllPending() }
-                    }
-                    if newPhase == .background {
-                        env.stats.sessionDidClose(reason: .backgrounded)
-                    }
-                }
+        // No first-run gate: the app ships with seeded books and supports
+        // local EPUB imports, so it's usable without sync. Users who want
+        // sync configure it via Settings → Sync protocol; until then,
+        // `env.sync == nil` and the per-call `env.sync?.…` no-ops naturally.
+        TabView(selection: $selectedTab) {
+            HomeRootView()
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(0)
+            LibraryRootView()
+                .tabItem { Label("Library", systemImage: "books.vertical") }
+                .tag(1)
+            NavigationStack { SettingsView() }
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(2)
+        }
+        .editorialTabBarStyling()
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await env.sync?.flushAllPending() }
+            }
+            if newPhase == .background {
+                env.stats.sessionDidClose(reason: .backgrounded)
             }
         }
-        // First-run completion: when SyncService flips from nil to non-nil
-        // (the user finished configuring a protocol in Settings), drop them
-        // on Library — that's where the freshly refreshed catalog lives, and
-        // Home would be empty until they download something.
+        // After the user configures sync in Settings, jump them to Library —
+        // that's where the freshly refreshed catalog lives.
         .onChange(of: env.sync != nil) { _, hasSync in
             if hasSync { selectedTab = 1 }
         }
