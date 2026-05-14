@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 import Core
+import ReadiumShared
 
 /// Composes the app's services. Created once at launch by `KiosApp`.
 /// Services are nil until valid credentials are loaded; `bootIfCredentialsPresent`
@@ -346,5 +347,29 @@ final class AppEnvironment {
         } catch {
             // Stale URL — let the download attempt anyway.
         }
+    }
+
+    /// Builds a `BookAnalysisService` bound to the given Readium `publication`.
+    ///
+    /// Each open reader session needs its own analysis service: the extractor
+    /// and chapter list are derived from the per-reader `Publication`, which
+    /// isn't shared across books. Callers (today: `ReaderView` via Task 22)
+    /// hold one `Publication` reference for the book they're rendering and
+    /// pass it in here.
+    ///
+    /// `Publication` is not `Sendable`, so we pre-resolve the chapter refs
+    /// outside the `@Sendable` closure (the `[ChapterRef]` array is a value
+    /// type and copies cleanly). The extractor wraps the `Publication` with
+    /// its own `@unchecked Sendable` shield.
+    func makeBookAnalysisService(publication: Publication) -> BookAnalysisService {
+        let chapterRefs: [ChapterRef] = publication.readingOrder.enumerated().map { idx, link in
+            ChapterRef(index: idx, href: link.href)
+        }
+        return BookAnalysisService(
+            modelContext: modelContext,
+            provider: aiModelProvider,
+            extractor: PublicationChapterTextExtractor(publication: publication),
+            chaptersFor: { _ in chapterRefs }
+        )
     }
 }
