@@ -71,6 +71,11 @@ final class Book {
     /// Locks out auto-95% detection.
     var finishedManually: Bool = false
 
+    /// Highest reading-order chapter index the user has ever loaded. Monotonic —
+    /// never decreases. Bumped in `ReaderView.onLocatorChange`. Source of truth
+    /// for spoiler-aware filtering in the Characters tab.
+    var maxChapterIndexReached: Int = 0
+
     /// Convenience init for synced books. Mirrors the pre-V2 signature so most
     /// call sites compile unchanged.
     init(
