@@ -188,22 +188,9 @@ struct HomeRootView: View {
     }
 
     private func delete(_ book: Book) {
-        if let url = book.fileURL {
-            try? FileManager.default.removeItem(at: url)
-        }
-        let id = book.id
-        if let download = try? context.fetch(
-            FetchDescriptor<Download>(predicate: #Predicate { $0.bookID == id })
-        ).first {
-            context.delete(download)
-        }
-        if let progress = try? context.fetch(
-            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
-        ).first {
-            context.delete(progress)
-        }
-        // Sessions for the book are kept (historical record).
-        context.delete(book)
-        try? context.save()
+        // Delegates to LibraryService so the file + Download + ReadingProgress
+        // + analysis cascade all happen in one place. Sessions are intentionally
+        // preserved as a historical record (see `LibraryService.delete`).
+        try? env.library.delete(book: book)
     }
 }

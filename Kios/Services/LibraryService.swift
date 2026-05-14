@@ -103,6 +103,46 @@ final class LibraryService {
         }
     }
 
+    /// Deletes a book and all its derived state: the downloaded file, the
+    /// pending `Download` row, `ReadingProgress`, and the book-analysis rows
+    /// (`BookAnalysis` / `CharacterMention` / `CharacterProfile`).
+    /// `ReadingSession` rows are intentionally preserved as historical
+    /// statistics — they survive book deletion.
+    func delete(book: Book) throws {
+        if let url = book.fileURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        let bookID = book.id
+        if let download = try? context.fetch(
+            FetchDescriptor<Download>(predicate: #Predicate { $0.bookID == bookID })
+        ).first {
+            context.delete(download)
+        }
+        if let progress = try? context.fetch(
+            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == bookID })
+        ).first {
+            context.delete(progress)
+        }
+        // Analysis cascade — no inverse relationship on the @Models, so do
+        // it explicitly here. Keeping this in LibraryService (rather than at
+        // the call site) means future deletion paths (Settings "remove all
+        // local files", account sign-out, etc.) inherit the cascade for free.
+        let analyses = try context.fetch(FetchDescriptor<BookAnalysis>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for a in analyses { context.delete(a) }
+        let mentions = try context.fetch(FetchDescriptor<CharacterMention>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for m in mentions { context.delete(m) }
+        let profiles = try context.fetch(FetchDescriptor<CharacterProfile>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for p in profiles { context.delete(p) }
+        context.delete(book)
+        try context.save()
+    }
+
     /// Lowercase + strip non-alphanumeric. Robust to punctuation drift,
     /// whitespace, and case differences across catalog sources. Diacritics
     /// are intentionally not normalized — users care about visual match.
