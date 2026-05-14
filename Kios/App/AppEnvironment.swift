@@ -27,6 +27,18 @@ final class AppEnvironment {
     /// construct it eagerly at init.
     let localImporter: LocalImportService
 
+    /// On-device AI feature switches (master toggle, preferred engine, cellular
+    /// allowance). UserDefaults-backed; safe to construct eagerly.
+    let aiSettings: AISettings
+
+    /// Filesystem store for downloaded model assets (Gemma weights). Pure-local,
+    /// no credentials required.
+    let aiAssetStore: ModelAssetStore
+
+    /// Background-session model downloader. Built once at boot so a single
+    /// `URLSession` identifier is reused across the process lifetime.
+    let aiDownloadService: ModelDownloadService
+
     /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
     private(set) var sync: SyncService?
     private(set) var downloads: DownloadService?
@@ -59,6 +71,13 @@ final class AppEnvironment {
         self.library = LibraryService(context: self.modelContext)
         self.stats = ReadingStatsService(context: self.modelContext)
         self.localImporter = LocalImportService(context: self.modelContext)
+
+        // AI services — all pure-local, no credentials required. Constructed
+        // eagerly so SettingsView (and later the reader's summary/ask sheets)
+        // can read live state without nil-checks.
+        self.aiSettings = AISettings()
+        self.aiAssetStore = ModelAssetStore(rootDirectory: AppPaths.aiModelsDirectory)
+        self.aiDownloadService = ModelDownloadService(assetStore: self.aiAssetStore)
 
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory

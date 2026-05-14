@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import UniformTypeIdentifiers
 import Core
 
@@ -12,6 +13,7 @@ import Core
 /// Signed in as, Sign out.
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.modelContext) private var modelContext
 
     // Reading — display-only stubs until the reader settings model lands.
     @State private var defaultTheme = "Paper"
@@ -22,20 +24,16 @@ struct SettingsView: View {
     // Library & sync — toggles persist in-session only.
     @State private var syncOverCellular = false
 
-    // AI — toggles persist in-session only. The master switch dims dependents,
-    // matching the design's "Disable the master switch to make no AI calls".
-    @State private var aiEnabled = true
-    @State private var chapterSummaries = true
-    @State private var bookSoFarSummaries = true
-    @State private var vocabLookup = true
-    @State private var aiModel = "Claude Haiku 4.5"
-
     // File importer (Import EPUB row).
     @State private var showFileImporter = false
     @State private var importError: String?
 
     // Sign-out confirmation.
     @State private var showSignOutConfirm = false
+
+    // First-enable explainer sheet — shown the first time the master AI
+    // toggle is flipped on. Subsequent toggles are silent.
+    @State private var showFirstEnableSheet = false
 
     var body: some View {
         ScrollView {
@@ -45,6 +43,7 @@ struct SettingsView: View {
                 readingSection
                 librarySyncSection
                 aiSection
+                cacheSection
                 accountSection
 
                 Text(versionLine)
@@ -86,6 +85,19 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Catalog will be cleared. Downloaded books and reading progress stay on this device.")
+        }
+        .sheet(isPresented: $showFirstEnableSheet) {
+            AIFirstEnableSheet(
+                availability: AIAvailability.resolve(
+                    userEnabled: true,
+                    preferredEngine: env.aiSettings.preferredEngine,
+                    capability: .current,
+                    assetStore: env.aiAssetStore,
+                    downloads: env.aiDownloadService
+                )
+            ) {
+                showFirstEnableSheet = false
+            }
         }
     }
 
@@ -158,28 +170,126 @@ struct SettingsView: View {
 
     // MARK: - AI assistant
 
+    /// Live availability snapshot. Cheap to compute per render —
+    /// `installationStatus(for:)` stats files and `currentDownload()` reads a
+    /// single MainActor-isolated property. Recomputing here keeps the picker
+    /// and download cell in lockstep with `aiSettings.preferredEngine` and
+    /// `aiDownloadService.progress` without an intermediate cache.
+    private var aiAvailability: AIAvailability {
+        AIAvailability.resolve(
+            userEnabled: env.aiSettings.featuresEnabled,
+            preferredEngine: env.aiSettings.preferredEngine,
+            capability: .current,
+            assetStore: env.aiAssetStore,
+            downloads: env.aiDownloadService
+        )
+    }
+
+    private var featuresEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { env.aiSettings.featuresEnabled },
+            set: { newValue in
+                env.aiSettings.featuresEnabled = newValue
+                guard newValue else { return }
+                // First flip-on shows the explainer sheet once.
+                if !env.aiSettings.didShowFirstEnableSheet {
+                    showFirstEnableSheet = true
+                    env.aiSettings.didShowFirstEnableSheet = true
+                }
+                // On devices without 8 GB of RAM, snap preference to FM so
+                // the picker never advertises an engine the device can't run.
+                if !DeviceCapability.current.supportsGemma3_4b {
+                    env.aiSettings.preferredEngine = .foundationModels
+                }
+            }
+        )
+    }
+
+    private var preferredEngineBinding: Binding<AIEngine> {
+        Binding(
+            get: { env.aiSettings.preferredEngine },
+            set: { env.aiSettings.preferredEngine = $0 }
+        )
+    }
+
+    private var allowCellularBinding: Binding<Bool> {
+        Binding(
+            get: { env.aiSettings.allowCellularDownload },
+            set: { env.aiSettings.allowCellularDownload = $0 }
+        )
+    }
+
     private var aiSection: some View {
         EditorialList(
             "AI assistant",
-            footer: "Summaries are generated on demand — text never leaves the chapter you ask about. Disable the master switch to make no AI calls at all."
+            footer: "Summarize chapters and ask about selected text — entirely on-device. Disable the master switch to make no AI calls at all."
         ) {
-            EditorialRow(label: "Enable AI features", toggle: $aiEnabled)
-            EditorialHairline()
+            EditorialRow(label: "Enable AI features", toggle: featuresEnabledBinding)
 
-            EditorialRow(label: "Chapter summaries", toggle: $chapterSummaries)
-                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
-            EditorialHairline()
+            if env.aiSettings.featuresEnabled {
+                EditorialHairline()
+                AIEnginePicker(
+                    availability: aiAvailability,
+                    preferredEngine: preferredEngineBinding
+                )
+                .padding(.horizontal, EditorialTheme.rowSidePad)
+                .padding(.vertical, 12)
 
-            EditorialRow(label: "Book-so-far summaries", toggle: $bookSoFarSummaries)
-                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
-            EditorialHairline()
+                if env.aiSettings.preferredEngine == .gemma3_4b
+                    && DeviceCapability.current.supportsGemma3_4b {
+                    EditorialHairline()
+                    ModelDownloadCell(
+                        asset: ModelCatalog.gemma3_4b,
+                        status: env.aiAssetStore.installationStatus(for: ModelCatalog.gemma3_4b),
+                        progress: env.aiDownloadService.progress,
+                        onDownload: {
+                            Task {
+                                await env.aiDownloadService.startDownload(
+                                    of: ModelCatalog.gemma3_4b,
+                                    allowCellular: env.aiSettings.allowCellularDownload
+                                )
+                            }
+                        },
+                        onCancel: { env.aiDownloadService.cancel() },
+                        onDelete: { try? env.aiAssetStore.delete(ModelCatalog.gemma3_4b) }
+                    )
+                    .padding(.horizontal, EditorialTheme.rowSidePad)
+                    .padding(.vertical, 12)
 
-            EditorialRow(label: "Vocabulary lookup", toggle: $vocabLookup)
-                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
-            EditorialHairline()
+                    EditorialHairline()
+                    EditorialRow(
+                        label: "Allow cellular download",
+                        toggle: allowCellularBinding
+                    )
+                }
+            }
+        }
+    }
 
-            stubRow(label: "Model", value: aiModel)
-                .disabled(!aiEnabled).opacity(aiEnabled ? 1 : 0.4)
+    // MARK: - Cache
+
+    private var cacheSection: some View {
+        EditorialList("Cache") {
+            Button(role: .destructive) {
+                clearAllChapterSummaries()
+            } label: {
+                EditorialRow(label: "Clear cached summaries", danger: true)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// Wipes every persisted `ChapterSummary` row. Best-effort: failures are
+    /// swallowed because the user can simply retry — no data integrity risk
+    /// since rows are derivable from chapter text on demand.
+    private func clearAllChapterSummaries() {
+        do {
+            let rows = try modelContext.fetch(FetchDescriptor<ChapterSummary>())
+            for row in rows { modelContext.delete(row) }
+            try modelContext.save()
+        } catch {
+            // Best-effort; user can retry. Not surfaced because the failure
+            // mode (corrupt store) is already escalated elsewhere.
         }
     }
 
