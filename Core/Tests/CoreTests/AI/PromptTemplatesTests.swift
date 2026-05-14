@@ -33,6 +33,13 @@ struct PromptTemplatesTests {
         }
     }
 
+    @Test("bookSummary prompt is non-empty and references the body")
+    func bookSummary() {
+        let (system, user) = PromptTemplates.bookSummary(body: "abc")
+        #expect(!system.isEmpty)
+        #expect(user == "abc")
+    }
+
     @Test("selectionQuestion grounds model to passage")
     func selectionQuestion() {
         let (system, user) = PromptTemplates.selectionQuestion(

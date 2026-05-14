@@ -2,12 +2,26 @@ import Foundation
 import SwiftData
 import Core
 
-/// A chapter's reading-order index + resource href. Returned by the
-/// `chaptersFor` closure. Sendable for cross-task hop safety.
+/// A chapter's reading-order index + resource href + display title. Returned
+/// by the `chaptersFor` closure. Sendable for cross-task hop safety.
 struct ChapterRef: Sendable, Equatable {
     let index: Int
     let href: String
+    let title: String
 }
+
+/// Subset of `AISummaryService` used by `BookAnalysisService`. Protocol-shaped
+/// so tests can substitute a stub that returns canned chapter summaries
+/// without running the language model.
+@MainActor
+protocol AISummaryServiceHelping: AnyObject {
+    func generateChapterSummary(
+        bookID: UUID, chapterHref: String, chapterTitle: String,
+        engine: AIEngine, model: any LanguageModel
+    ) async throws -> String
+}
+
+extension AISummaryService: AISummaryServiceHelping {}
 
 /// `@MainActor`, `@Observable`. Owns the in-flight analysis Task for one
 /// book; persists progress directly into the shared `modelContext`. View
@@ -19,6 +33,7 @@ final class BookAnalysisService {
     private let modelContext: ModelContext
     private let provider: any AILanguageModelProviding
     private let extractor: any AIChapterTextExtracting
+    private let summaryHelper: any AISummaryServiceHelping
     /// Closure that returns the chapter list for a given bookID. In production
     /// this resolves the Readium `Publication` and reads its `readingOrder`;
     /// in tests it returns canned `[ChapterRef]`.
@@ -30,11 +45,13 @@ final class BookAnalysisService {
         modelContext: ModelContext,
         provider: any AILanguageModelProviding,
         extractor: any AIChapterTextExtracting,
+        summaryHelper: any AISummaryServiceHelping,
         chaptersFor: @escaping @Sendable (UUID) async throws -> [ChapterRef]
     ) {
         self.modelContext = modelContext
         self.provider = provider
         self.extractor = extractor
+        self.summaryHelper = summaryHelper
         self.chaptersFor = chaptersFor
     }
 
@@ -90,8 +107,20 @@ final class BookAnalysisService {
                         row.chaptersCompleted = chapter.index + 1
                         try? context.save()
                     }
+                    // Chapter-summary pass — per chapter, immediately after extraction.
+                    // Errors here mark the analysis as failed (consistent with extraction).
+                    if let helper = await self?.summaryHelper {
+                        _ = try await helper.generateChapterSummary(
+                            bookID: bookID,
+                            chapterHref: chapter.href,
+                            chapterTitle: chapter.title,
+                            engine: engine,
+                            model: model
+                        )
+                    }
                 }
                 try await self?.runSynthesisPass(bookID: bookID, model: model, row: row)
+                try await self?.runBookSummaryPass(bookID: bookID, engine: engine, model: model, row: row)
             } catch is CancellationError {
                 await MainActor.run {
                     row.status = "failed"
@@ -151,6 +180,44 @@ final class BookAnalysisService {
                 modelContext.insert(profile)
                 for m in merged { m.profileID = profile.id }
             }
+            try? modelContext.save()
+        }
+    }
+
+    /// Concatenates the persisted `ChapterSummary` rows for the book and runs
+    /// one final summarization pass; persists the result as a `BookSummary`
+    /// row and marks the `BookAnalysis` row "completed". Called as the last
+    /// step of the analyze pipeline (after the synthesis pass).
+    private func runBookSummaryPass(
+        bookID: UUID, engine: AIEngine, model: any LanguageModel, row: BookAnalysis
+    ) async throws {
+        let concat: String = await MainActor.run {
+            let summaries = (try? modelContext.fetch(FetchDescriptor<ChapterSummary>(
+                predicate: #Predicate { $0.bookID == bookID }
+            )))?.sorted { $0.chapterHref < $1.chapterHref } ?? []
+            return summaries.map { "Chapter: \($0.chapterHref)\n\($0.text)" }.joined(separator: "\n\n")
+        }
+        guard !concat.isEmpty else {
+            await MainActor.run {
+                row.status = "completed"
+                row.completedAt = Date()
+                try? modelContext.save()
+            }
+            return
+        }
+        let (system, user) = PromptTemplates.bookSummary(body: concat)
+        var accumulated = ""
+        for try await tok in model.complete(system: system, user: user) {
+            try Task.checkCancellation()
+            accumulated += tok
+        }
+        await MainActor.run {
+            let existing = (try? modelContext.fetch(FetchDescriptor<BookSummary>(
+                predicate: #Predicate { $0.bookID == bookID }
+            ))) ?? []
+            for r in existing { modelContext.delete(r) }
+            let summary = BookSummary(bookID: bookID, engine: engine.rawValue, text: accumulated)
+            modelContext.insert(summary)
             row.status = "completed"
             row.completedAt = Date()
             try? modelContext.save()
@@ -231,8 +298,18 @@ final class BookAnalysisService {
                         row.chaptersCompleted = max(row.chaptersCompleted, chapter.index + 1)
                         try? context.save()
                     }
+                    if let helper = await self?.summaryHelper {
+                        _ = try await helper.generateChapterSummary(
+                            bookID: bookID,
+                            chapterHref: chapter.href,
+                            chapterTitle: chapter.title,
+                            engine: engine,
+                            model: model
+                        )
+                    }
                 }
                 try await self?.runSynthesisPass(bookID: bookID, model: model, row: row)
+                try await self?.runBookSummaryPass(bookID: bookID, engine: engine, model: model, row: row)
             } catch is CancellationError {
                 await MainActor.run {
                     row.status = "failed"

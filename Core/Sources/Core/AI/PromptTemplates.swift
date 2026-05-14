@@ -47,6 +47,16 @@ public enum PromptTemplates {
         return (system, user)
     }
 
+    public static func bookSummary(body: String) -> (system: String, user: String) {
+        let system = """
+        You are a literary summarizer. Given the concatenated chapter \
+        summaries of a single book, produce a coherent 4-8 sentence \
+        summary of the entire book that captures its arc, key themes, \
+        and central characters. Use natural prose, not bullet points.
+        """
+        return (system, body)
+    }
+
     public static func selectionQuestion(
         selection: String,
         question: String,

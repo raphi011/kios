@@ -21,6 +21,7 @@ struct BookAnalysisServiceBasicsTests {
             modelContext: ctx,
             provider: AnalysisStubProvider(model: mock),
             extractor: AnalysisStubExtractor(textPerChapter: [:]),
+            summaryHelper: StubSummaryHelper(),
             chaptersFor: { _ in [] }   // zero chapters → returns immediately
         )
         try await service.start(bookID: bookID, engine: .gemma4_e4b)
@@ -44,7 +45,11 @@ struct BookAnalysisServicePerChapterTests {
         ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
         try ctx.save()
 
-        let mock = MockLanguageModel()
+        // `complete(...)` is consumed by `runBookSummaryPass` after the
+        // per-chapter loop. One streamed response is enough — the queue clamps.
+        let mock = MockLanguageModel(responses: [
+            .streamChunks(["Book summary."], delayPerChunk: .milliseconds(1))
+        ])
         for name in ["Alice", "Bob"] {
             mock.enqueueExtract(.value(
                 ChapterCharactersResponse(characters: [
@@ -56,8 +61,6 @@ struct BookAnalysisServicePerChapterTests {
                 ])
             ))
         }
-        // Synthesis pass enqueue is harmless for Task 13 — runSynthesisPass
-        // stub doesn't consume a queue entry yet. The Task 14 impl will.
         mock.enqueueExtract(.value(ProfilesSynthesisResponse(profiles: [])))
 
         let service = BookAnalysisService(
@@ -66,9 +69,10 @@ struct BookAnalysisServicePerChapterTests {
             extractor: AnalysisStubExtractor(textPerChapter: [
                 "ch1": "Alice text", "ch2": "Bob text"
             ]),
+            summaryHelper: StubSummaryHelper(),
             chaptersFor: { _ in [
-                ChapterRef(index: 0, href: "ch1"),
-                ChapterRef(index: 1, href: "ch2"),
+                ChapterRef(index: 0, href: "ch1", title: "Chapter 1"),
+                ChapterRef(index: 1, href: "ch2", title: "Chapter 2"),
             ] }
         )
         try await service.startAndAwait(bookID: bookID, engine: .gemma4_e4b)
@@ -97,7 +101,9 @@ struct BookAnalysisServiceSynthesisTests {
         ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
         try ctx.save()
 
-        let mock = MockLanguageModel()
+        let mock = MockLanguageModel(responses: [
+            .streamChunks(["Book summary."], delayPerChunk: .milliseconds(1))
+        ])
         mock.enqueueExtract(.value(ChapterCharactersResponse(characters: [
             ExtractedCharacter(canonicalName: "Alice", aliases: [],
                                descriptionFromChapter: "d", significance: "major",
@@ -137,9 +143,10 @@ struct BookAnalysisServiceSynthesisTests {
             modelContext: ctx,
             provider: AnalysisStubProvider(model: mock),
             extractor: AnalysisStubExtractor(textPerChapter: ["ch1": "a", "ch2": "b"]),
+            summaryHelper: StubSummaryHelper(),
             chaptersFor: { _ in [
-                ChapterRef(index: 0, href: "ch1"),
-                ChapterRef(index: 1, href: "ch2"),
+                ChapterRef(index: 0, href: "ch1", title: "Chapter 1"),
+                ChapterRef(index: 1, href: "ch2", title: "Chapter 2"),
             ] }
         )
         try await service.startAndAwait(bookID: bookID, engine: .gemma4_e4b)
@@ -200,9 +207,10 @@ struct BookAnalysisServiceCancellationTests {
             modelContext: ctx,
             provider: AnalysisStubProvider(model: mock),
             extractor: AnalysisStubExtractor(textPerChapter: ["ch1": "a", "ch2": "b"]),
+            summaryHelper: StubSummaryHelper(),
             chaptersFor: { _ in [
-                ChapterRef(index: 0, href: "ch1"),
-                ChapterRef(index: 1, href: "ch2"),
+                ChapterRef(index: 0, href: "ch1", title: "Chapter 1"),
+                ChapterRef(index: 1, href: "ch2", title: "Chapter 2"),
             ] }
         )
         try await service.start(bookID: bookID, engine: .gemma4_e4b)
@@ -239,7 +247,9 @@ struct BookAnalysisServiceCancellationTests {
         ))
         try ctx.save()
 
-        let mock = MockLanguageModel()
+        let mock = MockLanguageModel(responses: [
+            .streamChunks(["Book summary."], delayPerChunk: .milliseconds(1))
+        ])
         mock.enqueueExtract(.value(ChapterCharactersResponse(characters: [
             ExtractedCharacter(canonicalName: "Bob", aliases: [],
                                descriptionFromChapter: "d", significance: "minor",
@@ -258,10 +268,11 @@ struct BookAnalysisServiceCancellationTests {
             extractor: AnalysisStubExtractor(textPerChapter: [
                 "ch1": "a", "ch2": "b", "ch3": "c"
             ]),
+            summaryHelper: StubSummaryHelper(),
             chaptersFor: { _ in [
-                ChapterRef(index: 0, href: "ch1"),
-                ChapterRef(index: 1, href: "ch2"),
-                ChapterRef(index: 2, href: "ch3"),
+                ChapterRef(index: 0, href: "ch1", title: "Chapter 1"),
+                ChapterRef(index: 1, href: "ch2", title: "Chapter 2"),
+                ChapterRef(index: 2, href: "ch3", title: "Chapter 3"),
             ] }
         )
         try await service.resumeAndAwait(bookID: bookID, engine: .gemma4_e4b)
@@ -270,6 +281,46 @@ struct BookAnalysisServiceCancellationTests {
             predicate: #Predicate { $0.bookID == bookID }
         ))
         #expect(Set(mentions.map(\.canonicalName)) == Set(["Alice", "Bob", "Carol"]))
+    }
+}
+
+@MainActor
+@Suite("BookAnalysisService — book summary", .serialized)
+struct BookAnalysisServiceBookSummaryTests {
+    @Test("book-summary pass persists a BookSummary row")
+    func bookSummaryWritten() async throws {
+        let container = try ModelContainer.kiosInMemory()
+        let ctx = container.mainContext
+        let bookID = UUID()
+        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        try ctx.save()
+
+        let mock = MockLanguageModel(responses: [
+            .streamChunks(["Whole-book synopsis."], delayPerChunk: .milliseconds(1))
+        ])
+        mock.enqueueExtract(.value(ChapterCharactersResponse(characters: [])))
+        mock.enqueueExtract(.value(ProfilesSynthesisResponse(profiles: [])))
+
+        let service = BookAnalysisService(
+            modelContext: ctx,
+            provider: AnalysisStubProvider(model: mock),
+            extractor: AnalysisStubExtractor(textPerChapter: ["ch1": "a"]),
+            summaryHelper: StubSummaryHelper(modelContext: ctx),
+            chaptersFor: { _ in [ChapterRef(index: 0, href: "ch1", title: "Chapter 1")] }
+        )
+        try await service.startAndAwait(bookID: bookID, engine: .gemma4_e4b)
+
+        let summaries = try ctx.fetch(FetchDescriptor<BookSummary>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        #expect(summaries.count == 1)
+        #expect(summaries.first?.text == "Whole-book synopsis.")
+
+        let chapterSummaries = try ctx.fetch(FetchDescriptor<ChapterSummary>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        #expect(chapterSummaries.count == 1)
+        #expect(chapterSummaries.first?.text == "summary of ch1")
     }
 }
 
@@ -284,5 +335,37 @@ struct AnalysisStubExtractor: AIChapterTextExtracting {
     let textPerChapter: [String: String]
     func extract(bookID: UUID, chapterHref: String, cutoff: Double?) async throws -> String {
         textPerChapter[chapterHref] ?? ""
+    }
+}
+
+@MainActor
+final class StubSummaryHelper: AISummaryServiceHelping {
+    /// Optional context: when set, the stub persists `ChapterSummary` rows
+    /// to match the real `AISummaryService.generateChapterSummary` behavior
+    /// so the book-summary pass has rows to concatenate. Tests that don't
+    /// care about the downstream pass leave it nil and only the returned
+    /// String is observed.
+    let modelContext: ModelContext?
+
+    init(modelContext: ModelContext? = nil) {
+        self.modelContext = modelContext
+    }
+
+    func generateChapterSummary(
+        bookID: UUID, chapterHref: String, chapterTitle: String,
+        engine: AIEngine, model: any LanguageModel
+    ) async throws -> String {
+        let text = "summary of \(chapterHref)"
+        if let ctx = modelContext {
+            let id = ChapterSummary.makeID(bookID: bookID, chapterHref: chapterHref, engine: engine)
+            let row = ChapterSummary(
+                id: id, bookID: bookID, chapterHref: chapterHref,
+                engine: engine.rawValue, text: text,
+                createdAt: Date(), sourceHash: "stub"
+            )
+            ctx.insert(row)
+            try ctx.save()
+        }
+        return text
     }
 }

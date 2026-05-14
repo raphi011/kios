@@ -25,6 +25,13 @@ struct LibraryServiceCascadeDeleteTests {
             allAliases: [], synthesizedDescription: "d",
             earliestChapterIndex: 0, latestChapterIndex: 0
         ))
+        ctx.insert(ChapterSummary(
+            id: "\(bookID.uuidString)|h|gemma4_e4b",
+            bookID: bookID, chapterHref: "h",
+            engine: "gemma4_e4b", text: "chapter",
+            createdAt: Date(), sourceHash: "hash"
+        ))
+        ctx.insert(BookSummary(bookID: bookID, engine: "gemma4_e4b", text: "book"))
         try ctx.save()
 
         let library = LibraryService(context: ctx)
@@ -33,6 +40,8 @@ struct LibraryServiceCascadeDeleteTests {
         #expect(try ctx.fetch(FetchDescriptor<BookAnalysis>()).isEmpty)
         #expect(try ctx.fetch(FetchDescriptor<CharacterMention>()).isEmpty)
         #expect(try ctx.fetch(FetchDescriptor<CharacterProfile>()).isEmpty)
+        #expect(try ctx.fetch(FetchDescriptor<ChapterSummary>()).isEmpty)
+        #expect(try ctx.fetch(FetchDescriptor<BookSummary>()).isEmpty)
         #expect(try ctx.fetch(FetchDescriptor<Book>()).isEmpty)
     }
 }

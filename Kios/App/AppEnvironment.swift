@@ -362,13 +362,20 @@ final class AppEnvironment {
     /// type and copies cleanly). The extractor wraps the `Publication` with
     /// its own `@unchecked Sendable` shield.
     func makeBookAnalysisService(publication: Publication) -> BookAnalysisService {
+        let extractor = PublicationChapterTextExtractor(publication: publication)
         let chapterRefs: [ChapterRef] = publication.readingOrder.enumerated().map { idx, link in
-            ChapterRef(index: idx, href: link.href)
+            ChapterRef(index: idx, href: link.href, title: link.title ?? "")
         }
+        let summaryHelper = AISummaryService(
+            modelContext: modelContext,
+            modelProvider: aiModelProvider,
+            textExtractor: extractor
+        )
         return BookAnalysisService(
             modelContext: modelContext,
             provider: aiModelProvider,
-            extractor: PublicationChapterTextExtractor(publication: publication),
+            extractor: extractor,
+            summaryHelper: summaryHelper,
             chaptersFor: { _ in chapterRefs }
         )
     }

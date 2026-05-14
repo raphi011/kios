@@ -105,7 +105,8 @@ final class LibraryService {
 
     /// Deletes a book and all its derived state: the downloaded file, the
     /// pending `Download` row, `ReadingProgress`, and the book-analysis rows
-    /// (`BookAnalysis` / `CharacterMention` / `CharacterProfile`).
+    /// (`BookAnalysis` / `CharacterMention` / `CharacterProfile` /
+    /// `ChapterSummary` / `BookSummary`).
     /// `ReadingSession` rows are intentionally preserved as historical
     /// statistics — they survive book deletion.
     func delete(book: Book) throws {
@@ -139,6 +140,14 @@ final class LibraryService {
             predicate: #Predicate { $0.bookID == bookID }
         ))
         for p in profiles { context.delete(p) }
+        let chapterSummaries = try context.fetch(FetchDescriptor<ChapterSummary>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for s in chapterSummaries { context.delete(s) }
+        let bookSummaries = try context.fetch(FetchDescriptor<BookSummary>(
+            predicate: #Predicate { $0.bookID == bookID }
+        ))
+        for s in bookSummaries { context.delete(s) }
         context.delete(book)
         try context.save()
     }
