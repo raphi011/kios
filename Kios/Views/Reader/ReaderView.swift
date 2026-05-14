@@ -104,7 +104,11 @@ struct ReaderView: View {
     }
 
     /// Snapshot of chapter context captured at the moment the user taps the
-    /// summary button. Identifiable so `.sheet(item:)` can present it.
+    /// summary button. Identifiable so `.sheet(item:)` can present it. We
+    /// bundle the service into the context rather than reading it from a
+    /// separate `@State` because SwiftUI sometimes evaluates the sheet's
+    /// content closure with an out-of-date snapshot of sibling state — having
+    /// the service in the context guarantees the sheet sees it.
     struct SummarySheetContext: Identifiable {
         let id = UUID()
         let bookID: UUID
@@ -112,11 +116,13 @@ struct ReaderView: View {
         let chapterTitle: String
         let cutoff: Double?
         let engine: AIEngine
+        let service: AISummaryService
     }
 
     /// Snapshot of selection + chapter context captured when the user picks
     /// "Ask AI" from the navigator's text-selection edit menu. Identifiable
     /// so `.sheet(item:)` can present `AskAboutSelectionSheet` against it.
+    /// Bundles the service for the same reason as `SummarySheetContext`.
     struct AskSheetContext: Identifiable {
         let id = UUID()
         let selection: String
@@ -124,6 +130,7 @@ struct ReaderView: View {
         let bookTitle: String
         let chapterTitle: String?
         let engine: AIEngine
+        let service: AISummaryService
     }
 
     var body: some View {
@@ -195,30 +202,26 @@ struct ReaderView: View {
             )
         }
         .sheet(item: $summarySheet) { context in
-            if let service = summaryService {
-                ChapterSummarySheet(
-                    bookID: context.bookID,
-                    chapterHref: context.chapterHref,
-                    chapterTitle: context.chapterTitle,
-                    cutoff: context.cutoff,
-                    engine: context.engine,
-                    onClose: { summarySheet = nil },
-                    service: service
-                )
-            }
+            ChapterSummarySheet(
+                bookID: context.bookID,
+                chapterHref: context.chapterHref,
+                chapterTitle: context.chapterTitle,
+                cutoff: context.cutoff,
+                engine: context.engine,
+                onClose: { summarySheet = nil },
+                service: context.service
+            )
         }
         .sheet(item: $askSheet) { context in
-            if let service = summaryService {
-                AskAboutSelectionSheet(
-                    selection: context.selection,
-                    bookID: context.bookID,
-                    bookTitle: context.bookTitle,
-                    chapterTitle: context.chapterTitle,
-                    engine: context.engine,
-                    onClose: { askSheet = nil },
-                    service: service
-                )
-            }
+            AskAboutSelectionSheet(
+                selection: context.selection,
+                bookID: context.bookID,
+                bookTitle: context.bookTitle,
+                chapterTitle: context.chapterTitle,
+                engine: context.engine,
+                onClose: { askSheet = nil },
+                service: context.service
+            )
         }
         // NB: do NOT clear `summaryService` in `.onDisappear` — SwiftUI fires
         // onDisappear on this view when the AI sheet (`.sheet(item:)`) covers
@@ -514,13 +517,12 @@ struct ReaderView: View {
               let locator = currentLocator ?? initialLocator else {
             return
         }
-        if summaryService == nil {
-            summaryService = AISummaryService(
-                modelContext: context,
-                modelProvider: env.aiModelProvider,
-                textExtractor: PublicationChapterTextExtractor(publication: publication)
-            )
-        }
+        let service = summaryService ?? AISummaryService(
+            modelContext: context,
+            modelProvider: env.aiModelProvider,
+            textExtractor: PublicationChapterTextExtractor(publication: publication)
+        )
+        summaryService = service
         let href = locator.href.string
         let title = chapterTitle(forHref: href) ?? chapterTitleForCurrent
         summarySheet = SummarySheetContext(
@@ -528,7 +530,8 @@ struct ReaderView: View {
             chapterHref: href,
             chapterTitle: title,
             cutoff: locator.locations.progression,
-            engine: engine
+            engine: engine,
+            service: service
         )
     }
 
@@ -544,13 +547,12 @@ struct ReaderView: View {
               !selection.isEmpty else {
             return
         }
-        if summaryService == nil {
-            summaryService = AISummaryService(
-                modelContext: context,
-                modelProvider: env.aiModelProvider,
-                textExtractor: PublicationChapterTextExtractor(publication: publication)
-            )
-        }
+        let service = summaryService ?? AISummaryService(
+            modelContext: context,
+            modelProvider: env.aiModelProvider,
+            textExtractor: PublicationChapterTextExtractor(publication: publication)
+        )
+        summaryService = service
         let href = currentLocator?.href.string ?? initialLocator?.href.string
         let title: String? = href.flatMap(chapterTitle(forHref:)) ?? chapterTitleForCurrent
         askSheet = AskSheetContext(
@@ -558,7 +560,8 @@ struct ReaderView: View {
             bookID: bookID,
             bookTitle: book?.title ?? "",
             chapterTitle: title,
-            engine: engine
+            engine: engine,
+            service: service
         )
     }
 
