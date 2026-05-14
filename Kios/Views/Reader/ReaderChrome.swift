@@ -18,11 +18,6 @@ struct EditorialReaderTopBar: View {
     var onLibrary: () -> Void
     var onContents: () -> Void
     var onTypeSettings: () -> Void
-    /// When `true`, a `sparkles` button is rendered next to Contents that
-    /// opens the AI chapter-summary sheet. Gated by the caller on AI being
-    /// enabled and a usable engine being available.
-    var canSummarize: Bool = false
-    var onSummarize: () -> Void = {}
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -59,18 +54,6 @@ struct EditorialReaderTopBar: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 0) {
-                if canSummarize {
-                    Button(action: onSummarize) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 18, weight: .regular))
-                            .foregroundStyle(EditorialTheme.accent)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Summarise chapter")
-                }
-
                 Button(action: onContents) {
                     Image(systemName: "list.bullet")
                         .font(.system(size: 18, weight: .regular))
@@ -130,15 +113,15 @@ struct EditorialReaderBottomBar: View {
     var onScrubUpdate: (Double) -> Void
     var onScrubCommit: (Double) -> Void
     var onScrubCancel: () -> Void
-    var onSummarise: () -> Void
-    /// When `false`, the AI quick-action row (divider + "Summarise this
-    /// chapter" button) is suppressed entirely. Gated by the caller on AI
-    /// being enabled and a usable engine being available.
-    var canSummarize: Bool = false
+    var onInsights: () -> Void
+    /// When `false`, the AI quick-action row (divider + "Insights" button)
+    /// is suppressed entirely. Gated by the caller on AI being enabled and
+    /// a usable engine being available.
+    var canShowInsights: Bool = false
     /// Displayed in the AI quick-action row's eyebrow line — names the
-    /// engine that will actually run the summary (e.g. "Built-in (Apple
+    /// engine that will run the analysis (e.g. "Built-in (Apple
     /// Intelligence)" or "Gemma 4 E4B (on-device)"). Ignored when
-    /// `canSummarize` is false.
+    /// `canShowInsights` is false.
     var engineLabel: String = "On-device"
 
     @Environment(\.colorScheme) private var colorScheme
@@ -159,7 +142,7 @@ struct EditorialReaderBottomBar: View {
             chapterRow
             slider
                 .padding(.top, 12)
-            if canSummarize {
+            if canShowInsights {
                 divider
                     .padding(.vertical, 12)
                 aiActionRow
@@ -218,7 +201,7 @@ struct EditorialReaderBottomBar: View {
     }
 
     private var aiActionRow: some View {
-        Button(action: onSummarise) {
+        Button(action: onInsights) {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
@@ -229,7 +212,7 @@ struct EditorialReaderBottomBar: View {
                         .foregroundStyle(EditorialTheme.accent)
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Summarise this chapter")
+                    Text("Insights")
                         .font(EditorialTheme.sans(size: 15, weight: .medium))
                         .foregroundStyle(ink)
                     Text(engineLabel)

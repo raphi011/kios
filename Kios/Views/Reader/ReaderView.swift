@@ -42,15 +42,16 @@ struct ReaderView: View {
     /// Set true by the `⊟` button in the reader top bar to present the
     /// Contents / Bookmarks / Notes modal. Setting back to false dismisses.
     @State private var showContents: Bool = false
-    /// Non-nil while the chapter-summary sheet is presented. Holds the
-    /// snapshot of chapter context taken at tap time so the sheet doesn't
-    /// shift if the reader navigates while it's open.
-    @State private var summarySheet: SummarySheetContext?
+    /// Non-nil while the Insights sheet is presented. Holds the snapshot of
+    /// chapter context taken at tap time, plus the per-session
+    /// `BookAnalysisService`, so the sheet sees a stable context even if the
+    /// reader navigates while it's open.
+    @State private var insightsSheet: InsightsSheetContext?
     /// Non-nil while the Ask-AI sheet is presented. Snapshot of selection +
     /// chapter context captured when the user picks "Ask AI" from the
     /// text-selection edit menu.
     @State private var askSheet: AskSheetContext?
-    /// Lazily created on first summary request — needs the per-reader
+    /// Lazily created on the first "Ask AI" request — needs the per-reader
     /// `Publication` to construct the text extractor. Cleared on reader close.
     @State private var summaryService: AISummaryService?
     @State private var fontHUD: Int? = nil
@@ -103,25 +104,22 @@ struct ReaderView: View {
         let serverHref: String?
     }
 
-    /// Snapshot of chapter context captured at the moment the user taps the
-    /// summary button. Identifiable so `.sheet(item:)` can present it. We
-    /// bundle the service into the context rather than reading it from a
-    /// separate `@State` because SwiftUI sometimes evaluates the sheet's
-    /// content closure with an out-of-date snapshot of sibling state — having
-    /// the service in the context guarantees the sheet sees it.
-    struct SummarySheetContext: Identifiable {
+    /// Snapshot of context captured when the user opens the Insights sheet.
+    /// `Identifiable` so `.sheet(item:)` can present it. The
+    /// `BookAnalysisService` is bundled into the context (rather than read
+    /// from sibling state) so SwiftUI's sheet-content closure sees a stable
+    /// instance — sibling `@State` can present a stale snapshot.
+    struct InsightsSheetContext: Identifiable {
         let id = UUID()
         let bookID: UUID
-        let chapterHref: String
-        let chapterTitle: String
-        let engine: AIEngine
-        let service: AISummaryService
+        let chapterHref: String?
+        let service: BookAnalysisService
     }
 
     /// Snapshot of selection + chapter context captured when the user picks
     /// "Ask AI" from the navigator's text-selection edit menu. Identifiable
     /// so `.sheet(item:)` can present `AskAboutSelectionSheet` against it.
-    /// Bundles the service for the same reason as `SummarySheetContext`.
+    /// Bundles the service for the same reason as `InsightsSheetContext`.
     struct AskSheetContext: Identifiable {
         let id = UUID()
         let selection: String
@@ -215,15 +213,20 @@ struct ReaderView: View {
                 onDismiss: { showContents = false }
             )
         }
-        .sheet(item: $summarySheet) { context in
-            ChapterSummarySheet(
-                bookID: context.bookID,
-                chapterHref: context.chapterHref,
-                chapterTitle: context.chapterTitle,
-                engine: context.engine,
-                onClose: { summarySheet = nil },
-                service: context.service
-            )
+        .sheet(item: $insightsSheet) { context in
+            if let book = book {
+                InsightsSheet(
+                    bookID: context.bookID,
+                    book: book,
+                    currentChapterHref: context.chapterHref,
+                    makeService: { context.service },
+                    onJumpRequest: { href, quote in
+                        insightsSheet = nil
+                        jumpAndSearch(href: href, quote: quote)
+                    },
+                    onDismiss: { insightsSheet = nil }
+                )
+            }
         }
         .sheet(item: $askSheet) { context in
             AskAboutSelectionSheet(
@@ -385,9 +388,7 @@ struct ReaderView: View {
                     title: book?.title ?? "",
                     onLibrary: { dismiss() },
                     onContents: { showContents = true },
-                    onTypeSettings: { /* stub — Type settings sheet not implemented yet */ },
-                    canSummarize: env.aiSettings.featuresEnabled,
-                    onSummarize: { presentSummarySheet() }
+                    onTypeSettings: { /* stub — Type settings sheet not implemented yet */ }
                 )
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -414,8 +415,8 @@ struct ReaderView: View {
                         scrubCommitPending = false
                         scrubProgress = nil
                     },
-                    onSummarise: { presentSummarySheet() },
-                    canSummarize: env.aiSettings.featuresEnabled,
+                    onInsights: { presentInsightsSheet() },
+                    canShowInsights: env.aiSettings.featuresEnabled,
                     engineLabel: {
                         // When no engine resolves, label with the user's
                         // *preferred* engine so the eyebrow doesn't read
@@ -598,35 +599,54 @@ struct ReaderView: View {
         }
     }
 
-    /// Captures the current chapter context, lazily builds the per-reader
-    /// `AISummaryService`, and triggers `.sheet(item:)`. When no engine
-    /// resolves, presents `aiUnavailableAlert` with a specific explanation
-    /// instead of silently no-op'ing — the user opted in, so we owe them
-    /// feedback. Still no-ops when the publication isn't loaded yet.
-    private func presentSummarySheet() {
-        guard let publication,
-              let locator = currentLocator ?? initialLocator else {
-            return
-        }
-        guard let engine = resolvedAIEngine else {
+    /// Captures the current chapter context and presents the Insights sheet.
+    /// The sheet itself drives Analyze on demand; this entry only opens it.
+    /// Shows `aiUnavailableAlert` when AI is disabled / no engine resolves,
+    /// so the user understands why nothing happened. No-ops when the
+    /// publication isn't loaded yet.
+    private func presentInsightsSheet() {
+        guard let publication else { return }
+        guard resolvedAIEngine != nil else {
             aiUnavailableAlert = AIUnavailableAlert(message: aiUnavailableMessage())
             return
         }
-        let service = summaryService ?? AISummaryService(
-            modelContext: context,
-            modelProvider: env.aiModelProvider,
-            textExtractor: PublicationChapterTextExtractor(publication: publication)
-        )
-        summaryService = service
-        let href = locator.href.string
-        let title = chapterTitle(forHref: href) ?? chapterTitleForCurrent
-        summarySheet = SummarySheetContext(
+        let service = env.makeBookAnalysisService(publication: publication)
+        let href = (currentLocator ?? initialLocator)?.href.string
+        insightsSheet = InsightsSheetContext(
             bookID: bookID,
             chapterHref: href,
-            chapterTitle: title,
-            engine: engine,
             service: service
         )
+    }
+
+    /// Called when the user taps a character mention in the Insights sheet.
+    /// Navigates to the chapter, then best-effort searches for the verbatim
+    /// quote and jumps to the first match. A miss (or a publication without
+    /// a search service) lands the user at the chapter's start.
+    private func jumpAndSearch(href: String, quote: String) {
+        guard let publication else { return }
+        // Land at the chapter's start first by picking the earliest cached
+        // `Locator` whose href matches the reading-order entry. Falls back to
+        // any positional match if href comparison is anchor-dirty.
+        guard let chapterStart = positions.first(where: { $0.href.string == href })
+            ?? positions.first(where: { $0.href.string.hasSuffix(href) || href.hasSuffix($0.href.string) })
+        else { return }
+        pendingJump = chapterStart
+        Task { @MainActor in
+            // Yield a frame so the navigator can begin the chapter jump
+            // before we drive `pendingJump` to the search hit. Tight without
+            // sleeping; the deduper inside `ReaderHost` ignores the second
+            // jump if `applyPendingJump` hasn't unrolled the first yet, so
+            // this can no-op in the wrong order — silent miss is acceptable.
+            try? await Task.sleep(for: .milliseconds(400))
+            let result = await publication.search(query: quote)
+            guard case .success(let iterator) = result else { return }
+            let pageResult = await iterator.next()
+            if case .success(let collection) = pageResult,
+               let locator = collection?.locators.first {
+                pendingJump = locator
+            }
+        }
     }
 
     /// Snapshot the current chapter context for the supplied selection text

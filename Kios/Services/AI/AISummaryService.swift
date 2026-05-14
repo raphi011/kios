@@ -11,6 +11,14 @@ protocol AIChapterTextExtracting: Sendable {
     func extract(bookID: UUID, chapterHref: String, cutoff: Double?) async throws -> String
 }
 
+/// Two roles bundled into one class:
+///   • `askAboutSelection` — drives the in-reader Ask-AI sheet, streaming
+///     answers into `questionState` for the bound view.
+///   • `generateChapterSummary` — non-streaming helper used by
+///     `BookAnalysisService` to produce (or return cached) per-chapter
+///     summaries during the analyze pipeline. Cancellation is via
+///     cooperative `Task.checkCancellation()` in the calling pipeline; this
+///     method itself is single-shot.
 @MainActor
 @Observable
 final class AISummaryService {
@@ -21,19 +29,11 @@ final class AISummaryService {
         case failed(any Error)
     }
 
-    struct Progress: Sendable, Equatable {
-        var done: Int
-        var total: Int
-    }
-
-    private(set) var summaryState: State = .idle
     private(set) var questionState: State = .idle
-    private(set) var progress: Progress?
 
     private let modelContext: ModelContext
     private let modelProvider: any AILanguageModelProviding
     private let textExtractor: any AIChapterTextExtracting
-    private var summaryTask: Task<Void, Never>?
     private var questionTask: Task<Void, Never>?
 
     init(
@@ -44,94 +44,6 @@ final class AISummaryService {
         self.modelContext = modelContext
         self.modelProvider = modelProvider
         self.textExtractor = textExtractor
-    }
-
-    func summarizeCurrentChapter(
-        bookID: UUID,
-        chapterHref: String,
-        chapterTitle: String,
-        engine: AIEngine
-    ) async {
-        summaryTask?.cancel()
-        summaryState = .idle
-        progress = nil
-
-        let body: String
-        do {
-            body = try await textExtractor.extract(bookID: bookID, chapterHref: chapterHref, cutoff: nil)
-        } catch {
-            summaryState = .failed(error)
-            return
-        }
-        let hash = Self.sha256Hex(of: Data(body.utf8))
-        let id = ChapterSummary.makeID(bookID: bookID, chapterHref: chapterHref, engine: engine)
-
-        var descriptor = FetchDescriptor<ChapterSummary>(predicate: #Predicate { $0.id == id })
-        descriptor.fetchLimit = 1
-        if let existing = (try? modelContext.fetch(descriptor))?.first {
-            if existing.sourceHash == hash {
-                summaryState = .done(existing.text)
-                return
-            } else {
-                modelContext.delete(existing)
-                try? modelContext.save()
-            }
-        }
-
-        let model: any LanguageModel
-        do {
-            model = try await modelProvider.languageModel(for: engine)
-        } catch {
-            summaryState = .failed(error)
-            return
-        }
-
-        let task = Task { @MainActor in
-            do {
-                var accumulated = ""
-                if body.count <= model.contextBudgetCharacters {
-                    let (system, user) = PromptTemplates.chapterSummary(
-                        chapterTitle: chapterTitle, bookTitle: "", body: body
-                    )
-                    for try await tok in model.complete(system: system, user: user) {
-                        try Task.checkCancellation()
-                        accumulated += tok
-                        summaryState = .streaming(accumulated)
-                    }
-                } else {
-                    let summarizer = MapReduceSummarizer(
-                        model: model,
-                        chunker: TextChunker(budgetCharacters: model.contextBudgetCharacters)
-                    )
-                    for try await tok in summarizer.summarize(
-                        body: body, chapterTitle: chapterTitle
-                    ) { done, total in
-                        Task { @MainActor [weak self] in
-                            self?.progress = Progress(done: done, total: total)
-                        }
-                    } {
-                        try Task.checkCancellation()
-                        accumulated += tok
-                        summaryState = .streaming(accumulated)
-                    }
-                }
-                let row = ChapterSummary(
-                    id: id, bookID: bookID, chapterHref: chapterHref,
-                    engine: engine.rawValue,
-                    text: accumulated, createdAt: Date(), sourceHash: hash
-                )
-                modelContext.insert(row)
-                try modelContext.save()
-                summaryState = .done(accumulated)
-                progress = nil
-            } catch is CancellationError {
-                summaryState = .idle
-            } catch {
-                summaryState = .failed(error)
-            }
-        }
-        summaryTask = task
-        await task.value
     }
 
     func askAboutSelection(
@@ -178,16 +90,15 @@ final class AISummaryService {
     }
 
     func cancel() {
-        summaryTask?.cancel()
         questionTask?.cancel()
     }
 
     /// Produces (or refreshes) the cached `ChapterSummary` for one chapter
-    /// without touching the per-instance `@Observable` streaming state. Used
-    /// by the book-analysis pipeline (which has its own progress UI).
-    /// Returns the persisted text. If a current-content-hash `ChapterSummary`
-    /// already exists for `(bookID, chapterHref, engine)`, returns its text
-    /// without re-running the model.
+    /// without surfacing any streaming state. Used by the book-analysis
+    /// pipeline (which has its own progress UI). Returns the persisted text.
+    /// If a current-content-hash `ChapterSummary` already exists for
+    /// `(bookID, chapterHref, engine)`, returns its text without re-running
+    /// the model.
     @MainActor
     func generateChapterSummary(
         bookID: UUID,
