@@ -22,3 +22,12 @@ enum AppPaths {
         return dir
     }
 }
+
+extension AppPaths {
+    /// Filename within `booksDirectory` for a local book's cover image.
+    /// Always lowercase `.cover.jpg`; the suffix doubles as the format
+    /// declaration. Parallel to `<UUID>.epub` for the book file itself.
+    static func coverFilename(for bookUUID: UUID) -> String {
+        "\(bookUUID.uuidString).cover.jpg"
+    }
+}
