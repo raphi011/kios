@@ -27,8 +27,8 @@ final class ReadingStatsService {
         let startedAt: Date
         var lastActivityAt: Date
         var accumulatedSeconds: Int
-        var minPosition: Int
-        var maxPosition: Int
+        var pagesAdded: Int
+        var lastSeenLinearPosition: Int
         var idleTimer: Task<Void, Never>?
     }
 
@@ -60,7 +60,6 @@ final class ReadingStatsService {
     // MARK: - Lifecycle entry points
 
     func sessionDidOpen(bookID: UUID, initialPosition: Int, totalPositions: Int) {
-        // If a session is already active for a different book, close it.
         if let existing = active, existing.bookID != bookID {
             close(reason: .closed)
         }
@@ -70,11 +69,21 @@ final class ReadingStatsService {
             startedAt: now,
             lastActivityAt: now,
             accumulatedSeconds: 0,
-            minPosition: initialPosition,
-            maxPosition: initialPosition,
+            pagesAdded: 0,
+            lastSeenLinearPosition: initialPosition,
             idleTimer: nil
         )
         scheduleIdleTimer()
+        bumpWatermarkOnResume(bookID: bookID, position: initialPosition)
+    }
+
+    private func bumpWatermarkOnResume(bookID: UUID, position: Int) {
+        let descriptor = FetchDescriptor<Book>(predicate: #Predicate { $0.id == bookID })
+        guard let book = try? context.fetch(descriptor).first else { return }
+        if position > book.furthestLinearPosition {
+            book.furthestLinearPosition = position
+            try? context.save()
+        }
     }
 
     func sessionDidAdvance(position: Int, totalPositions: Int, bookID: UUID? = nil) {
@@ -85,8 +94,8 @@ final class ReadingStatsService {
                 startedAt: now,
                 lastActivityAt: now,
                 accumulatedSeconds: 0,
-                minPosition: position,
-                maxPosition: position,
+                pagesAdded: 0,
+                lastSeenLinearPosition: position,
                 idleTimer: nil
             )
             scheduleIdleTimer()
@@ -97,8 +106,11 @@ final class ReadingStatsService {
         let gap = min(Int(now.timeIntervalSince(current.lastActivityAt)), gapCapSeconds)
         current.accumulatedSeconds += max(gap, 0)
         current.lastActivityAt = now
-        current.minPosition = min(current.minPosition, position)
-        current.maxPosition = max(current.maxPosition, position)
+        if position > current.lastSeenLinearPosition {
+            let delta = position - current.lastSeenLinearPosition
+            current.pagesAdded += delta
+        }
+        current.lastSeenLinearPosition = position
         active = current
         scheduleIdleTimer()
         applyAutoFinish(bookID: active?.bookID, position: position, totalPositions: totalPositions)
@@ -163,7 +175,7 @@ final class ReadingStatsService {
             startedAt: current.startedAt,
             endedAt: now,
             durationSeconds: duration,
-            pagesAdded: max(current.maxPosition - current.minPosition, 0),
+            pagesAdded: current.pagesAdded,
             endReason: reason.rawValue
         )
         context.insert(session)

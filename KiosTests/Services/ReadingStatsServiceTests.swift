@@ -105,6 +105,25 @@ struct ReadingStatsServiceBasicTests {
         #expect(sessions[0].durationSeconds == 120)
     }
 
+    @Test func openAtPositionAboveWatermarkBumpsIt() throws {
+        let env = try Self.makeEnv()
+        #expect(env.book.furthestLinearPosition == 0)
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 30, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.book.furthestLinearPosition == 30)
+    }
+
+    @Test func openAtPositionBelowWatermarkDoesNotMoveIt() throws {
+        let env = try Self.makeEnv()
+        env.book.furthestLinearPosition = 50
+        try env.context.save()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 10, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.book.furthestLinearPosition == 50)
+    }
+
     @Test func sessionDidAdvanceAutoStartsNewSessionIfNoneActive() throws {
         let env = try Self.makeEnv()
 

@@ -177,6 +177,10 @@ struct ReaderView: View {
                 initialPosition = 0
             }
             if !positions.isEmpty {
+                if let book, book.totalPositions != positions.count {
+                    book.totalPositions = positions.count
+                    try? book.modelContext?.save()
+                }
                 env.stats.sessionDidOpen(
                     bookID: bookID,
                     initialPosition: initialPosition,
