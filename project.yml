@@ -15,6 +15,11 @@ settings:
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: NO
     SWIFT_STRICT_CONCURRENCY: complete
+    # `InferSendableFromCaptures` makes Swift treat `KeyPath`/`ReferenceWritableKeyPath`
+    # as Sendable when root + value are Sendable. Silences the avalanche of
+    # `#Predicate { $0.id == … }` macro-expansion warnings that SwiftData emits
+    # for every @Model `var` property. Becomes the default in Swift 6.
+    OTHER_SWIFT_FLAGS: "$(inherited) -enable-upcoming-feature InferSendableFromCaptures"
 
 packages:
   Readium:

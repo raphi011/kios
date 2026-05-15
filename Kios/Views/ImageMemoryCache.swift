@@ -2,7 +2,10 @@ import UIKit
 
 /// In-memory thumbnail cache, keyed by URL. NSCache evicts under memory pressure.
 /// Single shared instance used by every AuthenticatedAsyncImage instance.
-final class ImageMemoryCache {
+///
+/// NSCache is documented thread-safe, so the only mutable state here lives
+/// behind that — hence `@unchecked Sendable` is correct.
+final class ImageMemoryCache: @unchecked Sendable {
     static let shared = ImageMemoryCache()
 
     private let cache = NSCache<NSURL, UIImage>()

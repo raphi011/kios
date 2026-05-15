@@ -135,9 +135,12 @@ final class AISummaryService {
                 model: model,
                 chunker: TextChunker(budgetCharacters: model.contextBudgetCharacters)
             )
-            for try await tok in summarizer.summarize(
-                body: body, chapterTitle: chapterTitle
-            ) { _, _ in /* progress not surfaced from helper */ } {
+            let stream = summarizer.summarize(
+                body: body,
+                chapterTitle: chapterTitle,
+                onProgress: { _, _ in }
+            )
+            for try await tok in stream {
                 try Task.checkCancellation()
                 accumulated += tok
             }

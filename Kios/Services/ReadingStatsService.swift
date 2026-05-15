@@ -147,7 +147,7 @@ final class ReadingStatsService {
     }
 
     private func close(reason: EndReason) {
-        guard var current = active else { return }
+        guard let current = active else { return }
         defer { active = nil }
         current.idleTimer?.cancel()
 

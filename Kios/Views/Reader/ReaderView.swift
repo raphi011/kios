@@ -1,9 +1,9 @@
 import SwiftUI
 import SwiftData
 import UIKit
-import ReadiumShared
-import ReadiumStreamer
-import ReadiumNavigator
+@preconcurrency import ReadiumShared
+@preconcurrency import ReadiumStreamer
+@preconcurrency import ReadiumNavigator
 import Core
 
 /// Immersive reader. Presented as a `fullScreenCover` from `RootView`.
@@ -168,10 +168,10 @@ struct ReaderView: View {
             // or 0 if no current locator yet.
             let initialPosition: Int
             if let locator = currentLocator,
-               let idx = positions.firstIndex(where: { $0.href == locator.href }) {
+               let idx = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
                 initialPosition = idx
             } else if let initial = initialLocator,
-                      let idx = positions.firstIndex(where: { $0.href == initial.href }) {
+                      let idx = positions.firstIndex(where: { $0.href.isEquivalentTo(initial.href) }) {
                 initialPosition = idx
             } else {
                 initialPosition = 0
@@ -475,7 +475,7 @@ struct ReaderView: View {
 
     private var currentPageIndex: Int {
         guard let locator = currentLocator,
-              let idx = positions.firstIndex(where: { $0.href == locator.href }) else {
+              let idx = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) else {
             return 0
         }
         return idx
@@ -1001,7 +1001,7 @@ struct ReaderView: View {
             book: book, locatorJSON: json, percentage: total
         )
         // Stats: piggy-back on the same locator callback.
-        if let positionIndex = positions.firstIndex(where: { $0.href == locator.href }) {
+        if let positionIndex = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
             env.stats.sessionDidAdvance(
                 position: positionIndex,
                 totalPositions: positions.count,

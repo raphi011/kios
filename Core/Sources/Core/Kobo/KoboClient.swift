@@ -86,10 +86,7 @@ public extension KoboClient {
             req.httpMethod = "GET"
             req.setValue(deviceID, forHTTPHeaderField: "x-kobo-deviceid")
             if let token { req.setValue(token, forHTTPHeaderField: "x-kobo-synctoken") }
-            let (data, response) = try await http.data(for: req)
-            guard let httpResp = response as? HTTPURLResponse else {
-                throw BackendError.serverShapeUnexpected(detail: "not http response")
-            }
+            let (data, httpResp) = try await http.data(for: req)
 
             let pageEntries = try KoboDecoder.decode([KoboSyncEntryOrSkip].self, from: data)
                 .compactMap { $0.entry }

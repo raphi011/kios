@@ -109,7 +109,7 @@ final class BookAnalysisService {
                     }
                     // Chapter-summary pass — per chapter, immediately after extraction.
                     // Errors here mark the analysis as failed (consistent with extraction).
-                    if let helper = await self?.summaryHelper {
+                    if let helper = self?.summaryHelper {
                         _ = try await helper.generateChapterSummary(
                             bookID: bookID,
                             chapterHref: chapter.href,
@@ -298,7 +298,7 @@ final class BookAnalysisService {
                         row.chaptersCompleted = max(row.chaptersCompleted, chapter.index + 1)
                         try? context.save()
                     }
-                    if let helper = await self?.summaryHelper {
+                    if let helper = self?.summaryHelper {
                         _ = try await helper.generateChapterSummary(
                             bookID: bookID,
                             chapterHref: chapter.href,
