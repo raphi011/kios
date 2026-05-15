@@ -36,4 +36,16 @@ struct AdvanceSourceTests {
             #expect(!source.bumpsWatermarkOnResume)
         }
     }
+
+    @Test("rawValue round-trips for every case")
+    func rawValueRoundTrip() {
+        let cases: [AdvanceSource] = [
+            .swipe, .tap, .scrubCommit, .tocJump,
+            .aiQuoteJump, .resumeFromSync, .programmaticReturn
+        ]
+        for source in cases {
+            #expect(AdvanceSource(rawValue: source.rawValue) == source)
+        }
+        #expect(AdvanceSource(rawValue: "nonexistent") == nil)
+    }
 }

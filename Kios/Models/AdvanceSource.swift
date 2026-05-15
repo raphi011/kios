@@ -1,5 +1,3 @@
-import Foundation
-
 /// Why a locator change happened, plumbed from `ReaderView` into
 /// `ReadingStatsService.sessionDidAdvance`. Drives three policies:
 ///
