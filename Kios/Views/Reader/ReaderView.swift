@@ -291,14 +291,11 @@ struct ReaderView: View {
         return out
     }
 
-    /// Highest progression reached for this book across all sessions —
-    /// drives the "read" check next to chapters the user has already passed.
-    /// Approximate; doesn't account for jump-skipped chapters.
-    private var maxReadProgression: Double {
-        let maxPosition = sessionsForBook.map(\.maxPosition).max() ?? 0
-        guard positions.count > 1 else { return 0 }
-        return Double(maxPosition) / Double(positions.count - 1)
-    }
+    /// Highest progression reached for this book — drives the "read" check
+    /// next to chapters the user has already passed.
+    /// TODO(Task 7): rewire to Book.furthestLinearPosition watermark once
+    /// source-tagged advances land.
+    private var maxReadProgression: Double { 0 }
 
     @ViewBuilder
     private var content: some View {

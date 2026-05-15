@@ -73,8 +73,6 @@ struct ReadingStatsServiceBasicTests {
         let s = sessions[0]
         #expect(s.bookID == env.book.id)
         #expect(s.endReason == "closed")
-        #expect(s.minPosition == 10)
-        #expect(s.maxPosition == 13)
         #expect(s.pagesAdded == 3)
         // 30 + 50 + 10 = 90s of active time (all gaps under 120).
         #expect(s.durationSeconds == 90)

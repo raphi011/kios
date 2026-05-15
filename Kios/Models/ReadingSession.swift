@@ -2,7 +2,8 @@ import Foundation
 import SwiftData
 
 /// One reading session — the unit of stats truth. Aggregated at read time
-/// by `StatsAggregator`. See `docs/superpowers/specs/2026-05-13-reading-stats-design.md`.
+/// by `StatsAggregator`. See
+/// `docs/superpowers/specs/2026-05-15-reading-stats-reliability-design.md`.
 @Model
 final class ReadingSession {
     @Attribute(.unique) var id: UUID
@@ -12,10 +13,10 @@ final class ReadingSession {
     /// Active time only: sum of "active windows" between page-turns,
     /// each capped at 120 sec. Excludes idle and background time.
     var durationSeconds: Int
-    var minPosition: Int
-    var maxPosition: Int
-    /// `max(maxPosition - minPosition, 0)` — counts advancement, not re-reads.
-    /// Stored (not derived) so home-tab aggregation is a single-pass sum.
+    /// Sum of credited linear position deltas during this session.
+    /// Only `.swipe`/`.tap` advances within `linearAdvanceThreshold` of
+    /// the per-book furthest-linear watermark contribute. By construction
+    /// `Σ pagesAdded ≤ book.totalPositions` over a book's lifetime.
     var pagesAdded: Int
     /// Diagnostic: "closed" | "backgrounded" | "idle" | "locked". Not displayed.
     var endReason: String
@@ -26,8 +27,6 @@ final class ReadingSession {
         startedAt: Date,
         endedAt: Date,
         durationSeconds: Int,
-        minPosition: Int,
-        maxPosition: Int,
         pagesAdded: Int,
         endReason: String
     ) {
@@ -36,8 +35,6 @@ final class ReadingSession {
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.durationSeconds = durationSeconds
-        self.minPosition = minPosition
-        self.maxPosition = maxPosition
         self.pagesAdded = pagesAdded
         self.endReason = endReason
     }

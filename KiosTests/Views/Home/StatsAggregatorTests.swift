@@ -30,9 +30,7 @@ struct StatsAggregatorTests {
         bookID: UUID = UUID(),
         endedAt: Date,
         durationSeconds: Int,
-        pagesAdded: Int = 0,
-        minPosition: Int = 0,
-        maxPosition: Int = 0
+        pagesAdded: Int = 0
     ) -> ReadingSession {
         ReadingSession(
             id: UUID(),
@@ -40,8 +38,6 @@ struct StatsAggregatorTests {
             startedAt: endedAt.addingTimeInterval(-TimeInterval(durationSeconds)),
             endedAt: endedAt,
             durationSeconds: durationSeconds,
-            minPosition: minPosition,
-            maxPosition: maxPosition,
             pagesAdded: pagesAdded,
             endReason: "closed"
         )

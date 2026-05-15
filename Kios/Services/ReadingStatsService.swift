@@ -163,8 +163,6 @@ final class ReadingStatsService {
             startedAt: current.startedAt,
             endedAt: now,
             durationSeconds: duration,
-            minPosition: current.minPosition,
-            maxPosition: current.maxPosition,
             pagesAdded: max(current.maxPosition - current.minPosition, 0),
             endReason: reason.rawValue
         )

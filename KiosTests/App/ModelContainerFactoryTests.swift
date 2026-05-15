@@ -21,7 +21,7 @@ struct ModelContainerFactoryTests {
         let session = ReadingSession(
             id: UUID(), bookID: book.id,
             startedAt: .now, endedAt: .now,
-            durationSeconds: 0, minPosition: 0, maxPosition: 0,
+            durationSeconds: 0,
             pagesAdded: 0, endReason: "closed"
         )
         context.insert(book)

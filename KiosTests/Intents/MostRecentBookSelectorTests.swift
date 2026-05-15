@@ -36,14 +36,14 @@ struct MostRecentBookSelectorTests {
             id: UUID(), bookID: older.id,
             startedAt: Date(timeIntervalSince1970: 500),
             endedAt: Date(timeIntervalSince1970: 600),
-            durationSeconds: 100, minPosition: 0, maxPosition: 1,
+            durationSeconds: 100,
             pagesAdded: 1, endReason: "closed"
         ))
         context.insert(ReadingSession(
             id: UUID(), bookID: newer.id,
             startedAt: Date(timeIntervalSince1970: 1000),
             endedAt: Date(timeIntervalSince1970: 1100),
-            durationSeconds: 100, minPosition: 0, maxPosition: 1,
+            durationSeconds: 100,
             pagesAdded: 1, endReason: "closed"
         ))
         try context.save()

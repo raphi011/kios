@@ -19,8 +19,6 @@ struct ReadingSessionTests {
             startedAt: Date(timeIntervalSince1970: 1_000_000),
             endedAt: Date(timeIntervalSince1970: 1_000_300),
             durationSeconds: 300,
-            minPosition: 10,
-            maxPosition: 14,
             pagesAdded: 4,
             endReason: "closed"
         )
