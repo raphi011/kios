@@ -71,6 +71,18 @@ final class Book {
     /// Locks out auto-95% detection.
     var finishedManually: Bool = false
 
+    /// Largest position ever credited as a linear page-read for this book,
+    /// or the largest position reached via .resumeFromSync (sync trust).
+    /// Monotonically non-decreasing. Defaults to 0.
+    ///
+    /// See `docs/superpowers/specs/2026-05-15-reading-stats-reliability-design.md`.
+    var furthestLinearPosition: Int = 0
+
+    /// Count of Readium "positions" in this publication. Populated by
+    /// `ReaderView` the first time the publication loads. `0` means
+    /// "not yet known" — the pace estimator hides its output in that case.
+    var totalPositions: Int = 0
+
     /// Highest reading-order chapter index the user has ever loaded. Monotonic —
     /// never decreases. Bumped in `ReaderView.onLocatorChange`. Source of truth
     /// for spoiler-aware filtering in the Characters tab.
@@ -114,6 +126,8 @@ final class Book {
         self.archived = archived
         self.finishedAt = finishedAt
         self.finishedManually = finishedManually
+        self.furthestLinearPosition = 0
+        self.totalPositions = 0
     }
 
     /// Convenience init for locally-imported books. Catalog fields default to
@@ -149,6 +163,8 @@ final class Book {
         self.archived = false
         self.finishedAt = nil
         self.finishedManually = false
+        self.furthestLinearPosition = 0
+        self.totalPositions = 0
     }
 
     /// Resolved absolute file URL, recomputed each access from the live

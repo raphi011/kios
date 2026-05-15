@@ -33,6 +33,44 @@ struct BookV2DefaultsTests {
         #expect(book.coverFilename == nil)
     }
 
+    @Test("freshly-initialized Book has furthestLinearPosition == 0")
+    func furthestLinearPositionDefaultsToZero() throws {
+        let ctx = try makeContext()
+        let book = Book(
+            serverID: "s",
+            serverIDProtocol: "kosync",
+            title: "t",
+            authors: [],
+            opdsHref: nil,
+            acquisitionURL: URL(string: "https://e.com/a")!,
+            format: .epub,
+            koboBookUUID: nil,
+            archived: false,
+            filename: nil
+        )
+        ctx.insert(book)
+        #expect(book.furthestLinearPosition == 0)
+    }
+
+    @Test("freshly-initialized Book has totalPositions == 0")
+    func totalPositionsDefaultsToZero() throws {
+        let ctx = try makeContext()
+        let book = Book(
+            serverID: "s",
+            serverIDProtocol: "kosync",
+            title: "t",
+            authors: [],
+            opdsHref: nil,
+            acquisitionURL: URL(string: "https://e.com/a")!,
+            format: .epub,
+            koboBookUUID: nil,
+            archived: false,
+            filename: nil
+        )
+        ctx.insert(book)
+        #expect(book.totalPositions == 0)
+    }
+
     @Test func localBookHasNilCatalogFields() throws {
         let ctx = try makeContext()
         let book = Book(
