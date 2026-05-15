@@ -292,10 +292,14 @@ struct ReaderView: View {
     }
 
     /// Highest progression reached for this book — drives the "read" check
-    /// next to chapters the user has already passed.
-    /// TODO(Task 7): rewire to Book.furthestLinearPosition watermark once
-    /// source-tagged advances land.
-    private var maxReadProgression: Double { 0 }
+    /// next to chapters the user has already passed. Backed by the
+    /// per-book linear-read watermark, which Task 5's source-tagged
+    /// advances will start writing. Returns 0 until then (same observable
+    /// behaviour as a fresh install).
+    private var maxReadProgression: Double {
+        guard let book, positions.count > 1 else { return 0 }
+        return Double(book.furthestLinearPosition) / Double(positions.count - 1)
+    }
 
     @ViewBuilder
     private var content: some View {
