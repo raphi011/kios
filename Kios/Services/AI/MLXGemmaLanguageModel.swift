@@ -1,5 +1,6 @@
 // Kios/Services/AI/MLXGemmaLanguageModel.swift
 import Foundation
+import os
 import Core
 
 /// `LanguageModel` adapter that drives a `ModelRunner` (typically the
@@ -52,18 +53,28 @@ final class MLXGemmaLanguageModel: LanguageModel {
         let baseSystem = """
         \(system)
 
-        Respond with ONLY valid JSON matching this exact shape, no prose \
-        before or after:
+        Output a single JSON value matching exactly this schema:
 
         \(schema)
+
+        Output format rules — follow ALL of them:
+        - Start your reply with `{` (or `[` if the schema's top level is an array).
+        - End your reply with the matching `}` or `]`.
+        - Do NOT wrap the JSON in markdown code fences. No triple backticks.
+        - Do NOT prefix with phrases like "Here is the JSON:" or "Sure!".
+        - Do NOT add any prose, explanation, or commentary before or after.
+        - The first character of your reply must be `{` or `[`.
         """
         if let first = try? await collectAndDecode(type, system: baseSystem, user: user) {
             return first
         }
         let retrySystem = baseSystem + """
 
-        Your last reply could not be parsed as JSON. Reply with valid JSON \
-        matching the shape above. Do NOT include any other text.
+
+        Your previous reply could not be parsed as JSON. The most common cause \
+        is wrapping the JSON in ```json ... ``` markdown fences — do NOT do \
+        this. Start your reply directly with `{` or `[`. No backticks, no \
+        prose, no preamble, no trailing commentary.
         """
         do {
             return try await collectAndDecode(type, system: retrySystem, user: user)
@@ -79,29 +90,57 @@ final class MLXGemmaLanguageModel: LanguageModel {
         _ type: T.Type, system: String, user: String
     ) async throws -> T {
         let prompt = AIChatPrompt(system: system, user: user)
-        let buffer = TokenBuffer()
+        let buffer = OSAllocatedUnfairLock<String>(initialState: "")
         try await runner.generate(prompt: prompt, maxNewTokens: 4096) { token in
-            buffer.append(token)
+            buffer.withLock { $0.append(token) }
         }
-        let text = buffer.text
-        return try JSONDecoder().decode(T.self, from: Data(text.utf8))
-    }
-}
-
-/// Thread-safe string accumulator for the @Sendable onToken closure
-/// in `runner.generate`. Local `var` capture is forbidden inside a
-/// @Sendable closure.
-private final class TokenBuffer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _text = ""
-
-    func append(_ s: String) {
-        lock.lock(); defer { lock.unlock() }
-        _text.append(s)
+        let raw = buffer.withLock { $0 }
+        let body = Self.extractJSONBody(raw)
+        return try JSONDecoder().decode(T.self, from: Data(body.utf8))
     }
 
-    var text: String {
-        lock.lock(); defer { lock.unlock() }
-        return _text
+    /// Extracts the first balanced JSON value from a model response. Walks the
+    /// string forward from the first `{` or `[`, tracking quote state and
+    /// brace depth, until the matching close bracket. Returns the substring
+    /// from open to close; returns the input unchanged if no JSON value is
+    /// found (caller's decode then surfaces a meaningful diagnostic).
+    ///
+    /// Gemma 4 has a persistent habit of wrapping JSON responses in markdown
+    /// (` ```json {...} ``` `) or framing prose ("Here is the JSON: {...}").
+    /// The retry pass in `extract` cannot escape this — both attempts produce
+    /// the same shape — so the parser layer must be robust. Handles markdown
+    /// fences, leading commentary, trailing commentary, nested structures,
+    /// and quoted strings that contain braces or escaped quotes.
+    static func extractJSONBody(_ s: String) -> String {
+        guard let start = s.firstIndex(where: { $0 == "{" || $0 == "[" }) else {
+            return s
+        }
+        let opener = s[start]
+        let closer: Character = opener == "{" ? "}" : "]"
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = start
+        while i < s.endIndex {
+            let c = s[i]
+            if escaped {
+                escaped = false
+            } else if inString && c == "\\" {
+                escaped = true
+            } else if c == "\"" {
+                inString.toggle()
+            } else if !inString {
+                if c == opener {
+                    depth += 1
+                } else if c == closer {
+                    depth -= 1
+                    if depth == 0 {
+                        return String(s[start...i])
+                    }
+                }
+            }
+            i = s.index(after: i)
+        }
+        return String(s[start...])
     }
 }

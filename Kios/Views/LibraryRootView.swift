@@ -288,9 +288,7 @@ struct LibraryRootView: View {
 
     private func finishedLabel(_ book: Book) -> String? {
         guard let finishedAt = book.finishedAt else { return nil }
-        let f = DateFormatter()
-        f.dateFormat = "d MMM"
-        return f.string(from: finishedAt)
+        return finishedAt.formatted(.dateTime.day().month(.abbreviated))
     }
 
     private func handleImport(_ result: Result<[URL], Error>) async {

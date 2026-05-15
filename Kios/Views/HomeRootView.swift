@@ -47,9 +47,10 @@ struct HomeRootView: View {
     }
 
     private var todayEyebrow: String {
-        let f = DateFormatter()
-        f.dateFormat = "EEE · d MMM"
-        return f.string(from: .now).uppercased()
+        let now = Date.now
+        let weekday = now.formatted(.dateTime.weekday(.abbreviated))
+        let dayMonth = now.formatted(.dateTime.day().month(.abbreviated))
+        return "\(weekday) · \(dayMonth)".uppercased()
     }
 
     private var statCells: [EditorialStatsCard.Cell] {

@@ -1,8 +1,9 @@
 import Foundation
+import os
 
 /// In-memory `LanguageModel` for tests. Exposed from Core (not the test target)
 /// so the iOS app's test target can use it without duplicating the type.
-public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
+public final class MockLanguageModel: LanguageModel {
     public enum Response: Sendable {
         case streamChunks([String], delayPerChunk: Duration)
         case fail(any Error)
@@ -20,42 +21,44 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
     /// can sleep / await inside (used for cancellation tests).
     public typealias ExtractInterceptor = @Sendable (Any.Type, String, String) async throws -> (any Codable & Sendable)?
 
+    /// Mutable state guarded by a single lock so a multi-field read (e.g. pop
+    /// from the extract queue while bumping the response index) can't tear
+    /// against a concurrent `enqueueExtract` from another thread.
+    private struct State {
+        var calls: [(system: String, user: String)] = []
+        var responseIndex: Int = 0
+        var extractResponses: [ExtractResponse] = []
+        var interceptor: ExtractInterceptor?
+    }
+
     public let contextBudgetCharacters: Int
-    private let lock = NSLock()
-    private var _calls: [(system: String, user: String)] = []
-    private var _responseIndex: Int = 0
-    private let _responses: [Response]
-    private var _extractResponses: [ExtractResponse] = []
-    private var _interceptor: ExtractInterceptor?
+    private let responses: [Response]
+    private let state = OSAllocatedUnfairLock<State>(initialState: State())
 
     public var calls: [(system: String, user: String)] {
-        lock.lock(); defer { lock.unlock() }
-        return _calls
+        state.withLock { $0.calls }
     }
 
     public init(contextBudgetCharacters: Int = 12_000, responses: [Response] = []) {
         self.contextBudgetCharacters = contextBudgetCharacters
-        self._responses = responses
+        self.responses = responses
     }
 
     public func enqueueExtract(_ response: ExtractResponse) {
-        lock.lock(); defer { lock.unlock() }
-        _extractResponses.append(response)
+        state.withLock { $0.extractResponses.append(response) }
     }
 
     public func setExtractInterceptor(_ block: @escaping ExtractInterceptor) {
-        lock.lock(); defer { lock.unlock() }
-        _interceptor = block
+        state.withLock { $0.interceptor = block }
     }
 
     public func complete(system: String, user: String) -> AsyncThrowingStream<String, Error> {
-        let response: Response = {
-            lock.lock(); defer { lock.unlock() }
-            _calls.append((system, user))
-            let idx = min(_responseIndex, _responses.count - 1)
-            _responseIndex += 1
-            return _responses[idx]
-        }()
+        let response: Response = state.withLock { s in
+            s.calls.append((system, user))
+            let idx = min(s.responseIndex, responses.count - 1)
+            s.responseIndex += 1
+            return responses[idx]
+        }
 
         return AsyncThrowingStream { continuation in
             let task = Task {
@@ -86,10 +89,7 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
         system: String,
         user: String
     ) async throws -> T {
-        let interceptor: ExtractInterceptor? = {
-            lock.lock(); defer { lock.unlock() }
-            return _interceptor
-        }()
+        let interceptor = state.withLock { $0.interceptor }
 
         if let interceptor {
             if let value = try await interceptor(type, system, user) {
@@ -103,13 +103,12 @@ public final class MockLanguageModel: LanguageModel, @unchecked Sendable {
             // Interceptor returned nil — fall through to the queue.
         }
 
-        let next: ExtractResponse = try {
-            lock.lock(); defer { lock.unlock() }
-            guard !_extractResponses.isEmpty else {
+        let next: ExtractResponse = try state.withLock { s in
+            guard !s.extractResponses.isEmpty else {
                 throw ExtractionError.unsupportedType(String(describing: type))
             }
-            return _extractResponses.removeFirst()
-        }()
+            return s.extractResponses.removeFirst()
+        }
         return try unwrap(next, as: T.self)
     }
 

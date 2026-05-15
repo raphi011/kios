@@ -185,7 +185,7 @@ public actor KoboBackend: SyncBackend, CatalogBackend {
 /// fractional seconds, some don't. Try the strict variant first then fall
 /// back to plain ISO8601.
 private func isoDate(_ s: String) -> Date? {
-    let f = ISO8601DateFormatter()
-    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return f.date(from: s) ?? ISO8601DateFormatter().date(from: s)
+    let withFractional = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+    let withoutFractional = Date.ISO8601FormatStyle()
+    return (try? withFractional.parse(s)) ?? (try? withoutFractional.parse(s))
 }

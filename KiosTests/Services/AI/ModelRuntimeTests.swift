@@ -1,6 +1,7 @@
 import Testing
-@testable import Kios
 import Foundation
+import os
+@testable import Kios
 
 @Suite("ModelRuntime")
 struct ModelRuntimeTests {
@@ -11,15 +12,11 @@ struct ModelRuntimeTests {
         }
     }
 
-    private final class StubLoader: RunnerLoading, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _loadCount = 0
-        var loadCount: Int {
-            lock.lock(); defer { lock.unlock() }
-            return _loadCount
-        }
+    private final class StubLoader: RunnerLoading {
+        private let _loadCount = OSAllocatedUnfairLock<Int>(initialState: 0)
+        var loadCount: Int { _loadCount.withLock { $0 } }
         func load(from directory: URL) async throws -> any ModelRunner {
-            lock.lock(); _loadCount += 1; lock.unlock()
+            _loadCount.withLock { $0 += 1 }
             return StubRunner()
         }
     }

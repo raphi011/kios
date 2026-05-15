@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import os
 @testable import Core
 
 @Suite("MapReduceSummarizer")
@@ -37,12 +38,12 @@ struct MapReduceSummarizerTests {
         )
         let body = "First sentence here. Second sentence here. Third sentence here. Fourth sentence here."
         var output = ""
-        let progress = ProgressRecorder()
+        let progress = OSAllocatedUnfairLock<(Int, Int)>(initialState: (0, 0))
         let stream = summarizer.summarize(body: body, chapterTitle: "Ch1") { done, total in
-            progress.record(done: done, total: total)
+            progress.withLock { $0 = (done, total) }
         }
         for try await chunk in stream { output += chunk }
-        let lastProgress = progress.last
+        let lastProgress = progress.withLock { $0 }
         #expect(output == "Final summary.")
         #expect(mock.calls.count >= 3, "must call model at least map×N + reduce times; got \(mock.calls.count)")
         #expect(lastProgress.1 >= 2)
@@ -76,17 +77,3 @@ struct MapReduceSummarizerTests {
     }
 }
 
-private final class ProgressRecorder: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _last: (Int, Int) = (0, 0)
-
-    var last: (Int, Int) {
-        lock.lock(); defer { lock.unlock() }
-        return _last
-    }
-
-    func record(done: Int, total: Int) {
-        lock.lock(); defer { lock.unlock() }
-        _last = (done, total)
-    }
-}

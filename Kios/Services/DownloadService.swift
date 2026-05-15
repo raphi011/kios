@@ -61,6 +61,14 @@ final class DownloadService: NSObject {
 
     /// Begins downloading `book.acquisitionURL`. Returns the saved file URL.
     /// Throws if the download fails or the file move fails.
+    ///
+    /// Bridges to `withCheckedThrowingContinuation` because `session` is a
+    /// `URLSessionConfiguration.background` session — it survives app
+    /// suspension so multi-GB downloads can resume after relaunch. Background
+    /// sessions cannot use the modern `URLSession.bytes(for:)` / `.data(for:)`
+    /// async APIs; progress and completion arrive only through the
+    /// `URLSessionDownloadDelegate` callbacks elsewhere in this file, which
+    /// resume the captured continuation.
     func download(book: Book) async throws -> URL {
         let bookID = book.id
         guard let url = book.acquisitionURL else {

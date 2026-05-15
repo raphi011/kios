@@ -1,27 +1,26 @@
 import Testing
 import Foundation
+import os
 @testable import Kios
 import Core
 
 @Suite("MLXGemmaLanguageModel.extract", .serialized)
 struct MLXGemmaLanguageModelExtractTests {
     /// Stub runner that returns canned text. Doesn't actually load MLX.
-    final class StubRunner: ModelRunner, @unchecked Sendable {
+    final class StubRunner: ModelRunner {
         let outputs: [String]
-        private let lock = NSLock()
-        private var index = 0
+        private let index = OSAllocatedUnfairLock<Int>(initialState: 0)
         init(outputs: [String]) { self.outputs = outputs }
         func generate(
             prompt: AIChatPrompt,
             maxNewTokens: Int,
             onToken: @Sendable @escaping (String) -> Void
         ) async throws {
-            let out: String = {
-                lock.lock(); defer { lock.unlock() }
-                let v = outputs[index]
-                index += 1
+            let out: String = index.withLock { i in
+                let v = outputs[i]
+                i += 1
                 return v
-            }()
+            }
             for char in out { onToken(String(char)) }
         }
     }

@@ -72,11 +72,9 @@ extension AICrashDiagnosticsLogger: MXMetricManagerSubscriber {
     }
 
     private func persist(data: Data, kind: String) {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
         // Colons aren't legal in macOS-visible filenames once the container is
         // dragged onto a Mac; normalize them out so a developer can double-click.
-        let timestamp = formatter.string(from: Date())
+        let timestamp = Date.now.ISO8601Format()
             .replacingOccurrences(of: ":", with: "-")
         let url = outputDirectory.appendingPathComponent("\(timestamp)-\(kind).json")
         try? data.write(to: url, options: .atomic)

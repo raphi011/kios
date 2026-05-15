@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import os
 @testable import Core
 
 @Suite("KOSyncBackend", .serialized)
@@ -100,11 +101,11 @@ struct KOSyncBackendTests {
     /// Drives `pushProgress` through the mock URL protocol and decodes the
     /// `ProgressUpload` payload from the captured PUT body.
     private func capturePushedUpload(progress: CanonicalProgress) async throws -> ProgressUpload {
-        let captured = LockedBox<Data>()
+        let captured = OSAllocatedUnfairLock<Data?>(initialState: nil)
         MockURLProtocol.handler = { req in
             #expect(req.httpMethod == "PUT")
             #expect(req.url?.path == "/kosync/syncs/progress")
-            captured.value = req.readBodyStream()
+            captured.withLock { $0 = req.readBodyStream() }
             let resp = HTTPURLResponse(
                 url: req.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: nil
             )!
@@ -113,15 +114,11 @@ struct KOSyncBackendTests {
         let backend = makeBackend()
         let id = BookIdentity(partialMD5: "abc123", koboBookUUID: nil)
         try await backend.pushProgress(progress, for: id)
-        guard let data = captured.value else {
+        guard let data = captured.withLock({ $0 }) else {
             Issue.record("no request body captured")
             return try JSONDecoder().decode(ProgressUpload.self, from: Data())
         }
         return try JSONDecoder().decode(ProgressUpload.self, from: data)
-    }
-
-    private final class LockedBox<T>: @unchecked Sendable {
-        var value: T?
     }
 
     private func makeBackend() -> KOSyncBackend {

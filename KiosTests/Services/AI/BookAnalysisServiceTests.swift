@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import os
 import SwiftData
 @testable import Kios
 import Core
@@ -182,16 +183,12 @@ struct BookAnalysisServiceCancellationTests {
         // First call returns immediately via interceptor; subsequent calls
         // stall until cancellation. (Queueing won't work here because the
         // interceptor runs before the queue is consulted.)
-        final class CallCounter: @unchecked Sendable {
-            let lock = NSLock()
-            var n = 0
-        }
-        let counter = CallCounter()
+        let counter = OSAllocatedUnfairLock<Int>(initialState: 0)
         mock.setExtractInterceptor { _, _, _ in
-            counter.lock.lock()
-            counter.n += 1
-            let call = counter.n
-            counter.lock.unlock()
+            let call = counter.withLock { n -> Int in
+                n += 1
+                return n
+            }
             if call == 1 {
                 return ChapterCharactersResponse(characters: [
                     ExtractedCharacter(canonicalName: "A", aliases: [],

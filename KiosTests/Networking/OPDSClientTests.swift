@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import os
 @testable import Kios
 @testable import Core
 
@@ -183,9 +184,9 @@ struct OPDSClientTests {
 
     @Test func cachesSearchDescriptor() async throws {
         let xml = try Self.loadFixture("cwa-opensearch-description")
-        let counter = CounterBox()
+        let counter = OSAllocatedUnfairLock<Int>(initialState: 0)
         MockURLProtocol.handler = { req in
-            counter.n += 1
+            counter.withLock { $0 += 1 }
             let resp = HTTPURLResponse(
                 url: req.url!, statusCode: 200, httpVersion: "HTTP/1.1",
                 headerFields: ["Content-Type": "application/opensearchdescription+xml"]
@@ -196,7 +197,7 @@ struct OPDSClientTests {
         let url = URL(string: "https://calibre.example/opds/osd")!
         _ = try await client.fetchSearchDescriptor(at: url)
         _ = try await client.fetchSearchDescriptor(at: url)
-        #expect(counter.n == 1)
+        #expect(counter.withLock { $0 } == 1)
     }
 
     @Test func descriptorParseFailureThrowsDedicatedError() async throws {
@@ -221,9 +222,9 @@ struct OPDSClientTests {
 
     @Test func cachesFeedWithinSession() async throws {
         let xml = try Self.loadFixture("cwa-opds-root")
-        let counter = CounterBox()
+        let counter = OSAllocatedUnfairLock<Int>(initialState: 0)
         MockURLProtocol.handler = { req in
-            counter.n += 1
+            counter.withLock { $0 += 1 }
             let resp = HTTPURLResponse(
                 url: req.url!, statusCode: 200, httpVersion: "HTTP/1.1",
                 headerFields: ["Content-Type": "application/atom+xml"]
@@ -234,14 +235,14 @@ struct OPDSClientTests {
         let url = URL(string: "https://calibre.example/opds/")!
         _ = try await client.fetchFeed(url: url)
         _ = try await client.fetchFeed(url: url)
-        #expect(counter.n == 1)
+        #expect(counter.withLock { $0 } == 1)
     }
 
     @Test func invalidateForcesRefetch() async throws {
         let xml = try Self.loadFixture("cwa-opds-root")
-        let counter = CounterBox()
+        let counter = OSAllocatedUnfairLock<Int>(initialState: 0)
         MockURLProtocol.handler = { req in
-            counter.n += 1
+            counter.withLock { $0 += 1 }
             let resp = HTTPURLResponse(
                 url: req.url!, statusCode: 200, httpVersion: "HTTP/1.1",
                 headerFields: ["Content-Type": "application/atom+xml"]
@@ -253,7 +254,7 @@ struct OPDSClientTests {
         _ = try await client.fetchFeed(url: url)
         await client.invalidate(url)
         _ = try await client.fetchFeed(url: url)
-        #expect(counter.n == 2)
+        #expect(counter.withLock { $0 } == 2)
     }
 
     // MARK: - Fixture loading helpers
@@ -288,9 +289,4 @@ struct OPDSClientTests {
     }
 
     private final class BundleToken {}
-
-    /// Thread-safe counter for use in @Sendable closures within .serialized test suite.
-    private final class CounterBox: @unchecked Sendable {
-        var n = 0
-    }
 }

@@ -1,6 +1,9 @@
 import Foundation
 import SwiftData
+import os
 import Core
+
+private let analyzeLog = Logger(subsystem: "com.raphi011.kios", category: "analyze")
 
 /// A chapter's reading-order index + resource href + display title. Returned
 /// by the `chaptersFor` closure. Sendable for cross-task hop safety.
@@ -77,20 +80,26 @@ final class BookAnalysisService {
         let extractor = self.extractor
         let context = self.modelContext
 
+        let total = chapters.count
+        analyzeLog.info("start bookID=\(bookID.uuidString, privacy: .public) engine=\(engine.rawValue, privacy: .public) chapters=\(total)")
         task = Task { [weak self] in
             do {
                 let model = try await provider.languageModel(for: engine)
                 for chapter in chapters {
                     try Task.checkCancellation()
+                    analyzeLog.info("chapter.extract.begin index=\(chapter.index)/\(total) href=\(chapter.href, privacy: .public)")
                     let text = try await extractor.extract(
                         bookID: bookID, chapterHref: chapter.href, cutoff: nil
                     )
+                    analyzeLog.info("chapter.extract.text index=\(chapter.index) chars=\(text.count)")
                     let response: ChapterCharactersResponse = try await model.extract(
                         ChapterCharactersResponse.self,
                         schema: CharacterExtractionPrompts.charactersSchema,
                         system: CharacterExtractionPrompts.characterExtractionSystem,
                         user: text
                     )
+                    let charCount = response.characters.count
+                    analyzeLog.info("chapter.extract.end index=\(chapter.index) characters=\(charCount)")
                     await MainActor.run {
                         for c in response.characters {
                             let mention = CharacterMention(
@@ -110,6 +119,7 @@ final class BookAnalysisService {
                     // Chapter-summary pass — per chapter, immediately after extraction.
                     // Errors here mark the analysis as failed (consistent with extraction).
                     if let helper = self?.summaryHelper {
+                        analyzeLog.info("chapter.summary.begin index=\(chapter.index)")
                         _ = try await helper.generateChapterSummary(
                             bookID: bookID,
                             chapterHref: chapter.href,
@@ -117,17 +127,23 @@ final class BookAnalysisService {
                             engine: engine,
                             model: model
                         )
+                        analyzeLog.info("chapter.summary.end index=\(chapter.index)")
                     }
                 }
+                analyzeLog.info("phase.synthesis.begin bookID=\(bookID.uuidString, privacy: .public)")
                 try await self?.runSynthesisPass(bookID: bookID, model: model, row: row)
+                analyzeLog.info("phase.bookSummary.begin bookID=\(bookID.uuidString, privacy: .public)")
                 try await self?.runBookSummaryPass(bookID: bookID, engine: engine, model: model, row: row)
+                analyzeLog.info("done bookID=\(bookID.uuidString, privacy: .public)")
             } catch is CancellationError {
+                analyzeLog.info("canceled bookID=\(bookID.uuidString, privacy: .public)")
                 await MainActor.run {
                     row.status = "failed"
                     row.failureReason = "Canceled"
                     try? context.save()
                 }
             } catch {
+                analyzeLog.error("failed bookID=\(bookID.uuidString, privacy: .public) error=\(String(describing: error))")
                 await MainActor.run {
                     row.status = "failed"
                     row.failureReason = error.localizedDescription

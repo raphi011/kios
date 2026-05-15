@@ -122,6 +122,13 @@ final class ModelDownloadService: NSObject, ModelDownloadServiceReading {
             fileStartTime = Date()
 
             do {
+                // Bridges to the delegate-based download API because `session`
+                // is `URLSessionConfiguration.background` — required so the
+                // multi-GB Gemma download survives app suspension and resumes
+                // after a kill+relaunch. Background sessions can't use the
+                // modern `bytes(for:)` async APIs; progress + completion
+                // arrive through `URLSessionDownloadDelegate` callbacks
+                // elsewhere in this file, which resume this continuation.
                 let stableTempURL: URL = try await withCheckedThrowingContinuation { continuation in
                     self.activeContinuation = continuation
                     let task = session.downloadTask(with: url)

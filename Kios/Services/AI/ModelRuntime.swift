@@ -1,4 +1,24 @@
 import Foundation
+import os
+
+private let mlxLog = Logger(subsystem: "com.raphi011.kios", category: "mlx")
+
+/// Resident memory footprint of this process in MB. Reads
+/// `phys_footprint` — the same value iOS uses for jetsam decisions and the
+/// one Metal/IOGPU allocations count against on-device. Used by the MLX
+/// runner's entry/exit logs so a sysdiagnose around a crash shows how
+/// inference allocations track across chapters.
+func physFootprintMB() -> Double {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+    let kerr = withUnsafeMutablePointer(to: &info) {
+        $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+        }
+    }
+    guard kerr == KERN_SUCCESS else { return -1 }
+    return Double(info.phys_footprint) / 1_048_576.0
+}
 
 /// Generates tokens from a loaded MLX module. Real implementation lives
 /// alongside `MLXGemmaLanguageModel`. This protocol exists so tests can
@@ -120,28 +140,45 @@ final class MLXModelRunner: ModelRunner {
             maxTokens: maxNewTokens,
             temperature: 0.4
         )
-        try await container.perform { (context: ModelContext) in
-            let chat: [Chat.Message] = prompt.system.isEmpty
-                ? [.user(prompt.user)]
-                : [.system(prompt.system), .user(prompt.user)]
-            let userInput = UserInput(chat: chat)
-            let lmInput = try await context.processor.prepare(input: userInput)
-            let stream = try MLXLMCommon.generate(
-                input: lmInput,
-                parameters: parameters,
-                context: context
-            )
-            for await generation in stream {
-                if Task.isCancelled { break }
-                switch generation {
-                case .chunk(let delta):
-                    onToken(delta)
-                case .info:
-                    continue
-                case .toolCall:
-                    continue
+        let promptChars = prompt.system.count + prompt.user.count
+        let startFootprint = physFootprintMB()
+        let startTime = Date()
+        mlxLog.info("generate.begin promptChars=\(promptChars) maxNewTokens=\(maxNewTokens) footprintMB=\(startFootprint, format: .fixed(precision: 1))")
+        let tokenCount = OSAllocatedUnfairLock<Int>(initialState: 0)
+        do {
+            try await container.perform { (context: ModelContext) in
+                let chat: [Chat.Message] = prompt.system.isEmpty
+                    ? [.user(prompt.user)]
+                    : [.system(prompt.system), .user(prompt.user)]
+                let userInput = UserInput(chat: chat)
+                let lmInput = try await context.processor.prepare(input: userInput)
+                let stream = try MLXLMCommon.generate(
+                    input: lmInput,
+                    parameters: parameters,
+                    context: context
+                )
+                for await generation in stream {
+                    if Task.isCancelled { break }
+                    switch generation {
+                    case .chunk(let delta):
+                        tokenCount.withLock { $0 += 1 }
+                        onToken(delta)
+                    case .info:
+                        continue
+                    case .toolCall:
+                        continue
+                    }
                 }
             }
+            let endFootprint = physFootprintMB()
+            let elapsedMS = Int(Date().timeIntervalSince(startTime) * 1000)
+            let total = tokenCount.withLock { $0 }
+            mlxLog.info("generate.end tokens=\(total) elapsedMS=\(elapsedMS) footprintMB=\(endFootprint, format: .fixed(precision: 1)) deltaMB=\(endFootprint - startFootprint, format: .fixed(precision: 1))")
+        } catch {
+            let endFootprint = physFootprintMB()
+            let elapsedMS = Int(Date().timeIntervalSince(startTime) * 1000)
+            mlxLog.error("generate.fail error=\(String(describing: error)) elapsedMS=\(elapsedMS) footprintMB=\(endFootprint, format: .fixed(precision: 1))")
+            throw error
         }
     }
 }

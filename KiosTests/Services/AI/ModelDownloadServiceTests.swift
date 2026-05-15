@@ -2,6 +2,7 @@
 import Testing
 @testable import Kios
 import Foundation
+import os
 
 @Suite("ModelDownloadService")
 struct ModelDownloadServiceTests {
@@ -21,19 +22,6 @@ struct ModelDownloadServiceTests {
             client?.urlProtocolDidFinishLoading(self)
         }
         override func stopLoading() {}
-    }
-
-    private final class CallFlag: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _value: Bool = false
-        var value: Bool {
-            lock.lock(); defer { lock.unlock() }
-            return _value
-        }
-        func set() {
-            lock.lock(); defer { lock.unlock() }
-            _value = true
-        }
     }
 
     private func makeAsset(files: [(name: String, content: Data)]) -> ModelAsset {
@@ -121,9 +109,9 @@ struct ModelDownloadServiceTests {
         let root = try makeTempRoot()
         defer { try? FileManager.default.removeItem(at: root) }
         let store = ModelAssetStore(rootDirectory: root)
-        let responderCalled = CallFlag()
+        let responderCalled = OSAllocatedUnfairLock<Bool>(initialState: false)
         MockURLProtocol.responder = { req in
-            responderCalled.set()
+            responderCalled.withLock { $0 = true }
             let resp = HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (resp, Data(), nil)
         }
@@ -131,7 +119,7 @@ struct ModelDownloadServiceTests {
         config.protocolClasses = [MockURLProtocol.self]
         let service = ModelDownloadService(assetStore: store, configuration: config)
         await service.startDownload(of: asset, allowCellular: false)
-        #expect(!responderCalled.value, "must not network if storage check fails")
+        #expect(!responderCalled.withLock { $0 }, "must not network if storage check fails")
         if case .notEnoughStorage = service.lastError { /* ok */ } else {
             Issue.record("expected notEnoughStorage; got \(String(describing: service.lastError))")
         }

@@ -158,7 +158,28 @@ final class AppEnvironment {
             self.deviceID = generated
         }
 
+        recoverInterruptedAnalyses()
+
         try bootIfCredentialsPresent()
+    }
+
+    /// Marks any `BookAnalysis` rows left in `"in_progress"` from a prior
+    /// launch as `"failed"` with `failureReason = "Interrupted"`. The analyze
+    /// pipeline can be killed mid-flight (MLX/Metal completion fault, jetsam,
+    /// force-quit) without its `catch` block running, leaving rows stuck on a
+    /// status the in-process cancel button can't clear because the original
+    /// `Task` no longer exists. Runs once at startup so the failed state is
+    /// visible before any sheet is opened.
+    private func recoverInterruptedAnalyses() {
+        let descriptor = FetchDescriptor<BookAnalysis>(
+            predicate: #Predicate { $0.status == "in_progress" }
+        )
+        guard let rows = try? modelContext.fetch(descriptor), !rows.isEmpty else { return }
+        for row in rows {
+            row.status = "failed"
+            row.failureReason = "Interrupted"
+        }
+        try? modelContext.save()
     }
 
     /// Construct (or rebuild) the credentialled services. Called on init and
