@@ -141,6 +141,16 @@ struct ReadingStatsServiceBasicTests {
         // open at position 10 carries lastActivityAt=now, so first gap = 30.
         #expect(sessions[0].durationSeconds == 35)
     }
+
+    @Test func openAtPositionEqualToWatermarkDoesNotMoveIt() throws {
+        let env = try Self.makeEnv()
+        env.book.furthestLinearPosition = 25
+        try env.context.save()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 25, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.book.furthestLinearPosition == 25)
+    }
 }
 
 @MainActor

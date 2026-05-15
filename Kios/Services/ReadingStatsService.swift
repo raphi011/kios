@@ -106,6 +106,10 @@ final class ReadingStatsService {
         let gap = min(Int(now.timeIntervalSince(current.lastActivityAt)), gapCapSeconds)
         current.accumulatedSeconds += max(gap, 0)
         current.lastActivityAt = now
+        // TODO(Task 5): replace with source-aware watermark logic. Currently
+        // counts all forward-position deltas regardless of source — Task 5
+        // gates on `.swipe`/`.tap` only and bounds the delta against the
+        // per-book furthestLinearPosition.
         if position > current.lastSeenLinearPosition {
             let delta = position - current.lastSeenLinearPosition
             current.pagesAdded += delta
