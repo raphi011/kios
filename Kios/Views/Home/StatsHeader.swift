@@ -21,7 +21,7 @@ struct StatsHeader: View {
         .padding(.horizontal, 16)
     }
 
-    private func cell(value: String, label: String) -> some View {
+    private func cell(value: String, label: LocalizedStringKey) -> some View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.system(size: 20, weight: .semibold, design: .rounded))

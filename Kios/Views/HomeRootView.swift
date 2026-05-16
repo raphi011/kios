@@ -64,7 +64,7 @@ struct HomeRootView: View {
         ]
     }
 
-    private var lastSyncedFooter: String? {
+    private var lastSyncedFooter: LocalizedStringKey? {
         // Hook for "Last synced N min ago". Real sync timestamps aren't
         // surfaced through AppEnvironment yet, so we hide the footer when no
         // sync has happened in this process. Wire the timestamp through and

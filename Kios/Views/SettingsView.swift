@@ -330,7 +330,7 @@ struct SettingsView: View {
     /// chevron row but does nothing when tapped — once the underlying feature
     /// exists, swap this for a `NavigationLink` to its detail screen without
     /// touching call sites.
-    private func stubRow(label: String, value: String) -> some View {
+    private func stubRow(label: LocalizedStringKey, value: String) -> some View {
         EditorialRow(label: label, value: value, chevron: true)
     }
 

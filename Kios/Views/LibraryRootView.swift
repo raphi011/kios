@@ -60,7 +60,7 @@ struct LibraryRootView: View {
 
     /// Footer for the last section — surfaces sync recency. Hidden until the
     /// sync layer exposes a timestamp.
-    private var lastSyncedFooter: String? { nil }
+    private var lastSyncedFooter: LocalizedStringKey? { nil }
 
     var body: some View {
         NavigationStack {
@@ -182,7 +182,7 @@ struct LibraryRootView: View {
         _ name: String,
         books: [Book],
         kind: SectionKind,
-        footer: String? = nil
+        footer: LocalizedStringKey? = nil
     ) -> some View {
         EditorialList("\(name) · \(books.count)", footer: footer) {
             ForEach(books.indices, id: \.self) { i in

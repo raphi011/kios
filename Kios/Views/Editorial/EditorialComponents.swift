@@ -6,7 +6,7 @@ import SwiftUI
 /// title, optional mono eyebrow above, trailing icons baseline-aligned with
 /// the title (Apple Books pattern, not floating above it).
 struct EditorialNavBar<Trailing: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     var eyebrow: String? = nil
     @ViewBuilder var trailing: () -> Trailing
 
@@ -36,7 +36,7 @@ struct EditorialNavBar<Trailing: View>: View {
 }
 
 extension EditorialNavBar where Trailing == EmptyView {
-    init(title: String, eyebrow: String? = nil) {
+    init(title: LocalizedStringKey, eyebrow: String? = nil) {
         self.init(title: title, eyebrow: eyebrow, trailing: { EmptyView() })
     }
 }
@@ -46,7 +46,7 @@ extension EditorialNavBar where Trailing == EmptyView {
 struct EditorialNavIconButton: View {
     let systemName: String
     var tint: Color = EditorialTheme.ink
-    var accessibilityLabel: String
+    var accessibilityLabel: LocalizedStringKey
     let action: () -> Void
 
     var body: some View {
@@ -70,12 +70,12 @@ struct EditorialNavIconButton: View {
 /// Editorial grouped-inset card. Mirrors the prototype's `KList`: mono
 /// eyebrow above, rounded white card, italic-serif footer below.
 struct EditorialList<Content: View>: View {
-    let header: String?
-    var footer: String? = nil
+    let header: LocalizedStringKey?
+    var footer: LocalizedStringKey? = nil
     @ViewBuilder var content: () -> Content
 
-    init(_ header: String? = nil,
-         footer: String? = nil,
+    init(_ header: LocalizedStringKey? = nil,
+         footer: LocalizedStringKey? = nil,
          @ViewBuilder content: @escaping () -> Content) {
         self.header = header
         self.footer = footer
@@ -125,7 +125,7 @@ struct EditorialHairline: View {
 /// Editorial segmented control. Matches the prototype's `KSegmented` (rounded
 /// pill track with a single elevated active chip).
 struct EditorialSegmented<Selection: Hashable>: View {
-    let items: [(label: String, value: Selection)]
+    let items: [(label: LocalizedStringKey, value: Selection)]
     @Binding var selection: Selection
 
     var body: some View {
@@ -171,7 +171,7 @@ struct EditorialStatsCard: View {
     struct Cell {
         let number: String
         let unit: String?      // "m" for minutes, "d" for days, etc.
-        let caption: String    // "Read time", "Pages", "Streak"
+        let caption: LocalizedStringKey    // "Read time", "Pages", "Streak"
     }
     let cells: [Cell]
 
@@ -332,8 +332,8 @@ struct EditorialBookRow: View {
 /// - `chevron`: trailing chevron — pair with a `NavigationLink` wrap
 /// - `danger`: red label (e.g. Sign out)
 struct EditorialRow: View {
-    let label: String
-    var detail: String? = nil
+    let label: LocalizedStringKey
+    var detail: LocalizedStringKey? = nil
     var value: String? = nil
     var toggle: Binding<Bool>? = nil
     var chevron: Bool = false

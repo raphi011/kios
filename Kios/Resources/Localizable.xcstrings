@@ -20,6 +20,9 @@
         }
       }
     },
+    "%@ · %lld": {
+      "shouldTranslate": false
+    },
     "%@.": {
       "shouldTranslate": false
     },
@@ -49,6 +52,16 @@
         }
       }
     },
+    "AI assistant": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KI-Assistent"
+          }
+        }
+      }
+    },
     "AI engine unavailable": {
       "localizations": {
         "de": {
@@ -62,7 +75,27 @@
     "Aa": {
       "shouldTranslate": false
     },
+    "Account": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
+          }
+        }
+      }
+    },
     "Add a book": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buch hinzufügen"
+          }
+        }
+      }
+    },
+    "Add book": {
       "localizations": {
         "de": {
           "stringUnit": {
@@ -78,6 +111,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Von URL hinzufügen…"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
+          }
+        }
+      }
+    },
+    "Allow cellular download": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download über Mobilfunk erlauben"
           }
         }
       }
@@ -194,12 +247,32 @@
         }
       }
     },
+    "BOOKS": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BÜCHER"
+          }
+        }
+      }
+    },
     "Back to p. %lld": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Zurück zu S. %lld"
+          }
+        }
+      }
+    },
+    "Bigger context": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Größerer Kontext"
           }
         }
       }
@@ -214,12 +287,32 @@
         }
       }
     },
+    "Book": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buch"
+          }
+        }
+      }
+    },
     "Book not found": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Buch nicht gefunden"
+          }
+        }
+      }
+    },
+    "Bookmarks · 0": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesezeichen · 0"
           }
         }
       }
@@ -274,6 +367,16 @@
         }
       }
     },
+    "Built-in": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eingebaut"
+          }
+        }
+      }
+    },
     "Built-in requires Apple Intelligence.": {
       "localizations": {
         "de": {
@@ -304,6 +407,16 @@
         }
       }
     },
+    "Cache": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwischenspeicher"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "de": {
@@ -324,6 +437,16 @@
         }
       }
     },
+    "Chapter": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapitel"
+          }
+        }
+      }
+    },
     "Chapter %lld": {
       "localizations": {
         "de": {
@@ -340,6 +463,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Erwähnungen im Kapitel"
+          }
+        }
+      }
+    },
+    "Characters": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Figuren"
+          }
+        }
+      }
+    },
+    "Clear cached summaries": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenfassungs-Cache leeren"
           }
         }
       }
@@ -374,6 +517,16 @@
         }
       }
     },
+    "Contents · %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhalt · %lld"
+          }
+        }
+      }
+    },
     "Continue": {
       "localizations": {
         "de": {
@@ -385,6 +538,16 @@
       }
     },
     "Continue Reading": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiterlesen"
+          }
+        }
+      }
+    },
+    "Continue reading": {
       "localizations": {
         "de": {
           "stringUnit": {
@@ -414,6 +577,26 @@
         }
       }
     },
+    "Default font": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard-Schrift"
+          }
+        }
+      }
+    },
+    "Default theme": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard-Design"
+          }
+        }
+      }
+    },
     "Delete": {
       "localizations": {
         "de": {
@@ -430,6 +613,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deutsch"
+          }
+        }
+      }
+    },
+    "Device RAM": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geräte-RAM"
           }
         }
       }
@@ -464,6 +657,16 @@
         }
       }
     },
+    "Enable AI features": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KI-Funktionen aktivieren"
+          }
+        }
+      }
+    },
     "Enable AI features to choose an engine.": {
       "localizations": {
         "de": {
@@ -480,6 +683,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Englisch"
+          }
+        }
+      }
+    },
+    "Finished": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgeschlossen"
           }
         }
       }
@@ -504,12 +717,32 @@
         }
       }
     },
+    "From Files, iCloud, AirDrop…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Dateien, iCloud, AirDrop…"
+          }
+        }
+      }
+    },
     "From the passage:": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Aus der Passage:"
+          }
+        }
+      }
+    },
+    "Full book": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganzes Buch"
           }
         }
       }
@@ -564,6 +797,16 @@
         }
       }
     },
+    "Import EPUB": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EPUB importieren"
+          }
+        }
+      }
+    },
     "Import EPUB from Files…": {
       "localizations": {
         "de": {
@@ -590,6 +833,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Import per URL ist noch nicht verfügbar. Speichere die Datei und nutze „EPUB importieren“ in Dateien."
+          }
+        }
+      }
+    },
+    "In your library": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In deiner Bibliothek"
           }
         }
       }
@@ -644,12 +897,42 @@
         }
       }
     },
+    "Language": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
+          }
+        }
+      }
+    },
+    "Last synced": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuletzt synchronisiert"
+          }
+        }
+      }
+    },
     "Library": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Bibliothek"
+          }
+        }
+      }
+    },
+    "Library & sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bibliothek & Synchronisierung"
           }
         }
       }
@@ -764,6 +1047,16 @@
         }
       }
     },
+    "Notes · 0": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notizen · 0"
+          }
+        }
+      }
+    },
     "Nothing in progress": {
       "localizations": {
         "de": {
@@ -824,6 +1117,36 @@
         }
       }
     },
+    "PAGES": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SEITEN"
+          }
+        }
+      }
+    },
+    "Page transition": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seitenübergang"
+          }
+        }
+      }
+    },
+    "Pages": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seiten"
+          }
+        }
+      }
+    },
     "Password": {
       "localizations": {
         "de": {
@@ -870,6 +1193,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Protokoll"
+          }
+        }
+      }
+    },
+    "Read time": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesezeit"
           }
         }
       }
@@ -944,6 +1277,16 @@
         }
       }
     },
+    "STREAK": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SERIE"
+          }
+        }
+      }
+    },
     "Scrubbing to %lld percent, %@": {
       "localizations": {
         "de": {
@@ -956,6 +1299,16 @@
           "stringUnit": {
             "state": "new",
             "value": "Scrubbing to %1$lld percent, %2$@"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suchen"
           }
         }
       }
@@ -1020,12 +1373,42 @@
         }
       }
     },
+    "Signed in as": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angemeldet als"
+          }
+        }
+      }
+    },
     "Stay here": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Hier bleiben"
+          }
+        }
+      }
+    },
+    "Streak": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serie"
+          }
+        }
+      }
+    },
+    "Summarize chapters and ask about selected text — entirely on-device. Disable the master switch to make no AI calls at all.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fasse Kapitel zusammen und stelle Fragen zu ausgewähltem Text – vollständig auf dem Gerät. Deaktiviere den Hauptschalter, um keine KI-Anfragen zu stellen."
           }
         }
       }
@@ -1060,12 +1443,32 @@
         }
       }
     },
+    "Sync URL": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync-URL"
+          }
+        }
+      }
+    },
     "Sync now": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Jetzt synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync over cellular": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisierung über Mobilfunk"
           }
         }
       }
@@ -1080,12 +1483,32 @@
         }
       }
     },
+    "TIME": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZEIT"
+          }
+        }
+      }
+    },
     "Tap + to import an EPUB, or pull to refresh.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Tippe auf +, um ein EPUB zu importieren, oder ziehe zum Aktualisieren nach unten."
+          }
+        }
+      }
+    },
+    "Tap zones": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tippzonen"
           }
         }
       }
@@ -1140,6 +1563,26 @@
         }
       }
     },
+    "Today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute"
+          }
+        }
+      }
+    },
+    "Today, so far": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute bisher"
+          }
+        }
+      }
+    },
     "Try again": {
       "localizations": {
         "de": {
@@ -1156,6 +1599,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Je nach Gerät stehen zwei Engines zur Verfügung:"
+          }
+        }
+      }
+    },
+    "Unread": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ungelesen"
           }
         }
       }
