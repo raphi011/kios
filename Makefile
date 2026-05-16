@@ -1,4 +1,4 @@
-.PHONY: test test-core test-ios build-ios archive xcodegen clean
+.PHONY: test test-core test-ios build-ios archive testflight xcodegen clean
 
 # `swift test` defaults to parallel execution, which races against the static
 # `MockURLProtocol.handler` shared by HTTPClient and KOSyncClient suites.
@@ -29,6 +29,9 @@ build-ios: xcodegen
 
 # Archive for distribution (TestFlight). Bypasses the Xcode UI macro-trust
 # prompt that otherwise blocks `MLXHuggingFaceMacros` from compiling.
+# `-allowProvisioningUpdates` lets xcodebuild mint/refresh the distribution
+# profile from App Store Connect when needed (uses the API key already
+# registered in Xcode → Settings → Accounts).
 # Output: build/Kios.xcarchive.
 archive: xcodegen
 	xcodebuild archive \
@@ -37,7 +40,23 @@ archive: xcodegen
 		-configuration Release \
 		-destination 'generic/platform=iOS' \
 		-archivePath build/Kios.xcarchive \
+		-allowProvisioningUpdates \
 		-skipMacroValidation
+
+# Archive + upload to TestFlight. `ExportOptions.plist` sets
+# `destination: upload`, so the export step posts the IPA to App Store
+# Connect directly — no separate altool/Transporter call. Credentials
+# come from Xcode's Keychain (Apple ID + registered API key), so no
+# explicit auth flags are needed on this machine.
+#
+# Remember to bump `CURRENT_PROJECT_VERSION` in project.yml before
+# running — App Store Connect rejects duplicate version+build pairs.
+testflight: archive
+	xcodebuild -exportArchive \
+		-archivePath build/Kios.xcarchive \
+		-exportOptionsPlist ExportOptions.plist \
+		-exportPath build/ipa \
+		-allowProvisioningUpdates
 
 xcodegen:
 	xcodegen generate
