@@ -449,16 +449,25 @@ struct ReadingStatsServiceWatermarkTests {
         #expect(env.service.pendingJumpReturn == nil)
     }
 
-    @Test("linear advance after a navigation jump implicitly stays")
-    func linearAdvanceImplicitStay() throws {
+    @Test("pill persists across linear swipes after a navigation jump")
+    func pillPersistsAcrossSwipes() throws {
         let env = try Self.makeEnv()
         env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 1000)
         env.clock.advance(by: 5)
         env.service.sessionDidAdvance(position: 500, totalPositions: 1000, source: .scrubCommit)
         #expect(env.service.pendingJumpReturn != nil)
+        // Multiple linear swipes — pill stays sticky.
         env.clock.advance(by: 5)
         env.service.sessionDidAdvance(position: 501, totalPositions: 1000, source: .swipe)
-        #expect(env.service.pendingJumpReturn == nil)
+        #expect(env.service.pendingJumpReturn != nil)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 502, totalPositions: 1000, source: .swipe)
+        #expect(env.service.pendingJumpReturn != nil)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 503, totalPositions: 1000, source: .tap)
+        #expect(env.service.pendingJumpReturn != nil)
+        // Original back-target is preserved.
+        #expect(env.service.pendingJumpReturn?.fromPosition == 5)
     }
 
     @Test("a second nav jump replaces the existing pill target")

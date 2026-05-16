@@ -49,8 +49,9 @@ final class ReadingStatsService {
     private var active: ActiveSession?
 
     /// Set by `sessionDidAdvance` on navigation sources. Cleared by user
-    /// action, the next linear advance, the next nav-jump (replacement),
-    /// or session close. Drives `JumpRecoveryPill`.
+    /// action (Stay/Back), a newer nav-jump (replacement), or session close.
+    /// Persists across linear swipes/taps so users can keep skimming after a
+    /// scrub without losing the recovery affordance.
     var pendingJumpReturn: JumpReturnTarget?
 
     struct JumpReturnTarget: Equatable {
@@ -152,9 +153,6 @@ final class ReadingStatsService {
         }
 
         if source.isLinear {
-            // Implicit "Stay here" if the recovery pill was up.
-            pendingJumpReturn = nil
-
             if let book,
                position > oldFurthest,
                (position - oldFurthest) <= linearAdvanceThreshold {
