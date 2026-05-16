@@ -42,8 +42,23 @@ final class ReadingStatsService {
     /// Gap cap applied to each (lastActivityAt → now) window.
     /// Must equal `idleTimeoutSeconds` for the math to line up.
     private var gapCapSeconds: Int { idleTimeoutSeconds }
+    /// Maximum forward delta (in positions) that qualifies as a linear page
+    /// turn. Larger jumps are treated as navigation even when source is .swipe.
+    private let linearAdvanceThreshold = 5
 
     private var active: ActiveSession?
+
+    /// Set by `sessionDidAdvance` on navigation sources. Cleared by user
+    /// action, the next linear advance, the next nav-jump (replacement),
+    /// or session close. Drives `JumpRecoveryPill`.
+    var pendingJumpReturn: JumpReturnTarget?
+
+    struct JumpReturnTarget: Equatable {
+        /// 0-indexed Readium position to return to.
+        let fromPosition: Int
+        /// 0-indexed Readium position the user jumped to.
+        let toPosition: Int
+    }
 
     init(
         context: ModelContext,
@@ -86,8 +101,18 @@ final class ReadingStatsService {
         }
     }
 
-    func sessionDidAdvance(position: Int, totalPositions: Int, bookID: UUID? = nil) {
+    func sessionDidAdvance(
+        position: Int,
+        totalPositions: Int,
+        source: AdvanceSource,
+        bookID: UUID? = nil
+    ) {
+        // .programmaticReturn is a navigation-control artifact, not a stat event.
+        if source == .programmaticReturn { return }
+
         let now = clock.now()
+
+        // Auto-start a session if none exists (matches v1 behaviour).
         if active == nil, let bookID {
             active = ActiveSession(
                 bookID: bookID,
@@ -99,25 +124,59 @@ final class ReadingStatsService {
                 idleTimer: nil
             )
             scheduleIdleTimer()
-            applyAutoFinish(bookID: active?.bookID, position: position, totalPositions: totalPositions)
-            return
         }
+
         guard var current = active else { return }
+
+        // Time accumulation — unchanged from v1: gap-capped to idleTimeoutSeconds.
         let gap = min(Int(now.timeIntervalSince(current.lastActivityAt)), gapCapSeconds)
         current.accumulatedSeconds += max(gap, 0)
         current.lastActivityAt = now
-        // TODO(Task 5): replace with source-aware watermark logic. Currently
-        // counts all forward-position deltas regardless of source — Task 5
-        // gates on `.swipe`/`.tap` only and bounds the delta against the
-        // per-book furthestLinearPosition.
-        if position > current.lastSeenLinearPosition {
-            let delta = position - current.lastSeenLinearPosition
-            current.pagesAdded += delta
+
+        let effectiveBookID = bookID ?? current.bookID
+        let book = fetchBook(id: effectiveBookID)
+        let oldFurthest = book?.furthestLinearPosition ?? 0
+
+        if source.bumpsWatermarkOnResume {
+            if let book, position > oldFurthest {
+                book.furthestLinearPosition = position
+                try? context.save()
+            }
+            active = current
+            scheduleIdleTimer()
+            return
         }
-        current.lastSeenLinearPosition = position
+
+        if source.isLinear {
+            // Implicit "Stay here" if the recovery pill was up.
+            pendingJumpReturn = nil
+
+            if let book,
+               position > oldFurthest,
+               (position - oldFurthest) <= linearAdvanceThreshold {
+                let delta = position - oldFurthest
+                book.furthestLinearPosition = position
+                current.pagesAdded += delta
+                try? context.save()
+                applyAutoFinish(book: book, totalPositions: totalPositions)
+            }
+            current.lastSeenLinearPosition = position
+        }
+
+        if source.triggersJumpPill {
+            pendingJumpReturn = JumpReturnTarget(
+                fromPosition: current.lastSeenLinearPosition,
+                toPosition: position
+            )
+        }
+
         active = current
         scheduleIdleTimer()
-        applyAutoFinish(bookID: active?.bookID, position: position, totalPositions: totalPositions)
+    }
+
+    private func fetchBook(id: UUID) -> Book? {
+        let descriptor = FetchDescriptor<Book>(predicate: #Predicate { $0.id == id })
+        return try? context.fetch(descriptor).first
     }
 
     func sessionDidClose(reason: EndReason) {
@@ -148,18 +207,15 @@ final class ReadingStatsService {
         active?.idleTimer = timer
     }
 
-    private func applyAutoFinish(bookID: UUID?, position: Int, totalPositions: Int) {
-        guard let bookID, totalPositions > 0 else { return }
-        let progression = Double(position) / Double(totalPositions)
-        guard progression >= 0.95 else { return }
-
-        let descriptor = FetchDescriptor<Book>(
-            predicate: #Predicate { $0.id == bookID }
-        )
-        guard let book = try? context.fetch(descriptor).first else { return }
-        guard book.finishedAt == nil, !book.finishedManually else { return }
-        book.finishedAt = clock.now()
-        try? context.save()
+    private func applyAutoFinish(book: Book, totalPositions: Int) {
+        guard totalPositions > 0,
+              book.finishedAt == nil,
+              !book.finishedManually else { return }
+        let progression = Double(book.furthestLinearPosition) / Double(totalPositions)
+        if progression >= 0.95 {
+            book.finishedAt = clock.now()
+            try? context.save()
+        }
     }
 
     private func close(reason: EndReason) {

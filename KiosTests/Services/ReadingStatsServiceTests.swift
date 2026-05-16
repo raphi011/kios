@@ -62,9 +62,9 @@ struct ReadingStatsServiceBasicTests {
 
         env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 10, totalPositions: 100)
         env.clock.advance(by: 30)
-        env.service.sessionDidAdvance(position: 11, totalPositions: 100)
+        env.service.sessionDidAdvance(position: 11, totalPositions: 100, source: .swipe)
         env.clock.advance(by: 50)
-        env.service.sessionDidAdvance(position: 13, totalPositions: 100)
+        env.service.sessionDidAdvance(position: 13, totalPositions: 100, source: .swipe)
         env.clock.advance(by: 10)
         env.service.sessionDidClose(reason: .closed)
 
@@ -96,7 +96,7 @@ struct ReadingStatsServiceBasicTests {
         env.clock.advance(by: 500)  // user "fell asleep" — but no idle timer
                                     // fired because tests use an indefinite sleep.
                                     // The cap should still kick in.
-        env.service.sessionDidAdvance(position: 1, totalPositions: 100)
+        env.service.sessionDidAdvance(position: 1, totalPositions: 100, source: .swipe)
         env.service.sessionDidClose(reason: .closed)
 
         let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
@@ -126,11 +126,16 @@ struct ReadingStatsServiceBasicTests {
 
     @Test func sessionDidAdvanceAutoStartsNewSessionIfNoneActive() throws {
         let env = try Self.makeEnv()
+        // Seed watermark at 10 so the first advance (position 10) is not
+        // above the watermark and earns no credit; only the second advance
+        // (position 12, delta 2 from watermark 10) earns the 2 pages.
+        env.book.furthestLinearPosition = 10
+        try env.context.save()
 
         // No `sessionDidOpen` first — advance with explicit bookID should start a session.
-        env.service.sessionDidAdvance(position: 10, totalPositions: 100, bookID: env.book.id)
+        env.service.sessionDidAdvance(position: 10, totalPositions: 100, source: .swipe, bookID: env.book.id)
         env.clock.advance(by: 30)
-        env.service.sessionDidAdvance(position: 12, totalPositions: 100, bookID: env.book.id)
+        env.service.sessionDidAdvance(position: 12, totalPositions: 100, source: .swipe, bookID: env.book.id)
         env.clock.advance(by: 5)
         env.service.sessionDidClose(reason: .closed)
 
@@ -243,30 +248,38 @@ struct ReadingStatsServiceAutoFinishTests {
 
     @Test func advancingPast95SetsFinishedAt() throws {
         let env = try Self.makeEnv()
-        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
-        env.clock.advance(by: 30)
-        env.service.sessionDidAdvance(position: 96, totalPositions: 100)
-
+        env.book.furthestLinearPosition = 94
+        try env.context.save()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 94, totalPositions: 100)
+        env.clock.advance(by: 10)
+        env.service.sessionDidAdvance(position: 95, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
         #expect(env.book.finishedAt != nil)
     }
 
     @Test func advancingPast95DoesNotSetWhenAlreadyFinished() throws {
-        let initial = Date(timeIntervalSince1970: 500_000)
-        let env = try Self.makeEnv(finishedAt: initial)
-        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
-        env.clock.advance(by: 30)
-        env.service.sessionDidAdvance(position: 97, totalPositions: 100)
-
-        #expect(env.book.finishedAt == initial)  // unchanged
+        let env = try Self.makeEnv()
+        env.book.furthestLinearPosition = 94
+        let originalFinishDate = Date(timeIntervalSince1970: 500_000)
+        env.book.finishedAt = originalFinishDate
+        try env.context.save()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 94, totalPositions: 100)
+        env.clock.advance(by: 10)
+        env.service.sessionDidAdvance(position: 95, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.book.finishedAt == originalFinishDate)  // unchanged
     }
 
     @Test func advancingPast95DoesNotSetWhenManuallyOverridden() throws {
         // User explicitly un-finished the book (finishedAt nil, finishedManually true).
-        let env = try Self.makeEnv(finishedAt: nil, finishedManually: true)
-        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
-        env.clock.advance(by: 30)
-        env.service.sessionDidAdvance(position: 97, totalPositions: 100)
-
+        let env = try Self.makeEnv()
+        env.book.furthestLinearPosition = 94
+        env.book.finishedManually = true
+        try env.context.save()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 94, totalPositions: 100)
+        env.clock.advance(by: 10)
+        env.service.sessionDidAdvance(position: 95, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
         #expect(env.book.finishedAt == nil)  // manual override holds
     }
 
@@ -274,8 +287,154 @@ struct ReadingStatsServiceAutoFinishTests {
         let env = try Self.makeEnv()
         env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
         env.clock.advance(by: 30)
-        env.service.sessionDidAdvance(position: 50, totalPositions: 100)
+        env.service.sessionDidAdvance(position: 50, totalPositions: 100, source: .swipe)
 
         #expect(env.book.finishedAt == nil)
+    }
+}
+
+@MainActor
+@Suite("ReadingStatsService (watermark)", .serialized)
+struct ReadingStatsServiceWatermarkTests {
+    typealias TestClock = ReadingStatsServiceBasicTests.TestClock
+
+    private static func makeEnv() throws -> (
+        service: ReadingStatsService,
+        context: ModelContext,
+        book: Book,
+        clock: TestClock
+    ) {
+        let container = try ModelContainer.kiosInMemory()
+        let context = ModelContext(container)
+        let book = Book(
+            serverID: "s", serverIDProtocol: "kosync",
+            title: "t", authors: [], opdsHref: nil,
+            acquisitionURL: URL(string: "https://e.com/a")!,
+            format: .epub, koboBookUUID: nil, archived: false,
+            filename: "x.epub"
+        )
+        context.insert(book)
+        try context.save()
+        let clock = TestClock(start: Date(timeIntervalSince1970: 1_000_000))
+        let service = ReadingStatsService(
+            context: context,
+            clock: clock.statsClock(),
+            idleTimeoutSeconds: 120
+        )
+        return (service, context, book, clock)
+    }
+
+    @Test("3 linear swipes from open at 0 credit 3 pages and bump watermark to 3")
+    func threeLinearSwipes() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 1, totalPositions: 100, source: .swipe)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 2, totalPositions: 100, source: .swipe)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 3, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 3)
+        #expect(env.book.furthestLinearPosition == 3)
+    }
+
+    @Test("scrub-commit does not credit, does not bump watermark")
+    func scrubCommitNoCredit() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 100)
+        env.clock.advance(by: 10)
+        env.service.sessionDidAdvance(position: 200, totalPositions: 1000, source: .scrubCommit)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 0)
+        #expect(env.book.furthestLinearPosition == 5)
+    }
+
+    @Test("swipe after a scrub-jump is blocked by delta-from-furthest threshold")
+    func swipeAfterScrubBlocked() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 1000)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 200, totalPositions: 1000, source: .scrubCommit)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 201, totalPositions: 1000, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 0)
+        #expect(env.book.furthestLinearPosition == 5)
+    }
+
+    @Test("backward swipe (re-read) does not move watermark")
+    func backwardSwipe() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 10, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 11, totalPositions: 100, source: .swipe)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 9, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 1)
+        #expect(env.book.furthestLinearPosition == 11)
+    }
+
+    @Test("resumeFromSync bumps watermark but doesn't credit pages")
+    func resumeFromSyncBumps() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 50, totalPositions: 100, source: .resumeFromSync)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 0)
+        #expect(env.book.furthestLinearPosition == 50)
+    }
+
+    @Test("delta exceeding linearAdvanceThreshold is not credited")
+    func deltaTooLarge() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 10, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 0)
+        #expect(env.book.furthestLinearPosition == 0)
+    }
+
+    @Test("programmaticReturn is a no-op for stats")
+    func programmaticReturnNoOp() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 200, totalPositions: 1000, source: .scrubCommit)
+        env.service.sessionDidAdvance(position: 5, totalPositions: 1000, source: .programmaticReturn)
+        env.service.sessionDidClose(reason: .closed)
+        let sessions = try env.context.fetch(FetchDescriptor<ReadingSession>())
+        #expect(sessions.first?.pagesAdded == 0)
+        #expect(env.book.furthestLinearPosition == 5)
+    }
+
+    @Test("watermark crossing 95% via linear swipes auto-finishes the book")
+    func autoFinishOnLinearArrival() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 94, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 95, totalPositions: 100, source: .swipe)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.book.finishedAt != nil)
+    }
+
+    @Test("scrub-to-99% does not auto-finish")
+    func scrubToEndDoesNotAutoFinish() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 99, totalPositions: 100, source: .scrubCommit)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.book.finishedAt == nil)
+        #expect(env.book.furthestLinearPosition == 5)
     }
 }

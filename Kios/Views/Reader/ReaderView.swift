@@ -1010,6 +1010,7 @@ struct ReaderView: View {
             env.stats.sessionDidAdvance(
                 position: positionIndex,
                 totalPositions: positions.count,
+                source: .swipe,
                 bookID: book.id
             )
         }
