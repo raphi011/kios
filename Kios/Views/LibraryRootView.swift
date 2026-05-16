@@ -60,7 +60,7 @@ struct LibraryRootView: View {
 
     /// Footer for the last section — surfaces sync recency. Hidden until the
     /// sync layer exposes a timestamp.
-    private var lastSyncedFooter: String? { nil }
+    private var lastSyncedFooter: LocalizedStringKey? { nil }
 
     var body: some View {
         NavigationStack {
@@ -179,12 +179,13 @@ struct LibraryRootView: View {
     private enum SectionKind { case reading, unread, finished }
 
     private func section(
-        _ name: String,
+        _ name: String.LocalizationValue,
         books: [Book],
         kind: SectionKind,
-        footer: String? = nil
+        footer: LocalizedStringKey? = nil
     ) -> some View {
-        EditorialList("\(name) · \(books.count)", footer: footer) {
+        let localizedName = String(localized: name)
+        return EditorialList("\(localizedName) · \(books.count)", footer: footer) {
             ForEach(books.indices, id: \.self) { i in
                 let book = books[i]
                 Button { handleTap(book) } label: {
@@ -252,7 +253,7 @@ struct LibraryRootView: View {
         .padding(.bottom, 80)
     }
 
-    private var filteredEmptyContent: (title: String, description: String, symbol: String) {
+    private var filteredEmptyContent: (title: LocalizedStringKey, description: LocalizedStringKey, symbol: String) {
         switch filter {
         case .all:
             return ("Your library is empty",
@@ -301,28 +302,11 @@ struct LibraryRootView: View {
                 case .imported(let book), .existing(let book):
                     env.openReader(book.id)
                 }
-            } catch let err as LocalImportError {
-                importError = userFacingMessage(for: err)
             } catch {
                 importError = error.localizedDescription
             }
         case .failure(let error):
             importError = error.localizedDescription
-        }
-    }
-
-    private func userFacingMessage(for error: LocalImportError) -> String {
-        switch error {
-        case .unsupportedFormat:
-            return "Kios can only import EPUB files right now."
-        case .readFailed(let detail):
-            return "Couldn't read the file. \(detail)"
-        case .parseFailed:
-            return "This EPUB seems to be damaged."
-        case .copyFailed(let detail):
-            return "Couldn't save the file. \(detail)"
-        case .noTitle:
-            return "This EPUB has no title metadata and can't be imported."
         }
     }
 

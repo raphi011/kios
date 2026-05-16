@@ -144,7 +144,7 @@ struct ReaderContentsView: View {
         }
     }
 
-    private var footerForContents: String? {
+    private var footerForContents: LocalizedStringKey? {
         guard let current = chapters.first(where: { $0.status == .current }) else {
             return nil
         }

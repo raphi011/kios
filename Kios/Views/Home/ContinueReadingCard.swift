@@ -64,7 +64,11 @@ struct ContinueReadingCard: View {
             book: book,
             sessions: sessions
         ) else { return nil }
-        return StatsFormatters.time(seconds: estimate.secondsRemaining) + " left"
+        let formatted = StatsFormatters.time(seconds: estimate.secondsRemaining)
+        return String(
+            localized: "stats.timeLeft",
+            defaultValue: "\(formatted) left"
+        )
     }
 }
 

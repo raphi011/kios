@@ -30,6 +30,34 @@ enum LocalImportError: Error, Equatable {
     case noTitle
 }
 
+extension LocalImportError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedFormat:
+            String(localized: "import.error.unsupportedFormat",
+                   defaultValue: "Kios can only import EPUB files right now.")
+        case .readFailed(let detail):
+            String(
+                format: String(localized: "import.error.readFailed",
+                               defaultValue: "Couldn't read the file. %@"),
+                detail
+            )
+        case .parseFailed:
+            String(localized: "import.error.parseFailed",
+                   defaultValue: "This EPUB seems to be damaged.")
+        case .copyFailed(let detail):
+            String(
+                format: String(localized: "import.error.copyFailed",
+                               defaultValue: "Couldn't save the file. %@"),
+                detail
+            )
+        case .noTitle:
+            String(localized: "import.error.noTitle",
+                   defaultValue: "This EPUB has no title metadata and can't be imported.")
+        }
+    }
+}
+
 /// Foreground-only service that ingests a local `.epub` file into the
 /// library. Mirrors `DownloadService` in shape but writes to disk
 /// synchronously and does not maintain a background URLSession.

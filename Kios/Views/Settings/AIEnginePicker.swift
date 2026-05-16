@@ -30,7 +30,7 @@ struct AIEnginePicker: View {
         }
     }
 
-    private var disabledMessage: String? {
+    private var disabledMessage: LocalizedStringKey? {
         if availability.fm == .userDisabled && availability.gemma == .userDisabled {
             return "Enable AI features to choose an engine."
         }
@@ -41,7 +41,7 @@ struct AIEnginePicker: View {
     /// case — the `ModelDownloadCell` below shows the live progress bar +
     /// rate + Cancel button, so a duplicate text footnote here would just
     /// add visual noise. Same for `available`, which doesn't need a hint.
-    private var perEngineFootnote: String? {
+    private var perEngineFootnote: LocalizedStringKey? {
         switch preferredEngine {
         case .gemma4_e4b:
             switch availability.gemma {
