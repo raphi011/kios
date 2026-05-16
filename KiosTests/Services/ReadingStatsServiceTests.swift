@@ -437,4 +437,52 @@ struct ReadingStatsServiceWatermarkTests {
         #expect(env.book.finishedAt == nil)
         #expect(env.book.furthestLinearPosition == 5)
     }
+
+    @Test("dismissJumpPill clears pendingJumpReturn")
+    func dismissPillStay() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 50, totalPositions: 100, source: .scrubCommit)
+        #expect(env.service.pendingJumpReturn != nil)
+        env.service.dismissJumpPill(commitStay: true)
+        #expect(env.service.pendingJumpReturn == nil)
+    }
+
+    @Test("linear advance after a navigation jump implicitly stays")
+    func linearAdvanceImplicitStay() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 1000)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 500, totalPositions: 1000, source: .scrubCommit)
+        #expect(env.service.pendingJumpReturn != nil)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 501, totalPositions: 1000, source: .swipe)
+        #expect(env.service.pendingJumpReturn == nil)
+    }
+
+    @Test("a second nav jump replaces the existing pill target")
+    func secondNavReplacesPill() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 1000)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 200, totalPositions: 1000, source: .scrubCommit)
+        let firstTo = env.service.pendingJumpReturn?.toPosition
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 700, totalPositions: 1000, source: .tocJump)
+        let secondTo = env.service.pendingJumpReturn?.toPosition
+        #expect(firstTo == 200)
+        #expect(secondTo == 700)
+        #expect(env.service.pendingJumpReturn?.fromPosition == 5)
+    }
+
+    @Test("close clears the pill")
+    func closeClearsPill() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 5, totalPositions: 100)
+        env.clock.advance(by: 5)
+        env.service.sessionDidAdvance(position: 50, totalPositions: 100, source: .scrubCommit)
+        env.service.sessionDidClose(reason: .closed)
+        #expect(env.service.pendingJumpReturn == nil)
+    }
 }

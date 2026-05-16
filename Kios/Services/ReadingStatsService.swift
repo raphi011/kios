@@ -186,6 +186,14 @@ final class ReadingStatsService {
         close(reason: reason)
     }
 
+    /// Clears the recovery pill. `commitStay` is informational — the
+    /// watermark stays put either way. Callers map both pill buttons here:
+    /// "Stay here" with `commitStay: true`, "Back to page X" with
+    /// `commitStay: false` (after issuing a `.programmaticReturn` jump).
+    func dismissJumpPill(commitStay: Bool) {
+        pendingJumpReturn = nil
+    }
+
     // MARK: - Internals
 
     private func scheduleIdleTimer() {
@@ -222,6 +230,7 @@ final class ReadingStatsService {
     }
 
     private func close(reason: EndReason) {
+        pendingJumpReturn = nil
         guard let current = active else { return }
         defer { active = nil }
         current.idleTimer?.cancel()
