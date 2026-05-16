@@ -57,7 +57,16 @@ final class SyncService {
             return .useLocal
         }
         let local = currentLocalProgress(for: book.id)
-        if server.deviceID == deviceID { return .useLocal }
+        // "I am the latest writer" shortcut. With a local row, we already
+        // have this state on disk so the server fetch is redundant. Without
+        // one (post-delete redownload, or fresh install on the same physical
+        // device — `deviceID` is keychain-persisted), the server is the only
+        // surviving copy of *our own* last position; silently restore it
+        // rather than start over at 0%. No prompt — this isn't another
+        // device's write, it's ours.
+        if server.deviceID == deviceID {
+            return local == nil ? .applyServer(progress: server) : .useLocal
+        }
 
         let localPercentage = local?.percentage ?? 0
         let localTimestamp = local?.updatedAt ?? .distantPast

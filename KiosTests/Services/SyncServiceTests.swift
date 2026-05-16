@@ -55,11 +55,31 @@ struct SyncServiceTests {
         #expect(action == .useLocal)
     }
 
-    @Test func returnsUseLocalWhenServerIsThisDevice() async throws {
+    @Test func returnsUseLocalWhenServerIsThisDeviceAndLocalExists() async throws {
+        // Same device wrote both: server fetch is redundant, local row is
+        // authoritative.
+        let server = Self.makeProgress(deviceID: "us", pct: 0.5)
+        let env = try Env.make(
+            serverProgress: server, deviceID: "us", localPercentage: 0.5
+        )
+        let action = try await env.sync.onOpen(book: env.book)
+        #expect(action == .useLocal)
+    }
+
+    @Test func appliesServerWhenServerIsThisDeviceButLocalMissing() async throws {
+        // Post-delete redownload (or fresh install on the same physical
+        // device): server holds the last position we wrote, but the local
+        // ReadingProgress row is gone. Restore silently — never prompt the
+        // user about their own write.
         let server = Self.makeProgress(deviceID: "us", pct: 0.5)
         let env = try Env.make(serverProgress: server, deviceID: "us")
         let action = try await env.sync.onOpen(book: env.book)
-        #expect(action == .useLocal)
+        if case .applyServer(let s) = action {
+            #expect(s.percentage == 0.5)
+            #expect(s.deviceID == "us")
+        } else {
+            Issue.record("expected .applyServer, got \(action)")
+        }
     }
 
     @Test func promptsWhenServerSubstantiallyAhead() async throws {
