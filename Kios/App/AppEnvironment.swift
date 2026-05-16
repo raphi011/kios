@@ -78,6 +78,7 @@ final class AppEnvironment {
         // the mainContext's autosave can overwrite service writes with its
         // stale view of the same row.
         self.modelContext = self.modelContainer.mainContext
+        ModelContainerFactory.applyWatermarkModelWipeIfNeeded(context: self.modelContext)
         self.authStore = AuthStore()
         self.library = LibraryService(context: self.modelContext)
         self.stats = ReadingStatsService(context: self.modelContext)
