@@ -260,3 +260,146 @@ struct StatsAggregatorTests {
         #expect(result?.id == fresh.id)
     }
 }
+
+@MainActor
+@Suite("StatsAggregator.paceEstimate")
+struct PaceEstimateTests {
+
+    private static func makeBook(furthestLinearPosition: Int, totalPositions: Int) -> Book {
+        let book = Book(
+            serverID: "s", serverIDProtocol: "kosync",
+            title: "t", authors: [], opdsHref: nil,
+            acquisitionURL: URL(string: "https://e.com/a")!,
+            format: .epub, koboBookUUID: nil, archived: false,
+            filename: nil
+        )
+        book.furthestLinearPosition = furthestLinearPosition
+        book.totalPositions = totalPositions
+        return book
+    }
+
+    private func makeSession(
+        bookID: UUID,
+        durationSeconds: Int,
+        pagesAdded: Int,
+        endedAt: Date = Date()
+    ) -> ReadingSession {
+        ReadingSession(
+            id: UUID(),
+            bookID: bookID,
+            startedAt: endedAt.addingTimeInterval(-TimeInterval(durationSeconds)),
+            endedAt: endedAt,
+            durationSeconds: durationSeconds,
+            pagesAdded: pagesAdded,
+            endReason: "closed"
+        )
+    }
+
+    @Test("returns nil when totalPositions == 0 (publication never opened)")
+    func totalPositionsZero() {
+        let book = Self.makeBook(furthestLinearPosition: 0, totalPositions: 0)
+        let s = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 100)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.5, book: book, sessions: [s]
+        )
+        #expect(estimate == nil)
+    }
+
+    @Test("returns nil when per-book minutes < 5")
+    func belowGate() {
+        let book = Self.makeBook(furthestLinearPosition: 10, totalPositions: 100)
+        let s = makeSession(bookID: book.id, durationSeconds: 4 * 60, pagesAdded: 10)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.10, book: book, sessions: [s]
+        )
+        #expect(estimate == nil)
+    }
+
+    @Test("returns medium confidence between 5 and 30 minutes")
+    func mediumConfidence() {
+        let book = Self.makeBook(furthestLinearPosition: 100, totalPositions: 1000)
+        let s = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 100)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.10, book: book, sessions: [s]
+        )
+        #expect(estimate?.confidence == .medium)
+    }
+
+    @Test("returns high confidence at >=30 minutes")
+    func highConfidence() {
+        let book = Self.makeBook(furthestLinearPosition: 400, totalPositions: 1000)
+        let s = makeSession(bookID: book.id, durationSeconds: 40 * 60, pagesAdded: 400)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.40, book: book, sessions: [s]
+        )
+        #expect(estimate?.confidence == .high)
+    }
+
+    @Test("clamps an extremely slow session to 60s/position ceiling")
+    func clampsSlow() {
+        let book = Self.makeBook(furthestLinearPosition: 1, totalPositions: 11)
+        let s = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 1)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 1.0 / 11.0, book: book, sessions: [s]
+        )
+        #expect(estimate?.secondsRemaining == 600)
+    }
+
+    @Test("clamps an extremely fast session to 1.5s/position floor")
+    func clampsFast() {
+        let book = Self.makeBook(furthestLinearPosition: 10_000, totalPositions: 10_100)
+        let s = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 10_000)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 10_000.0 / 10_100.0, book: book, sessions: [s]
+        )
+        #expect(estimate?.secondsRemaining == 150)
+    }
+
+    @Test("blends global with per-book between 5 and 30 minutes")
+    func blends() {
+        let book = Self.makeBook(furthestLinearPosition: 100, totalPositions: 150)
+        let otherBookID = UUID()
+        let perBook = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 100)
+        let other = makeSession(bookID: otherBookID, durationSeconds: 50 * 60, pagesAdded: 200)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 100.0 / 150.0, book: book, sessions: [perBook, other]
+        )
+        guard let secs = estimate?.secondsRemaining else {
+            Issue.record("expected non-nil estimate")
+            return
+        }
+        #expect((535...545).contains(secs))
+    }
+
+    @Test("excludes pagesAdded==0 sessions from pace calc")
+    func excludesUncreditedSessions() {
+        let book = Self.makeBook(furthestLinearPosition: 100, totalPositions: 200)
+        let real = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 100)
+        let scrubOnly = makeSession(bookID: book.id, durationSeconds: 60 * 60, pagesAdded: 0)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.5, book: book, sessions: [real, scrubOnly]
+        )
+        guard let secs = estimate?.secondsRemaining else {
+            Issue.record("expected non-nil estimate")
+            return
+        }
+        #expect((595...605).contains(secs))
+    }
+
+    @Test("anchor uses max(furthestLinearPosition, cursorPosition)")
+    func anchorUsesMax() {
+        // cursor = Int(0.1 * 1000) = 100 < furthestLinearPosition = 500,
+        // so anchor = 500, remaining = 500.
+        // pace = clamp(600/500, 1.5, 60) = 1.5 → result = 750 ≈ 745...755.
+        let book = Self.makeBook(furthestLinearPosition: 500, totalPositions: 1000)
+        let s = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 500)
+        let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.1, book: book, sessions: [s]
+        )
+        guard let secs = estimate?.secondsRemaining else {
+            Issue.record("expected non-nil estimate")
+            return
+        }
+        #expect((745...755).contains(secs))
+    }
+}

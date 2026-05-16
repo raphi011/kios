@@ -1,5 +1,11 @@
 import Foundation
 
+struct PaceEstimate: Equatable {
+    enum Confidence { case medium, high }
+    let secondsRemaining: Int
+    let confidence: Confidence
+}
+
 /// Aggregated stats for the Home tab. `totalSeconds` / `totalPages` are
 /// lifetime; `todaySeconds` / `todayPages` are local-day-of-`now`. Both are
 /// populated so the strip can switch between "Today, so far" and lifetime
@@ -97,6 +103,58 @@ enum StatsAggregator {
             cursor = prev
         }
         return count
+    }
+
+    /// Per-book "X min left" estimate. Returns nil when (a) the book's
+    /// totalPositions hasn't been populated yet (publication never opened
+    /// in the reader on this device), or (b) per-book trusted reading is
+    /// under 5 minutes. Blends a per-book pace with a lifetime pace as
+    /// confidence climbs from 5 to 30 minutes. Clamps the working pace to
+    /// [1.5s, 60s] per position so pathological scrub/idle sessions can't
+    /// drag the estimate to extremes. Anchors the "where the user is"
+    /// position on `max(furthestLinearPosition, cursor)` so a post-scrub
+    /// cursor doesn't make the estimate undercount remaining time.
+    @MainActor
+    static func paceEstimate(
+        bookID: UUID,
+        progressFraction: Double,
+        book: Book,
+        sessions: [ReadingSession]
+    ) -> PaceEstimate? {
+        guard book.totalPositions > 0 else { return nil }
+
+        let trusted = sessions.filter { $0.pagesAdded > 0 }
+        let perBook = trusted.filter { $0.bookID == bookID }
+        let perBookSeconds = perBook.reduce(0) { $0 + $1.durationSeconds }
+        let perBookPages = perBook.reduce(0) { $0 + $1.pagesAdded }
+        let perBookMinutes = perBookSeconds / 60
+
+        guard perBookMinutes >= 5, perBookPages > 0 else { return nil }
+
+        let globalSeconds = trusted.reduce(0) { $0 + $1.durationSeconds }
+        let globalPages = trusted.reduce(0) { $0 + $1.pagesAdded }
+        let defaultPace = 1.5  // seconds per position, ~250 WPM
+        let globalPace = globalPages > 0
+            ? clamp(Double(globalSeconds) / Double(globalPages), 1.5, 60.0)
+            : defaultPace
+        let perBookPace = clamp(Double(perBookSeconds) / Double(perBookPages), 1.5, 60.0)
+
+        let alpha = clamp((Double(perBookMinutes) - 5.0) / 25.0, 0.2, 0.8)
+        let blendedPace = alpha * perBookPace + (1 - alpha) * globalPace
+
+        let cursorPosition = Int(progressFraction * Double(book.totalPositions))
+        let anchorPosition = max(book.furthestLinearPosition, cursorPosition)
+        let remainingPositions = max(book.totalPositions - anchorPosition, 0)
+        let secondsRemaining = Int(blendedPace * Double(remainingPositions))
+
+        return PaceEstimate(
+            secondsRemaining: secondsRemaining,
+            confidence: perBookMinutes >= 30 ? .high : .medium
+        )
+    }
+
+    private static func clamp<T: Comparable>(_ value: T, _ lo: T, _ hi: T) -> T {
+        min(max(value, lo), hi)
     }
 
     /// Most-recently-touched eligible book. nil when no book qualifies.
