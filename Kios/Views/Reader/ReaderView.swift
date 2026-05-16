@@ -153,6 +153,7 @@ struct ReaderView: View {
             content
                 .ignoresSafeArea(edges: [.top, .horizontal])
             chromeOverlay
+            pillOverlay
             hudOverlay
         }
         // Pin to white instead of `Color(.systemBackground)`: in dark mode the
@@ -522,6 +523,27 @@ struct ReaderView: View {
             }
         }
         return out
+    }
+
+    /// Persistent pill overlay — visible regardless of `uiVisible` so the
+    /// user can always return after a nav jump. Floats above the bottom safe
+    /// area, above the scrubber chrome when chrome is showing.
+    @ViewBuilder
+    private var pillOverlay: some View {
+        if let target = env.stats.pendingJumpReturn {
+            VStack {
+                Spacer()
+                JumpRecoveryPill(
+                    target: target,
+                    onBack: { handleBackToPage(target) },
+                    onStay: { env.stats.dismissJumpPill(commitStay: true) }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 100) // float above the scrubber chrome
+            }
+            .animation(.snappy, value: env.stats.pendingJumpReturn)
+        }
     }
 
     @ViewBuilder
@@ -1001,6 +1023,19 @@ struct ReaderView: View {
         formatter.unitsStyle = .full
         let when = formatter.localizedString(for: progress.timestamp, relativeTo: .now)
         return "Last read \(when) on \(device)"
+    }
+
+    /// Pill "Back to p. X" handler: issue a programmatic return to the
+    /// stored back-position, tagged so the service ignores it for stats.
+    private func handleBackToPage(_ target: ReadingStatsService.JumpReturnTarget) {
+        guard target.fromPosition >= 0,
+              target.fromPosition < positions.count else {
+            env.stats.dismissJumpPill(commitStay: false)
+            return
+        }
+        pendingJumpSource = .programmaticReturn
+        pendingJump = positions[target.fromPosition]
+        env.stats.dismissJumpPill(commitStay: false)
     }
 
     private func pushLocator(bookID: UUID, locator: Locator) async {
