@@ -7,13 +7,7 @@ import SwiftData
 @MainActor
 struct BookmarkDefaultsTests {
     private func makeContext() throws -> ModelContext {
-        let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
-                 ChapterSummary.self, BookAnalysis.self, CharacterMention.self,
-                 CharacterProfile.self, BookSummary.self, Bookmark.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        return ModelContext(container)
+        ModelContext(try ModelContainer.kiosInMemory())
     }
 
     @Test func newBookmarkPersistsAllFields() throws {
@@ -46,6 +40,7 @@ struct BookmarkDefaultsTests {
             chapterTitle: ""
         )
         ctx.insert(bookmark)
+        try ctx.save()
         let after = Date.now.addingTimeInterval(1)
         #expect(bookmark.createdAt >= before)
         #expect(bookmark.createdAt <= after)
