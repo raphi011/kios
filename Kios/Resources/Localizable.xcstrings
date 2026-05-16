@@ -1,0 +1,390 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "%@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "%@." : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "%lld%% · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%% · %2$@"
+          }
+        }
+      }
+    },
+    "AI engine unavailable" : {
+
+    },
+    "Aa" : {
+
+    },
+    "Add a book" : {
+
+    },
+    "Add from URL…" : {
+
+    },
+    "Also known as: %@" : {
+
+    },
+    "Analysis stopped" : {
+
+    },
+    "Analyze book" : {
+
+    },
+    "Analyze this book to extract a roster, per-chapter summaries, and a whole-book overview." : {
+
+    },
+    "Analyzing chapter %lld of %lld…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Analyzing chapter %1$lld of %2$lld…"
+          }
+        }
+      }
+    },
+    "App language" : {
+
+    },
+    "Appears in chapter %lld–%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Appears in chapter %1$lld–%2$lld"
+          }
+        }
+      }
+    },
+    "Ask" : {
+
+    },
+    "Ask AI" : {
+
+    },
+    "Back to p. %lld" : {
+
+    },
+    "Book not found" : {
+
+    },
+    "Books you download from Browse appear here." : {
+
+    },
+    "Brightness %lld percent" : {
+
+    },
+    "CONTINUE READING" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Catalog will be cleared. Downloaded books and reading progress stay on this device." : {
+
+    },
+    "Chapter %lld" : {
+
+    },
+    "Chapter mentions" : {
+
+    },
+    "Close" : {
+
+    },
+    "Coming soon" : {
+
+    },
+    "Connected" : {
+
+    },
+    "Continue" : {
+
+    },
+    "Continue Reading" : {
+
+    },
+    "Couldn't answer: %@" : {
+
+    },
+    "DRM-free EPUB only. Kios won't ask you to log in to a store." : {
+
+    },
+    "Delete" : {
+
+    },
+    "Deutsch" : {
+
+    },
+    "Download model" : {
+
+    },
+    "Downloading…" : {
+
+    },
+    "English" : {
+
+    },
+    "Follow System" : {
+
+    },
+    "Font size %lld percent" : {
+
+    },
+    "From the passage:" : {
+
+    },
+    "Generate chapter summaries and ask about selected passages — without sending anything to a server." : {
+
+    },
+    "Got it" : {
+
+    },
+    "Home" : {
+
+    },
+    "Import EPUB from Files…" : {
+
+    },
+    "Import failed" : {
+
+    },
+    "Importing from a URL isn't supported yet. For now, save the file and use Import EPUB from Files." : {
+
+    },
+    "Insights" : {
+
+    },
+    "Installed" : {
+
+    },
+    "KOReader Sync" : {
+
+    },
+    "Kobo Sync" : {
+
+    },
+    "Kobo sync URL" : {
+
+    },
+    "Library" : {
+
+    },
+    "Mark as finished" : {
+
+    },
+    "Mark as unfinished" : {
+
+    },
+    "Model files are corrupt" : {
+
+    },
+    "No book summary yet." : {
+
+    },
+    "No book to open yet." : {
+
+    },
+    "No downloaded books" : {
+
+    },
+    "No summary for this chapter — try analyzing again." : {
+
+    },
+    "Not downloaded" : {
+
+    },
+    "OK" : {
+
+    },
+    "On-device AI features" : {
+
+    },
+    "Open Most Recent Book" : {
+
+    },
+    "Opening…" : {
+
+    },
+    "Opens the book you were last reading." : {
+
+    },
+    "Password" : {
+
+    },
+    "Past your current position" : {
+
+    },
+    "Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password." : {
+
+    },
+    "Preparing…" : {
+
+    },
+    "Protocol" : {
+
+    },
+    "Reader" : {
+
+    },
+    "Reading" : {
+
+    },
+    "Required for the Bigger context engine." : {
+
+    },
+    "Restart" : {
+
+    },
+    "Restart Kios to apply the new language." : {
+
+    },
+    "Retry" : {
+
+    },
+    "Roughly 5 min on iPhone 17 Pro; longer on older devices." : {
+
+    },
+    "Scrubbing to %lld percent, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scrubbing to %1$lld percent, %2$@"
+          }
+        }
+      }
+    },
+    "Settings" : {
+
+    },
+    "Show full" : {
+
+    },
+    "Show full book" : {
+
+    },
+    "Show less" : {
+
+    },
+    "Sign out" : {
+
+    },
+    "Sign out?" : {
+
+    },
+    "Stay here" : {
+
+    },
+    "Switch and refresh library" : {
+
+    },
+    "Switch to %@?" : {
+
+    },
+    "Sync" : {
+
+    },
+    "Sync now" : {
+
+    },
+    "Sync protocol" : {
+
+    },
+    "Tap + to import an EPUB, or pull to refresh." : {
+
+    },
+    "Test & Save" : {
+
+    },
+    "Testing…" : {
+
+    },
+    "This analysis is from an older version of the app." : {
+
+    },
+    "This chapter is past your current reading position. Continue?" : {
+
+    },
+    "Through what you've read" : {
+
+    },
+    "Try again" : {
+
+    },
+    "Two engines are available, depending on your device:" : {
+
+    },
+    "Username" : {
+
+    },
+    "You are here" : {
+
+    },
+    "You can switch between them anytime in Settings." : {
+
+    },
+    "You jumped to page %lld. Back to page %lld or stay here." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You jumped to page %1$lld. Back to page %2$lld or stay here."
+          }
+        }
+      }
+    },
+    "Your device doesn't support on-device AI features yet. Requires iOS 26 with Apple Intelligence, or 8 GB of RAM." : {
+
+    },
+    "Your library is empty" : {
+
+    },
+    "Your library will be refreshed against the new server. Books not present on the new server will be archived (not deleted). Downloaded files and reading progress are preserved." : {
+
+    },
+    "Your question:" : {
+
+    },
+    "e.g. What does this paragraph mean?" : {
+
+    },
+    "https://cwa.example.com" : {
+
+    },
+    "·" : {
+
+    },
+    "· %@ on disk" : {
+
+    },
+    "“%@”" : {
+
+    },
+    "✓ Finished %@" : {
+
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,4 +1,8 @@
 name: Kios
+developmentLanguage: en
+knownRegions:
+  - en
+  - de
 
 options:
   bundleIdPrefix: com.raphi011
@@ -20,6 +24,10 @@ settings:
     # `#Predicate { $0.id == … }` macro-expansion warnings that SwiftData emits
     # for every @Model `var` property. Becomes the default in Swift 6.
     OTHER_SWIFT_FLAGS: "$(inherited) -enable-upcoming-feature InferSendableFromCaptures"
+    # Localization: emit extractable string metadata so xcodebuild auto-populates
+    # Localizable.xcstrings catalogs on build (Xcode 15+).
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_EXPORT_SUPPORTED: YES
 
 packages:
   Readium:

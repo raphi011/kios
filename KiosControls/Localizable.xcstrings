@@ -1,0 +1,21 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Continue Reading" : {
+
+    },
+    "No book to open yet." : {
+
+    },
+    "Open Most Recent Book" : {
+
+    },
+    "Opens the book you were last reading." : {
+
+    },
+    "Reading" : {
+
+    }
+  },
+  "version" : "1.0"
+}
