@@ -137,6 +137,9 @@ final class ReadingStatsService {
         let book = fetchBook(id: effectiveBookID)
         let oldFurthest = book?.furthestLinearPosition ?? 0
 
+        // Time accumulation runs before this branch intentionally: the gap
+        // since lastActivityAt is real reading time on another device or in
+        // a prior session window. gapCapSeconds bounds runaway accumulation.
         if source.bumpsWatermarkOnResume {
             if let book, position > oldFurthest {
                 book.furthestLinearPosition = position
