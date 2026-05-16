@@ -386,6 +386,31 @@ struct PaceEstimateTests {
         #expect((595...605).contains(secs))
     }
 
+    @Test("blend uses other books' sessions when full sessions list is passed")
+    func blendUsesGlobalAcrossBooks() {
+        let book = Self.makeBook(furthestLinearPosition: 100, totalPositions: 200)
+        let otherBookID = UUID()
+        let perBook = makeSession(bookID: book.id, durationSeconds: 10 * 60, pagesAdded: 100)
+        let other = makeSession(bookID: otherBookID, durationSeconds: 60 * 60, pagesAdded: 200)
+
+        // With both sessions, the global pace differs from per-book.
+        let blended = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.5, book: book, sessions: [perBook, other]
+        )
+        // With only the per-book session, blend degenerates to per-book pace.
+        let degenerate = StatsAggregator.paceEstimate(
+            bookID: book.id, progressFraction: 0.5, book: book, sessions: [perBook]
+        )
+
+        guard let blendedSecs = blended?.secondsRemaining,
+              let degenerateSecs = degenerate?.secondsRemaining else {
+            Issue.record("expected both estimates to be non-nil")
+            return
+        }
+        // Different inputs MUST produce different outputs — the blend is active.
+        #expect(blendedSecs != degenerateSecs)
+    }
+
     @Test("anchor uses max(furthestLinearPosition, cursorPosition)")
     func anchorUsesMax() {
         // cursor = Int(0.1 * 1000) = 100 < furthestLinearPosition = 500,

@@ -98,7 +98,7 @@ struct HomeRootView: View {
                                     EditorialContinueCard(
                                         book: hero,
                                         progress: progressByBookID[hero.id] ?? 0,
-                                        perBookSessions: sessions.filter { $0.bookID == hero.id }
+                                        sessions: sessions
                                     ) {
                                         env.openReader(hero.id)
                                     }

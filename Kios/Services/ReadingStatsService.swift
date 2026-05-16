@@ -145,6 +145,7 @@ final class ReadingStatsService {
                 book.furthestLinearPosition = position
                 try? context.save()
             }
+            current.lastSeenLinearPosition = position
             active = current
             scheduleIdleTimer()
             return

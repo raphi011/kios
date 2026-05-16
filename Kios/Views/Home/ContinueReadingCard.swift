@@ -7,7 +7,7 @@ import Core
 struct ContinueReadingCard: View {
     let book: Book
     let progress: Double
-    let perBookSessions: [ReadingSession]
+    let sessions: [ReadingSession]
     let onTap: () -> Void
 
     var body: some View {
@@ -62,7 +62,7 @@ struct ContinueReadingCard: View {
             bookID: book.id,
             progressFraction: progress,
             book: book,
-            sessions: perBookSessions
+            sessions: sessions
         ) else { return nil }
         return StatsFormatters.time(seconds: estimate.secondsRemaining) + " left"
     }

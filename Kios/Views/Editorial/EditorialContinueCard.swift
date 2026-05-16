@@ -10,7 +10,7 @@ import Core
 struct EditorialContinueCard: View {
     let book: Book
     let progress: Double
-    let perBookSessions: [ReadingSession]
+    let sessions: [ReadingSession]
     /// Best-effort chapter title eyebrow, e.g. "ch. 4 · platonic fold". When
     /// nil, the eyebrow line is omitted (we don't currently track chapters
     /// on the home model).
@@ -87,7 +87,7 @@ struct EditorialContinueCard: View {
             bookID: book.id,
             progressFraction: progress,
             book: book,
-            sessions: perBookSessions
+            sessions: sessions
         ) else { return nil }
         return StatsFormatters.time(seconds: estimate.secondsRemaining) + " left"
     }

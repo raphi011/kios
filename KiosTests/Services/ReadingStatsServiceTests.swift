@@ -476,6 +476,20 @@ struct ReadingStatsServiceWatermarkTests {
         #expect(env.service.pendingJumpReturn?.fromPosition == 5)
     }
 
+    @Test("resumeFromSync updates lastSeenLinearPosition so next pill back-target is the resumed position")
+    func resumeFromSyncUpdatesBackTarget() throws {
+        let env = try Self.makeEnv()
+        env.service.sessionDidOpen(bookID: env.book.id, initialPosition: 0, totalPositions: 1000)
+        env.clock.advance(by: 5)
+        // Sync-resume to position 300 mid-session (e.g., "Continue from another device" accepted).
+        env.service.sessionDidAdvance(position: 300, totalPositions: 1000, source: .resumeFromSync)
+        env.clock.advance(by: 5)
+        // Now scrub-jump forward — pill back-target should be 300 (the resume), not 0.
+        env.service.sessionDidAdvance(position: 700, totalPositions: 1000, source: .scrubCommit)
+        #expect(env.service.pendingJumpReturn?.fromPosition == 300)
+        #expect(env.service.pendingJumpReturn?.toPosition == 700)
+    }
+
     @Test("close clears the pill")
     func closeClearsPill() throws {
         let env = try Self.makeEnv()
