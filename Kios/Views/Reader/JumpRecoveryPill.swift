@@ -30,8 +30,8 @@ struct JumpRecoveryPill: View {
 
             Button(action: onStay) {
                 Text("Stay here")
-                    .font(EditorialTheme.sans(size: 14))
-                    .foregroundStyle(EditorialTheme.muted)
+                    .font(EditorialTheme.sans(size: 14, weight: .medium))
+                    .foregroundStyle(EditorialTheme.ink)
             }
             .buttonStyle(.plain)
         }

@@ -526,23 +526,23 @@ struct ReaderView: View {
     }
 
     /// Persistent pill overlay — visible regardless of `uiVisible` so the
-    /// user can always return after a nav jump. Floats above the bottom safe
-    /// area, above the scrubber chrome when chrome is showing.
+    /// user can always return after a nav jump. Floats below the top safe
+    /// area, dodging the chrome's top bar when chrome is showing.
     @ViewBuilder
     private var pillOverlay: some View {
         if let target = env.stats.pendingJumpReturn {
             VStack {
-                Spacer()
                 JumpRecoveryPill(
                     target: target,
                     onBack: { handleBackToPage(target) },
                     onStay: { env.stats.dismissJumpPill(commitStay: true) }
                 )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(.move(edge: .top).combined(with: .opacity))
                 .padding(.horizontal, 16)
-                .padding(.bottom, uiVisible ? 240 : 24)
-                // 240 ≈ chapter card + scrub bar + insights bar + breathing room.
+                .padding(.top, uiVisible ? 72 : 16)
+                // 72 = top bar's 8pt inset + 52pt height + 12pt breathing.
                 // Sized once for the current chrome layout; revisit if chrome changes.
+                Spacer()
             }
             .animation(.snappy, value: env.stats.pendingJumpReturn)
         }
