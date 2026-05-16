@@ -373,6 +373,61 @@
     "https://cwa.example.com" : {
 
     },
+    "import.error.copyFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't save the file. %@"
+          }
+        }
+      }
+    },
+    "import.error.noTitle" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This EPUB has no title metadata and can't be imported."
+          }
+        }
+      }
+    },
+    "import.error.parseFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This EPUB seems to be damaged."
+          }
+        }
+      }
+    },
+    "import.error.readFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't read the file. %@"
+          }
+        }
+      }
+    },
+    "import.error.unsupportedFormat" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kios can only import EPUB files right now."
+          }
+        }
+      }
+    },
     "·" : {
 
     },

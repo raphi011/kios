@@ -301,28 +301,11 @@ struct LibraryRootView: View {
                 case .imported(let book), .existing(let book):
                     env.openReader(book.id)
                 }
-            } catch let err as LocalImportError {
-                importError = userFacingMessage(for: err)
             } catch {
                 importError = error.localizedDescription
             }
         case .failure(let error):
             importError = error.localizedDescription
-        }
-    }
-
-    private func userFacingMessage(for error: LocalImportError) -> String {
-        switch error {
-        case .unsupportedFormat:
-            return "Kios can only import EPUB files right now."
-        case .readFailed(let detail):
-            return "Couldn't read the file. \(detail)"
-        case .parseFailed:
-            return "This EPUB seems to be damaged."
-        case .copyFailed(let detail):
-            return "Couldn't save the file. \(detail)"
-        case .noTitle:
-            return "This EPUB has no title metadata and can't be imported."
         }
     }
 
