@@ -19,26 +19,31 @@ final class LanguagePreferenceTests: XCTestCase {
         super.tearDown()
     }
 
+    /// Reads the suite's persistent domain directly. `UserDefaults.object(forKey:)`
+    /// walks the full lookup hierarchy (suite → global), so removing `AppleLanguages`
+    /// from a suite still surfaces the device's system value. We need to verify
+    /// the suite's own storage in isolation.
+    private var persistedAppleLanguages: [String]? {
+        UserDefaults().persistentDomain(forName: suiteName)?["AppleLanguages"] as? [String]
+    }
+
     func test_apply_system_removesAppleLanguagesKey() {
         defaults.set(["de"], forKey: "AppleLanguages")
+        XCTAssertEqual(persistedAppleLanguages, ["de"], "precondition: override is set")
+
         LanguagePreferenceApplier(defaults: defaults).apply(.system)
-        XCTAssertNil(defaults.object(forKey: "AppleLanguages"))
+
+        XCTAssertNil(persistedAppleLanguages)
     }
 
     func test_apply_english_writesEnArray() {
         LanguagePreferenceApplier(defaults: defaults).apply(.english)
-        XCTAssertEqual(
-            defaults.array(forKey: "AppleLanguages") as? [String],
-            ["en"]
-        )
+        XCTAssertEqual(persistedAppleLanguages, ["en"])
     }
 
     func test_apply_german_writesDeArray() {
         LanguagePreferenceApplier(defaults: defaults).apply(.german)
-        XCTAssertEqual(
-            defaults.array(forKey: "AppleLanguages") as? [String],
-            ["de"]
-        )
+        XCTAssertEqual(persistedAppleLanguages, ["de"])
     }
 
     func test_appleLanguagesValue_isLocaleIndependent() {
