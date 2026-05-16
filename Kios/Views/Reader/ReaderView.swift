@@ -64,6 +64,10 @@ struct ReaderView: View {
     /// `ReaderHost`; the container dedupes by `Locator.jsonString`, so we
     /// don't need to clear it after navigating.
     @State private var pendingJump: Locator?
+    /// Source tag for the next programmatic `pendingJump`. `pushLocator`
+    /// consumes it on the next locator change; nil means the change came
+    /// from a natural user swipe/tap.
+    @State private var pendingJumpSource: AdvanceSource?
     /// Whole-book progression (0–1) the user is dragging toward, or — after
     /// release — the position the bar should hold until the navigator confirms
     /// the jump. Drives both the bar's preview and the scrub HUD overlay.
@@ -211,6 +215,7 @@ struct ReaderView: View {
                 bookTitle: book?.title ?? "",
                 chapters: chapterEntries,
                 onJump: { locator in
+                    pendingJumpSource = .tocJump
                     pendingJump = locator
                     showContents = false
                 },
@@ -226,6 +231,7 @@ struct ReaderView: View {
                     makeService: { context.service },
                     onJumpRequest: { href, quote in
                         insightsSheet = nil
+                        pendingJumpSource = .aiQuoteJump
                         jumpAndSearch(href: href, quote: quote)
                     },
                     onDismiss: { insightsSheet = nil }
@@ -367,6 +373,7 @@ struct ReaderView: View {
                         message: Text(relativeReadMessage(for: info.server)),
                         primaryButton: .default(Text("Continue")) {
                             if let locator = parseLocator(info.server.locatorJSON) {
+                                pendingJumpSource = .resumeFromSync
                                 pendingJump = locator
                             }
                         },
@@ -649,6 +656,7 @@ struct ReaderView: View {
             let pageResult = await iterator.next()
             if case .success(let collection) = pageResult,
                let locator = collection?.locators.first {
+                pendingJumpSource = .aiQuoteJump
                 pendingJump = locator
             }
         }
@@ -828,6 +836,7 @@ struct ReaderView: View {
         }
 
         scrubCommitPending = true
+        pendingJumpSource = .scrubCommit
         pendingJump = target
 
         // Safety net for any other case where the jump produces no locator
@@ -953,6 +962,7 @@ struct ReaderView: View {
             case .applyServer(let progress):
                 guard !userHasNavigated,
                       let locator = parseLocator(progress.locatorJSON) else { return }
+                pendingJumpSource = .resumeFromSync
                 pendingJump = locator
             case .promptUser(let local, let server):
                 guard !userHasNavigated else { return }
@@ -1006,11 +1016,13 @@ struct ReaderView: View {
             book: book, locatorJSON: json, percentage: total
         )
         // Stats: piggy-back on the same locator callback.
+        let source = pendingJumpSource ?? .swipe
+        pendingJumpSource = nil
         if let positionIndex = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
             env.stats.sessionDidAdvance(
                 position: positionIndex,
                 totalPositions: positions.count,
-                source: .swipe,
+                source: source,
                 bookID: book.id
             )
         }
