@@ -1469,7 +1469,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unter dieser URL gibt es keinen kosync-Endpunkt. Pfad prüfen."
+            "value": "Server hat keinen /kosync — iOS Reader benötigt Calibre-Web-Automated."
           }
         },
         "en": {
