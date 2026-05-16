@@ -252,7 +252,7 @@ struct LibraryRootView: View {
         .padding(.bottom, 80)
     }
 
-    private var filteredEmptyContent: (title: String, description: String, symbol: String) {
+    private var filteredEmptyContent: (title: LocalizedStringKey, description: LocalizedStringKey, symbol: String) {
         switch filter {
         case .all:
             return ("Your library is empty",
