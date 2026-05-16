@@ -54,13 +54,17 @@ struct ContinueReadingCard: View {
         .buttonStyle(.plain)
     }
 
-    /// Per-book pace: extrapolate from "seconds spent so far" + "fraction read".
-    /// Hidden when we have no completed sessions yet (fresh download in hero).
+    /// Watermark-anchored pace: hides until per-book trusted reading
+    /// reaches 5 minutes; falls back to nil when totalPositions is unknown
+    /// (book has never been opened in the reader on this device).
     private var remainingTimeLabel: String? {
-        let totalSeconds = perBookSessions.reduce(0) { $0 + $1.durationSeconds }
-        guard totalSeconds > 0, progress > 0.001, progress < 1.0 else { return nil }
-        let remainingSeconds = Int(Double(totalSeconds) * (1.0 - progress) / progress)
-        return StatsFormatters.time(seconds: remainingSeconds) + " left"
+        guard let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id,
+            progressFraction: progress,
+            book: book,
+            sessions: perBookSessions
+        ) else { return nil }
+        return StatsFormatters.time(seconds: estimate.secondsRemaining) + " left"
     }
 }
 

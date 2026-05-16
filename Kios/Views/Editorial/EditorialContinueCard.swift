@@ -82,12 +82,13 @@ struct EditorialContinueCard: View {
         .buttonStyle(.plain)
     }
 
-    /// Per-book pace: extrapolate from time-so-far × (1 − progress) / progress.
-    /// Hidden when there's nothing to extrapolate from yet.
     private var remainingLabel: String? {
-        let totalSeconds = perBookSessions.reduce(0) { $0 + $1.durationSeconds }
-        guard totalSeconds > 0, progress > 0.001, progress < 1.0 else { return nil }
-        let remaining = Int(Double(totalSeconds) * (1.0 - progress) / progress)
-        return StatsFormatters.time(seconds: remaining) + " left"
+        guard let estimate = StatsAggregator.paceEstimate(
+            bookID: book.id,
+            progressFraction: progress,
+            book: book,
+            sessions: perBookSessions
+        ) else { return nil }
+        return StatsFormatters.time(seconds: estimate.secondsRemaining) + " left"
     }
 }
