@@ -540,7 +540,9 @@ struct ReaderView: View {
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .padding(.horizontal, 16)
-                .padding(.bottom, 100) // float above the scrubber chrome
+                .padding(.bottom, uiVisible ? 240 : 24)
+                // 240 ≈ chapter card + scrub bar + insights bar + breathing room.
+                // Sized once for the current chrome layout; revisit if chrome changes.
             }
             .animation(.snappy, value: env.stats.pendingJumpReturn)
         }

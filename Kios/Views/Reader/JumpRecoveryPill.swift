@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Kindle-style "Back to page X" recovery affordance shown after a
 /// navigation jump (scrub-commit, TOC pick, AI/search jump). Sticky
-/// until the user dismisses, swipes (implicit stay), the session ends,
-/// or a second nav-jump replaces it.
+/// until the user dismisses (Stay/Back), the session ends, or a second
+/// nav-jump replaces it.
 ///
 /// Driven by `ReadingStatsService.pendingJumpReturn`.
 struct JumpRecoveryPill: View {
@@ -12,24 +12,40 @@ struct JumpRecoveryPill: View {
     let onStay: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             Button(action: onBack) {
-                Label("Back to p. \(target.fromPosition + 1)",
-                      systemImage: "arrow.uturn.backward")
-                    .labelStyle(.titleAndIcon)
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Back to p. \(target.fromPosition + 1)")
+                        .font(EditorialTheme.sans(size: 14, weight: .medium))
+                }
+                .foregroundStyle(EditorialTheme.accent)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
-            Divider().frame(height: 14)
+            Rectangle()
+                .fill(EditorialTheme.rule)
+                .frame(width: 1, height: 16)
 
-            Button("Stay here", action: onStay)
-                .buttonStyle(.borderless)
+            Button(action: onStay) {
+                Text("Stay here")
+                    .font(EditorialTheme.sans(size: 14))
+                    .foregroundStyle(EditorialTheme.muted)
+            }
+            .buttonStyle(.plain)
         }
-        .font(.subheadline)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: Capsule())
-        .shadow(radius: 6, y: 2)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(EditorialTheme.surface)
+                .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 3)
+                .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
+        )
+        .overlay(
+            Capsule().stroke(EditorialTheme.rule, lineWidth: 0.5)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("You jumped to page \(target.toPosition + 1). Back to page \(target.fromPosition + 1) or stay here.")
     }
@@ -42,5 +58,5 @@ struct JumpRecoveryPill: View {
         onStay: {}
     )
     .padding()
-    .background(Color.gray.opacity(0.2))
+    .background(EditorialTheme.bg)
 }
