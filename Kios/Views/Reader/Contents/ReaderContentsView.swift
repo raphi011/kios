@@ -148,8 +148,7 @@ struct ReaderContentsView: View {
         guard let current = chapters.first(where: { $0.status == .current }) else {
             return nil
         }
-        let text = "Chapter \(current.roman) · \(current.title)"
-        return LocalizedStringKey(text)
+        return "Chapter \(current.roman) · \(current.title)"
     }
 
     // MARK: - Empty states (Bookmarks / Notes)

@@ -179,12 +179,13 @@ struct LibraryRootView: View {
     private enum SectionKind { case reading, unread, finished }
 
     private func section(
-        _ name: String,
+        _ name: String.LocalizationValue,
         books: [Book],
         kind: SectionKind,
         footer: LocalizedStringKey? = nil
     ) -> some View {
-        EditorialList("\(name) · \(books.count)", footer: footer) {
+        let localizedName = String(localized: name)
+        return EditorialList("\(localizedName) · \(books.count)", footer: footer) {
             ForEach(books.indices, id: \.self) { i in
                 let book = books[i]
                 Button { handleTap(book) } label: {

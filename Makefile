@@ -31,7 +31,12 @@ build-ios: xcodegen
 # them into the source catalogs. Run this after adding/changing user-facing
 # strings in code, then commit the catalog updates.
 sync-i18n: build-ios
-	@STRINGSDATA=$$(find ~/Library/Developer/Xcode/DerivedData/Kios-*/Build/Intermediates.noindex -name "*.stringsdata" 2>/dev/null); \
+	@DD=$$(ls -dt ~/Library/Developer/Xcode/DerivedData/Kios-*/ 2>/dev/null | head -1); \
+	if [ -z "$$DD" ]; then \
+		echo "✗ no DerivedData found for Kios — build first"; \
+		exit 1; \
+	fi; \
+	STRINGSDATA=$$(find "$$DD/Build/Intermediates.noindex" -name "*.stringsdata" 2>/dev/null); \
 	if [ -z "$$STRINGSDATA" ]; then \
 		echo "✗ no .stringsdata found — run a clean build first"; \
 		exit 1; \

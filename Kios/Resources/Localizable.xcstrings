@@ -1,2022 +1,2038 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "": {
-      "shouldTranslate": false
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "shouldTranslate" : false
     },
-    "%@ of %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ von %2$@"
+    "%@ of %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ von %2$@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ of %2$@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@"
           }
         }
       }
     },
-    "%@ · %lld": {
-      "shouldTranslate": false
+    "%@ · %lld" : {
+      "shouldTranslate" : false
     },
-    "%@.": {
-      "shouldTranslate": false
+    "%@." : {
+      "shouldTranslate" : false
     },
-    "%lld%%": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld%%"
+    "%lld%%" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
           }
         }
       }
     },
-    "%lld%% · %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld%% · %2$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld%% · %2$@"
-          }
-        }
-      }
-    },
-    "AI assistant": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "KI-Assistent"
-          }
-        }
-      }
-    },
-    "AI engine unavailable": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "KI-Engine nicht verfügbar"
-          }
-        }
-      }
-    },
-    "Aa": {
-      "shouldTranslate": false
-    },
-    "Account": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Konto"
-          }
-        }
-      }
-    },
-    "Add a book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buch hinzufügen"
-          }
-        }
-      }
-    },
-    "Add book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buch hinzufügen"
-          }
-        }
-      }
-    },
-    "Add from URL…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Von URL hinzufügen…"
-          }
-        }
-      }
-    },
-    "All": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle"
-          }
-        }
-      }
-    },
-    "Allow cellular download": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Download über Mobilfunk erlauben"
-          }
-        }
-      }
-    },
-    "Also known as: %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auch bekannt als: %@"
-          }
-        }
-      }
-    },
-    "Analysis stopped": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analyse gestoppt"
-          }
-        }
-      }
-    },
-    "Analyze book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buch analysieren"
-          }
-        }
-      }
-    },
-    "Analyze this book to extract a roster, per-chapter summaries, and a whole-book overview.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analysiere dieses Buch, um eine Figurenliste, Kapitel-Zusammenfassungen und einen Gesamtüberblick zu erstellen."
-          }
-        }
-      }
-    },
-    "Analyzing chapter %lld of %lld…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analysiere Kapitel %1$lld von %2$lld…"
+    "%lld%% · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld%% · %2$@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Analyzing chapter %1$lld of %2$lld…"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%% · %2$@"
           }
         }
       }
     },
-    "App language": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App-Sprache"
+    "AI assistant" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI-Assistent"
           }
         }
       }
     },
-    "Appears in chapter %lld–%lld": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erscheint in Kapitel %lld–%lld"
+    "AI engine unavailable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI-Engine nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Aa" : {
+      "shouldTranslate" : false
+    },
+    "Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
+          }
+        }
+      }
+    },
+    "Add a book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buch hinzufügen"
+          }
+        }
+      }
+    },
+    "Add book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buch hinzufügen"
+          }
+        }
+      }
+    },
+    "Add from URL…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von URL hinzufügen…"
+          }
+        }
+      }
+    },
+    "All" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle"
+          }
+        }
+      }
+    },
+    "Allow cellular download" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download über Mobilfunk erlauben"
+          }
+        }
+      }
+    },
+    "Also known as: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch bekannt als: %@"
+          }
+        }
+      }
+    },
+    "Analysis stopped" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyse gestoppt"
+          }
+        }
+      }
+    },
+    "Analyze book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buch analysieren"
+          }
+        }
+      }
+    },
+    "Analyze this book to extract a roster, per-chapter summaries, and a whole-book overview." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysiere dieses Buch, um eine Figurenliste, Kapitel-Zusammenfassungen und einen Gesamtüberblick zu erstellen."
+          }
+        }
+      }
+    },
+    "Analyzing chapter %lld of %lld…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analysiere Kapitel %1$lld von %2$lld…"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Appears in chapter %1$lld–%2$lld"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Analyzing chapter %1$lld of %2$lld…"
           }
         }
       }
     },
-    "Apple Intelligence isn't enabled. Open iOS Settings → Apple Intelligence & Siri.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Intelligence ist nicht aktiviert. Öffne die iOS-Einstellungen → Apple Intelligence & Siri."
+    "App language" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App-Sprache"
           }
         }
       }
     },
-    "Ask": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fragen"
-          }
-        }
-      }
-    },
-    "Ask AI": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "KI fragen"
-          }
-        }
-      }
-    },
-    "BOOKS": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "BÜCHER"
-          }
-        }
-      }
-    },
-    "Back to p. %lld": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zurück zu S. %lld"
-          }
-        }
-      }
-    },
-    "Bigger context": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Größerer Kontext"
-          }
-        }
-      }
-    },
-    "Bigger context requires roughly 8 GB of RAM.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Bigger context“ benötigt etwa 8 GB RAM."
-          }
-        }
-      }
-    },
-    "Book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buch"
-          }
-        }
-      }
-    },
-    "Book not found": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buch nicht gefunden"
-          }
-        }
-      }
-    },
-    "Bookmarks · 0": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lesezeichen · 0"
-          }
-        }
-      }
-    },
-    "Books you download from Browse appear here.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bücher, die du aus „Stöbern“ herunterlädst, erscheinen hier."
-          }
-        }
-      }
-    },
-    "Books you finish reading will appear here.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bücher, die du fertig liest, erscheinen hier."
-          }
-        }
-      }
-    },
-    "Books you haven't started will appear here.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bücher, die du noch nicht begonnen hast, erscheinen hier."
-          }
-        }
-      }
-    },
-    "Books you start reading will appear here.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bücher, die du beginnst, erscheinen hier."
-          }
-        }
-      }
-    },
-    "Brightness %lld percent": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Helligkeit %lld Prozent"
-          }
-        }
-      }
-    },
-    "Built-in": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eingebaut"
-          }
-        }
-      }
-    },
-    "Built-in requires Apple Intelligence.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Built-in“ benötigt Apple Intelligence."
-          }
-        }
-      }
-    },
-    "Built-in requires iOS 26 or later.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Built-in“ benötigt iOS 26 oder neuer."
-          }
-        }
-      }
-    },
-    "CONTINUE READING": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "WEITERLESEN"
-          }
-        }
-      }
-    },
-    "Cache": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zwischenspeicher"
-          }
-        }
-      }
-    },
-    "Cancel": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abbrechen"
-          }
-        }
-      }
-    },
-    "Catalog will be cleared. Downloaded books and reading progress stay on this device.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Katalog wird geleert. Heruntergeladene Bücher und Lesefortschritt bleiben auf diesem Gerät erhalten."
-          }
-        }
-      }
-    },
-    "Chapter": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kapitel"
-          }
-        }
-      }
-    },
-    "Chapter %lld": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kapitel %lld"
-          }
-        }
-      }
-    },
-    "Chapter mentions": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erwähnungen im Kapitel"
-          }
-        }
-      }
-    },
-    "Characters": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Figuren"
-          }
-        }
-      }
-    },
-    "Clear cached summaries": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zusammenfassungs-Cache leeren"
-          }
-        }
-      }
-    },
-    "Close": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schließen"
-          }
-        }
-      }
-    },
-    "Coming soon": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Demnächst verfügbar"
-          }
-        }
-      }
-    },
-    "Connected": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verbunden"
-          }
-        }
-      }
-    },
-    "Contents · %lld": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inhalt · %lld"
-          }
-        }
-      }
-    },
-    "Continue": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fortfahren"
-          }
-        }
-      }
-    },
-    "Continue Reading": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Weiterlesen"
-          }
-        }
-      }
-    },
-    "Continue reading": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Weiterlesen"
-          }
-        }
-      }
-    },
-    "Couldn't answer: %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Antwort fehlgeschlagen: %@"
-          }
-        }
-      }
-    },
-    "DRM-free EPUB only. Kios won't ask you to log in to a store.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nur DRM-freie EPUBs. Kios verlangt keine Shop-Anmeldung."
-          }
-        }
-      }
-    },
-    "Default font": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standard-Schrift"
-          }
-        }
-      }
-    },
-    "Default theme": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standard-Design"
-          }
-        }
-      }
-    },
-    "Delete": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Löschen"
-          }
-        }
-      }
-    },
-    "Deutsch": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deutsch"
-          }
-        }
-      }
-    },
-    "Device RAM": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geräte-RAM"
-          }
-        }
-      }
-    },
-    "Download model": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modell herunterladen"
-          }
-        }
-      }
-    },
-    "Download the model below to use this engine.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lade das Modell unten herunter, um diese Engine zu nutzen."
-          }
-        }
-      }
-    },
-    "Downloading…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird heruntergeladen…"
-          }
-        }
-      }
-    },
-    "Enable AI features": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "KI-Funktionen aktivieren"
-          }
-        }
-      }
-    },
-    "Enable AI features to choose an engine.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "KI-Funktionen aktivieren, um eine Engine auszuwählen."
-          }
-        }
-      }
-    },
-    "English": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Englisch"
-          }
-        }
-      }
-    },
-    "Finished": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abgeschlossen"
-          }
-        }
-      }
-    },
-    "Follow System": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Systemsprache"
-          }
-        }
-      }
-    },
-    "Font size %lld percent": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schriftgröße %lld Prozent"
-          }
-        }
-      }
-    },
-    "From Files, iCloud, AirDrop…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aus Dateien, iCloud, AirDrop…"
-          }
-        }
-      }
-    },
-    "From the passage:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aus der Passage:"
-          }
-        }
-      }
-    },
-    "Full book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ganzes Buch"
-          }
-        }
-      }
-    },
-    "Generate chapter summaries and ask about selected passages — without sending anything to a server.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kapitel zusammenfassen und Fragen zu markierten Passagen stellen — ohne dass etwas an einen Server gesendet wird."
-          }
-        }
-      }
-    },
-    "Generated with Apple Intelligence": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Generiert mit Apple Intelligence"
-          }
-        }
-      }
-    },
-    "Generated with Gemma 4 E4B (on-device)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Generiert mit Gemma 4 E4B (auf dem Gerät)"
-          }
-        }
-      }
-    },
-    "Got it": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verstanden"
-          }
-        }
-      }
-    },
-    "Home": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start"
-          }
-        }
-      }
-    },
-    "Import EPUB": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "EPUB importieren"
-          }
-        }
-      }
-    },
-    "Import EPUB from Files…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "EPUB aus Dateien importieren…"
-          }
-        }
-      }
-    },
-    "Import failed": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Import fehlgeschlagen"
-          }
-        }
-      }
-    },
-    "Importing from a URL isn't supported yet. For now, save the file and use Import EPUB from Files.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Import per URL ist noch nicht verfügbar. Speichere die Datei und nutze „EPUB importieren“ in Dateien."
-          }
-        }
-      }
-    },
-    "In your library": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In deiner Bibliothek"
-          }
-        }
-      }
-    },
-    "Insights": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Einblicke"
-          }
-        }
-      }
-    },
-    "Installed": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installiert"
-          }
-        }
-      }
-    },
-    "KOReader Sync": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "KOReader Sync"
-          }
-        }
-      }
-    },
-    "Kobo Sync": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kobo Sync"
-          }
-        }
-      }
-    },
-    "Kobo sync URL": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kobo-Sync-URL"
-          }
-        }
-      }
-    },
-    "Language": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sprache"
-          }
-        }
-      }
-    },
-    "Last synced": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zuletzt synchronisiert"
-          }
-        }
-      }
-    },
-    "Library": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bibliothek"
-          }
-        }
-      }
-    },
-    "Library & sync": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bibliothek & Synchronisierung"
-          }
-        }
-      }
-    },
-    "Mark as finished": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Als gelesen markieren"
-          }
-        }
-      }
-    },
-    "Mark as unfinished": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Als ungelesen markieren"
-          }
-        }
-      }
-    },
-    "Model files are corrupt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelldateien sind beschädigt"
-          }
-        }
-      }
-    },
-    "Model files are corrupt. Re-download below.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelldateien sind beschädigt. Erneut herunterladen."
-          }
-        }
-      }
-    },
-    "No book summary yet.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Noch keine Buch-Zusammenfassung."
-          }
-        }
-      }
-    },
-    "No book to open yet.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Noch kein Buch zum Öffnen."
-          }
-        }
-      }
-    },
-    "No downloaded books": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine heruntergeladenen Bücher"
-          }
-        }
-      }
-    },
-    "No finished books": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine gelesenen Bücher"
-          }
-        }
-      }
-    },
-    "No summary for this chapter — try analyzing again.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Zusammenfassung für dieses Kapitel — Analyse erneut versuchen."
-          }
-        }
-      }
-    },
-    "No unread books": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine ungelesenen Bücher"
-          }
-        }
-      }
-    },
-    "Not downloaded": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nicht heruntergeladen"
-          }
-        }
-      }
-    },
-    "Notes · 0": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notizen · 0"
-          }
-        }
-      }
-    },
-    "Nothing in progress": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nichts begonnen"
-          }
-        }
-      }
-    },
-    "OK": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OK"
-          }
-        }
-      }
-    },
-    "On-device AI features": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "On-Device-KI-Funktionen"
-          }
-        }
-      }
-    },
-    "Open Most Recent Book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zuletzt gelesenes Buch öffnen"
-          }
-        }
-      }
-    },
-    "Opening…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird geöffnet…"
-          }
-        }
-      }
-    },
-    "Opens the book you were last reading.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Öffnet das Buch, das du zuletzt gelesen hast."
-          }
-        }
-      }
-    },
-    "PAGES": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SEITEN"
-          }
-        }
-      }
-    },
-    "Page transition": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seitenübergang"
-          }
-        }
-      }
-    },
-    "Pages": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seiten"
-          }
-        }
-      }
-    },
-    "Password": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Passwort"
-          }
-        }
-      }
-    },
-    "Past your current position": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hinter deiner aktuellen Position"
-          }
-        }
-      }
-    },
-    "Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Füge die URL aus dem CWA-Admin ein → Kobo-Sync aktivieren. Die URL enthält deinen Auth-Token; behandle sie wie ein Passwort."
-          }
-        }
-      }
-    },
-    "Preparing…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vorbereitung…"
-          }
-        }
-      }
-    },
-    "Protocol": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Protokoll"
-          }
-        }
-      }
-    },
-    "Read time": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lesezeit"
-          }
-        }
-      }
-    },
-    "Reader": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leser"
-          }
-        }
-      }
-    },
-    "Reading": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lesen"
-          }
-        }
-      }
-    },
-    "Required for the Bigger context engine.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erforderlich für die „Bigger context“-Engine."
-          }
-        }
-      }
-    },
-    "Restart": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Neu starten"
-          }
-        }
-      }
-    },
-    "Restart Kios to apply the new language.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Starte Kios neu, um die neue Sprache anzuwenden."
-          }
-        }
-      }
-    },
-    "Retry": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erneut versuchen"
-          }
-        }
-      }
-    },
-    "Roughly 5 min on iPhone 17 Pro; longer on older devices.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Etwa 5 Min. auf iPhone 17 Pro; länger auf älteren Geräten."
-          }
-        }
-      }
-    },
-    "STREAK": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SERIE"
-          }
-        }
-      }
-    },
-    "Scrubbing to %lld percent, %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Springt zu %1$lld Prozent, %2$@"
+    "Appears in chapter %lld–%lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erscheint in Kapitel %lld–%lld"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Scrubbing to %1$lld percent, %2$@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Appears in chapter %1$lld–%2$lld"
           }
         }
       }
     },
-    "Search": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suchen"
+    "Apple Intelligence isn't enabled. Open iOS Settings → Apple Intelligence & Siri." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Intelligence ist nicht aktiviert. Öffne die iOS-Einstellungen → Apple Intelligence & Siri."
           }
         }
       }
     },
-    "Settings": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Einstellungen"
+    "Ask" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragen"
           }
         }
       }
     },
-    "Show full": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alles anzeigen"
+    "Ask AI" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI fragen"
           }
         }
       }
     },
-    "Show full book": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ganzes Buch anzeigen"
+    "BOOKS" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BÜCHER"
           }
         }
       }
     },
-    "Show less": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Weniger anzeigen"
+    "Back to p. %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurück zu S. %lld"
           }
         }
       }
     },
-    "Sign out": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abmelden"
+    "Bigger context" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Größerer Kontext"
           }
         }
       }
     },
-    "Sign out?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abmelden?"
+    "Bigger context requires roughly 8 GB of RAM." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Bigger context“ benötigt etwa 8 GB RAM."
           }
         }
       }
     },
-    "Signed in as": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Angemeldet als"
+    "Book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buch"
           }
         }
       }
     },
-    "Stay here": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hier bleiben"
+    "Book not found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buch nicht gefunden"
           }
         }
       }
     },
-    "Streak": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Serie"
+    "Bookmarks · 0" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesezeichen · 0"
           }
         }
       }
     },
-    "Summarize chapters and ask about selected text — entirely on-device. Disable the master switch to make no AI calls at all.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fasse Kapitel zusammen und stelle Fragen zu ausgewähltem Text – vollständig auf dem Gerät. Deaktiviere den Hauptschalter, um keine KI-Anfragen zu stellen."
+    "Books you download from Browse appear here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bücher, die du aus „Stöbern“ herunterlädst, erscheinen hier."
           }
         }
       }
     },
-    "Switch and refresh library": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wechseln und Bibliothek aktualisieren"
+    "Books you finish reading will appear here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bücher, die du fertig liest, erscheinen hier."
           }
         }
       }
     },
-    "Switch to %@?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zu %@ wechseln?"
+    "Books you haven't started will appear here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bücher, die du noch nicht begonnen hast, erscheinen hier."
           }
         }
       }
     },
-    "Sync": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Synchronisierung"
+    "Books you start reading will appear here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bücher, die du beginnst, erscheinen hier."
           }
         }
       }
     },
-    "Sync URL": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync-URL"
+    "Brightness %lld percent" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helligkeit %lld Prozent"
           }
         }
       }
     },
-    "Sync now": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Jetzt synchronisieren"
+    "Built-in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingebaut"
           }
         }
       }
     },
-    "Sync over cellular": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Synchronisierung über Mobilfunk"
+    "Built-in requires Apple Intelligence." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Built-in“ benötigt Apple Intelligence."
           }
         }
       }
     },
-    "Sync protocol": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync-Protokoll"
+    "Built-in requires iOS 26 or later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Built-in“ benötigt iOS 26 oder neuer."
           }
         }
       }
     },
-    "TIME": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ZEIT"
+    "CONTINUE READING" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WEITERLESEN"
           }
         }
       }
     },
-    "Tap + to import an EPUB, or pull to refresh.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe auf +, um ein EPUB zu importieren, oder ziehe zum Aktualisieren nach unten."
+    "Cache" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwischenspeicher"
           }
         }
       }
     },
-    "Tap zones": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippzonen"
+    "Cancel" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abbrechen"
           }
         }
       }
     },
-    "Test & Save": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Testen & Speichern"
+    "Catalog will be cleared. Downloaded books and reading progress stay on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Katalog wird geleert. Heruntergeladene Bücher und Lesefortschritt bleiben auf diesem Gerät erhalten."
           }
         }
       }
     },
-    "Testing…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird getestet…"
+    "Chapter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitel"
           }
         }
       }
     },
-    "This analysis is from an older version of the app.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese Analyse stammt aus einer älteren Version der App."
-          }
-        }
-      }
-    },
-    "This chapter is past your current reading position. Continue?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dieses Kapitel liegt nach deiner aktuellen Leseposition. Fortfahren?"
-          }
-        }
-      }
-    },
-    "Through what you've read": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auf Basis des Gelesenen"
-          }
-        }
-      }
-    },
-    "Today": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Heute"
-          }
-        }
-      }
-    },
-    "Today, so far": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Heute bisher"
-          }
-        }
-      }
-    },
-    "Try again": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erneut versuchen"
-          }
-        }
-      }
-    },
-    "Two engines are available, depending on your device:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Je nach Gerät stehen zwei Engines zur Verfügung:"
-          }
-        }
-      }
-    },
-    "Unread": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ungelesen"
-          }
-        }
-      }
-    },
-    "Username": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Benutzername"
-          }
-        }
-      }
-    },
-    "You are here": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Du bist hier"
-          }
-        }
-      }
-    },
-    "You can switch between them anytime in Settings.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Du kannst jederzeit in den Einstellungen wechseln."
-          }
-        }
-      }
-    },
-    "You jumped to page %lld. Back to page %lld or stay here.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Du bist zu Seite %lld gesprungen. Zurück zu Seite %lld oder hier bleiben."
+    "Chapter %@ · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitel %1$@ · %2$@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "You jumped to page %1$lld. Back to page %2$lld or stay here."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chapter %1$@ · %2$@"
           }
         }
       }
     },
-    "Your device doesn't support on-device AI features yet. Requires iOS 26 with Apple Intelligence, or 8 GB of RAM.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dein Gerät unterstützt On-Device-KI-Funktionen noch nicht. Benötigt iOS 26 mit Apple Intelligence oder 8 GB RAM."
+    "Chapter %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitel %lld"
           }
         }
       }
     },
-    "Your library is empty": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Bibliothek ist leer"
+    "Chapter mentions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erwähnungen im Kapitel"
           }
         }
       }
     },
-    "Your library will be refreshed against the new server. Books not present on the new server will be archived (not deleted). Downloaded files and reading progress are preserved.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Bibliothek wird mit dem neuen Server abgeglichen. Bücher, die dort nicht vorhanden sind, werden archiviert (nicht gelöscht). Heruntergeladene Dateien und Lesefortschritt bleiben erhalten."
+    "Characters" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Figuren"
           }
         }
       }
     },
-    "Your question:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Frage:"
+    "Clear cached summaries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zusammenfassungs-Cache leeren"
           }
         }
       }
     },
-    "e.g. What does this paragraph mean?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "z.B. Was bedeutet dieser Absatz?"
+    "Close" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließen"
           }
         }
       }
     },
-    "https://cwa.example.com": {
-      "shouldTranslate": false
+    "Coming soon" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demnächst verfügbar"
+          }
+        }
+      }
     },
-    "import.error.copyFailed": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Datei konnte nicht gespeichert werden. %@"
+    "Connected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden"
+          }
+        }
+      }
+    },
+    "Contents · %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inhalt · %lld"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortfahren"
+          }
+        }
+      }
+    },
+    "Continue Reading" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiterlesen"
+          }
+        }
+      }
+    },
+    "Continue reading" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiterlesen"
+          }
+        }
+      }
+    },
+    "Couldn't answer: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "DRM-free EPUB only. Kios won't ask you to log in to a store." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur DRM-freie EPUBs. Kios verlangt keine Shop-Anmeldung."
+          }
+        }
+      }
+    },
+    "Default font" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard-Schrift"
+          }
+        }
+      }
+    },
+    "Default theme" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard-Design"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Löschen"
+          }
+        }
+      }
+    },
+    "Deutsch" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deutsch"
+          }
+        }
+      }
+    },
+    "Device RAM" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräte-RAM"
+          }
+        }
+      }
+    },
+    "Download model" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modell herunterladen"
+          }
+        }
+      }
+    },
+    "Download the model below to use this engine." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade das Modell unten herunter, um diese Engine zu nutzen."
+          }
+        }
+      }
+    },
+    "Downloading…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird heruntergeladen…"
+          }
+        }
+      }
+    },
+    "Enable AI features" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI-Funktionen aktivieren"
+          }
+        }
+      }
+    },
+    "Enable AI features to choose an engine." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI-Funktionen aktivieren, um eine Engine auszuwählen."
+          }
+        }
+      }
+    },
+    "English" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Englisch"
+          }
+        }
+      }
+    },
+    "Finished" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgeschlossen"
+          }
+        }
+      }
+    },
+    "Follow System" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Systemsprache"
+          }
+        }
+      }
+    },
+    "Font size %lld percent" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schriftgröße %lld Prozent"
+          }
+        }
+      }
+    },
+    "From Files, iCloud, AirDrop…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Dateien, iCloud, AirDrop…"
+          }
+        }
+      }
+    },
+    "From the passage:" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus der Passage:"
+          }
+        }
+      }
+    },
+    "Full book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganzes Buch"
+          }
+        }
+      }
+    },
+    "Generate chapter summaries and ask about selected passages — without sending anything to a server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitel zusammenfassen und Fragen zu markierten Passagen stellen — ohne dass etwas an einen Server gesendet wird."
+          }
+        }
+      }
+    },
+    "Generated with Apple Intelligence" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generiert mit Apple Intelligence"
+          }
+        }
+      }
+    },
+    "Generated with Gemma 4 E4B (on-device)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generiert mit Gemma 4 E4B (auf dem Gerät)"
+          }
+        }
+      }
+    },
+    "Got it" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verstanden"
+          }
+        }
+      }
+    },
+    "Home" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
+    },
+    "Import EPUB" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EPUB importieren"
+          }
+        }
+      }
+    },
+    "Import EPUB from Files…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EPUB aus Dateien importieren…"
+          }
+        }
+      }
+    },
+    "Import failed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import fehlgeschlagen"
+          }
+        }
+      }
+    },
+    "Importing from a URL isn't supported yet. For now, save the file and use Import EPUB from Files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import per URL ist noch nicht verfügbar. Speichere die Datei und nutze „EPUB importieren“ in Dateien."
+          }
+        }
+      }
+    },
+    "In your library" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In deiner Bibliothek"
+          }
+        }
+      }
+    },
+    "Insights" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einblicke"
+          }
+        }
+      }
+    },
+    "Installed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installiert"
+          }
+        }
+      }
+    },
+    "KOReader Sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KOReader Sync"
+          }
+        }
+      }
+    },
+    "Kobo Sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kobo Sync"
+          }
+        }
+      }
+    },
+    "Kobo sync URL" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kobo-Sync-URL"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprache"
+          }
+        }
+      }
+    },
+    "Last synced" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt synchronisiert"
+          }
+        }
+      }
+    },
+    "Library" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliothek"
+          }
+        }
+      }
+    },
+    "Library & sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliothek & Synchronisierung"
+          }
+        }
+      }
+    },
+    "Mark as finished" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als gelesen markieren"
+          }
+        }
+      }
+    },
+    "Mark as unfinished" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als ungelesen markieren"
+          }
+        }
+      }
+    },
+    "Model files are corrupt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelldateien sind beschädigt"
+          }
+        }
+      }
+    },
+    "Model files are corrupt. Re-download below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelldateien sind beschädigt. Erneut herunterladen."
+          }
+        }
+      }
+    },
+    "No book summary yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Buch-Zusammenfassung."
+          }
+        }
+      }
+    },
+    "No book to open yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch kein Buch zum Öffnen."
+          }
+        }
+      }
+    },
+    "No downloaded books" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine heruntergeladenen Bücher"
+          }
+        }
+      }
+    },
+    "No finished books" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine gelesenen Bücher"
+          }
+        }
+      }
+    },
+    "No summary for this chapter — try analyzing again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Zusammenfassung für dieses Kapitel — Analyse erneut versuchen."
+          }
+        }
+      }
+    },
+    "No unread books" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine ungelesenen Bücher"
+          }
+        }
+      }
+    },
+    "Not downloaded" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht heruntergeladen"
+          }
+        }
+      }
+    },
+    "Notes · 0" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notizen · 0"
+          }
+        }
+      }
+    },
+    "Nothing in progress" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts begonnen"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "On-device AI features" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On-Device-KI-Funktionen"
+          }
+        }
+      }
+    },
+    "Open Most Recent Book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gelesenes Buch öffnen"
+          }
+        }
+      }
+    },
+    "Opening…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geöffnet…"
+          }
+        }
+      }
+    },
+    "Opens the book you were last reading." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet das Buch, das du zuletzt gelesen hast."
+          }
+        }
+      }
+    },
+    "PAGES" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SEITEN"
+          }
+        }
+      }
+    },
+    "Page transition" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenübergang"
+          }
+        }
+      }
+    },
+    "Pages" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seiten"
+          }
+        }
+      }
+    },
+    "Password" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passwort"
+          }
+        }
+      }
+    },
+    "Past your current position" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinter deiner aktuellen Position"
+          }
+        }
+      }
+    },
+    "Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge die URL aus dem CWA-Admin ein → Kobo-Sync aktivieren. Die URL enthält deinen Auth-Token; behandle sie wie ein Passwort."
+          }
+        }
+      }
+    },
+    "Preparing…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorbereitung…"
+          }
+        }
+      }
+    },
+    "Protocol" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protokoll"
+          }
+        }
+      }
+    },
+    "Read time" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesezeit"
+          }
+        }
+      }
+    },
+    "Reader" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leser"
+          }
+        }
+      }
+    },
+    "Reading" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesen"
+          }
+        }
+      }
+    },
+    "Required for the Bigger context engine." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erforderlich für die „Bigger context“-Engine."
+          }
+        }
+      }
+    },
+    "Restart" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu starten"
+          }
+        }
+      }
+    },
+    "Restart Kios to apply the new language." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starte Kios neu, um die neue Sprache anzuwenden."
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Roughly 5 min on iPhone 17 Pro; longer on older devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etwa 5 Min. auf iPhone 17 Pro; länger auf älteren Geräten."
+          }
+        }
+      }
+    },
+    "STREAK" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SERIE"
+          }
+        }
+      }
+    },
+    "Scrubbing to %lld percent, %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Springt zu %1$lld Prozent, %2$@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Couldn't save the file. %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scrubbing to %1$lld percent, %2$@"
           }
         }
       }
     },
-    "import.error.noTitle": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dieses EPUB hat keine Titelangabe und kann nicht importiert werden."
+    "Search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suchen"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen"
+          }
+        }
+      }
+    },
+    "Show full" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles anzeigen"
+          }
+        }
+      }
+    },
+    "Show full book" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganzes Buch anzeigen"
+          }
+        }
+      }
+    },
+    "Show less" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weniger anzeigen"
+          }
+        }
+      }
+    },
+    "Sign out" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abmelden"
+          }
+        }
+      }
+    },
+    "Sign out?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abmelden?"
+          }
+        }
+      }
+    },
+    "Signed in as" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angemeldet als"
+          }
+        }
+      }
+    },
+    "Stay here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier bleiben"
+          }
+        }
+      }
+    },
+    "Streak" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serie"
+          }
+        }
+      }
+    },
+    "Summarize chapters and ask about selected text — entirely on-device. Disable the master switch to make no AI calls at all." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fasse Kapitel zusammen und stelle Fragen zu ausgewähltem Text – vollständig auf dem Gerät. Deaktiviere den Hauptschalter, um keine KI-Anfragen zu stellen."
+          }
+        }
+      }
+    },
+    "Switch and refresh library" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln und Bibliothek aktualisieren"
+          }
+        }
+      }
+    },
+    "Switch to %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu %@ wechseln?"
+          }
+        }
+      }
+    },
+    "Sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisierung"
+          }
+        }
+      }
+    },
+    "Sync URL" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync-URL"
+          }
+        }
+      }
+    },
+    "Sync now" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync over cellular" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisierung über Mobilfunk"
+          }
+        }
+      }
+    },
+    "Sync protocol" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync-Protokoll"
+          }
+        }
+      }
+    },
+    "TIME" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ZEIT"
+          }
+        }
+      }
+    },
+    "Tap + to import an EPUB, or pull to refresh." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe auf +, um ein EPUB zu importieren, oder ziehe zum Aktualisieren nach unten."
+          }
+        }
+      }
+    },
+    "Tap zones" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippzonen"
+          }
+        }
+      }
+    },
+    "Test & Save" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testen & Speichern"
+          }
+        }
+      }
+    },
+    "Testing…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird getestet…"
+          }
+        }
+      }
+    },
+    "This analysis is from an older version of the app." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Analyse stammt aus einer älteren Version der App."
+          }
+        }
+      }
+    },
+    "This chapter is past your current reading position. Continue?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Kapitel liegt nach deiner aktuellen Leseposition. Fortfahren?"
+          }
+        }
+      }
+    },
+    "Through what you've read" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Basis des Gelesenen"
+          }
+        }
+      }
+    },
+    "Today" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heute"
+          }
+        }
+      }
+    },
+    "Today, so far" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heute bisher"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Two engines are available, depending on your device:" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je nach Gerät stehen zwei Engines zur Verfügung:"
+          }
+        }
+      }
+    },
+    "Unread" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungelesen"
+          }
+        }
+      }
+    },
+    "Username" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzername"
+          }
+        }
+      }
+    },
+    "You are here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du bist hier"
+          }
+        }
+      }
+    },
+    "You can switch between them anytime in Settings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du kannst jederzeit in den Einstellungen wechseln."
+          }
+        }
+      }
+    },
+    "You jumped to page %lld. Back to page %lld or stay here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du bist zu Seite %lld gesprungen. Zurück zu Seite %lld oder hier bleiben."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "This EPUB has no title metadata and can't be imported."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You jumped to page %1$lld. Back to page %2$lld or stay here."
           }
         }
       }
     },
-    "import.error.parseFailed": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dieses EPUB scheint beschädigt zu sein."
+    "Your device doesn't support on-device AI features yet. Requires iOS 26 with Apple Intelligence, or 8 GB of RAM." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Gerät unterstützt On-Device-KI-Funktionen noch nicht. Benötigt iOS 26 mit Apple Intelligence oder 8 GB RAM."
+          }
+        }
+      }
+    },
+    "Your library is empty" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Bibliothek ist leer"
+          }
+        }
+      }
+    },
+    "Your library will be refreshed against the new server. Books not present on the new server will be archived (not deleted). Downloaded files and reading progress are preserved." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Bibliothek wird mit dem neuen Server abgeglichen. Bücher, die dort nicht vorhanden sind, werden archiviert (nicht gelöscht). Heruntergeladene Dateien und Lesefortschritt bleiben erhalten."
+          }
+        }
+      }
+    },
+    "Your question:" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Frage:"
+          }
+        }
+      }
+    },
+    "e.g. What does this paragraph mean?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "z.B. Was bedeutet dieser Absatz?"
+          }
+        }
+      }
+    },
+    "https://cwa.example.com" : {
+      "shouldTranslate" : false
+    },
+    "import.error.copyFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei konnte nicht gespeichert werden. %@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "This EPUB seems to be damaged."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't save the file. %@"
           }
         }
       }
     },
-    "import.error.readFailed": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Datei konnte nicht gelesen werden. %@"
+    "import.error.noTitle" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses EPUB hat keine Titelangabe und kann nicht importiert werden."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Couldn't read the file. %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This EPUB has no title metadata and can't be imported."
           }
         }
       }
     },
-    "import.error.unsupportedFormat": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kios kann derzeit nur EPUB-Dateien importieren."
+    "import.error.parseFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses EPUB scheint beschädigt zu sein."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Kios can only import EPUB files right now."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This EPUB seems to be damaged."
           }
         }
       }
     },
-    "stats.timeLeft": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ verbleibend"
+    "import.error.readFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei konnte nicht gelesen werden. %@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%@ left"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't read the file. %@"
           }
         }
       }
     },
-    "sync.error.cannotReachOPDS": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OPDS unter %@opds/ nicht erreichbar."
+    "import.error.unsupportedFormat" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kios kann derzeit nur EPUB-Dateien importieren."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cannot reach OPDS at %@opds/."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kios can only import EPUB files right now."
           }
         }
       }
     },
-    "sync.error.invalidURL": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ungültige URL"
+    "stats.timeLeft" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ verbleibend"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Invalid URL"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ left"
           }
         }
       }
     },
-    "sync.error.koboInitFailed": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kobo-Initialisierung fehlgeschlagen: %@"
+    "sync.error.cannotReachOPDS" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPDS unter %@opds/ nicht erreichbar."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Kobo init failed: %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cannot reach OPDS at %@opds/."
           }
         }
       }
     },
-    "sync.error.kosyncAccessDenied": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zugriff verweigert. Anmeldedaten prüfen."
+    "sync.error.invalidURL" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungültige URL"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Credentials work for OPDS but not /kosync. Check the user has kosync access."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Invalid URL"
           }
         }
       }
     },
-    "sync.error.kosyncAuthFailed": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kosync-Authentifizierung fehlgeschlagen: %@"
+    "sync.error.koboInitFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kobo-Initialisierung fehlgeschlagen: %@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "kosync auth failed: %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kobo init failed: %@"
           }
         }
       }
     },
-    "sync.error.noKoboEndpoint": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unter dieser URL gibt es keinen Kobo-Sync-Endpunkt. Pfad prüfen."
+    "sync.error.kosyncAccessDenied" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugriff verweigert. Anmeldedaten prüfen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "No Kobo sync endpoint at this URL. Check the path."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Credentials work for OPDS but not /kosync. Check the user has kosync access."
           }
         }
       }
     },
-    "sync.error.noKosyncEndpoint": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Server hat keinen /kosync — iOS Reader benötigt Calibre-Web-Automated."
+    "sync.error.kosyncAuthFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kosync-Authentifizierung fehlgeschlagen: %@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Server has no /kosync — iOS Reader requires Calibre-Web-Automated."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "kosync auth failed: %@"
           }
         }
       }
     },
-    "sync.error.saveFailed": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Speichern fehlgeschlagen: %@"
+    "sync.error.noKoboEndpoint" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unter dieser URL gibt es keinen Kobo-Sync-Endpunkt. Pfad prüfen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Failed to save: %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No Kobo sync endpoint at this URL. Check the path."
           }
         }
       }
     },
-    "sync.error.tokenRejected": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token wurde von Kobo-Sync abgelehnt. Generiere im CWA-Admin neu."
+    "sync.error.noKosyncEndpoint" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server hat keinen /kosync — iOS Reader benötigt Calibre-Web-Automated."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Token rejected by Kobo sync. Re-generate from CWA admin."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Server has no /kosync — iOS Reader requires Calibre-Web-Automated."
           }
         }
       }
     },
-    "sync.error.wrongCredentials": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Benutzername oder Passwort falsch."
+    "sync.error.saveFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speichern fehlgeschlagen: %@"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Wrong username or password."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Failed to save: %@"
           }
         }
       }
     },
-    "·": {
-      "shouldTranslate": false
-    },
-    "· %@ on disk": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "·  %@ auf dem Gerät"
+    "sync.error.tokenRejected" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token wurde von Kobo-Sync abgelehnt. Generiere im CWA-Admin neu."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Token rejected by Kobo sync. Re-generate from CWA admin."
           }
         }
       }
     },
-    "“%@”": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@“"
+    "sync.error.wrongCredentials" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzername oder Passwort falsch."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wrong username or password."
           }
         }
       }
     },
-    "✓ Finished %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓ Gelesen am %@"
+    "·" : {
+      "shouldTranslate" : false
+    },
+    "· %@ on disk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "·  %@ auf dem Gerät"
+          }
+        }
+      }
+    },
+    "“%@”" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“"
+          }
+        }
+      }
+    },
+    "✓ Finished %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓ Gelesen am %@"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
