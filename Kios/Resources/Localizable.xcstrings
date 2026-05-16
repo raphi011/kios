@@ -77,6 +77,9 @@
         }
       }
     },
+    "Apple Intelligence isn't enabled. Open iOS Settings → Apple Intelligence & Siri." : {
+
+    },
     "Ask" : {
 
     },
@@ -86,13 +89,31 @@
     "Back to p. %lld" : {
 
     },
+    "Bigger context requires roughly 8 GB of RAM." : {
+
+    },
     "Book not found" : {
 
     },
     "Books you download from Browse appear here." : {
 
     },
+    "Books you finish reading will appear here." : {
+
+    },
+    "Books you haven't started will appear here." : {
+
+    },
+    "Books you start reading will appear here." : {
+
+    },
     "Brightness %lld percent" : {
+
+    },
+    "Built-in requires Apple Intelligence." : {
+
+    },
+    "Built-in requires iOS 26 or later." : {
 
     },
     "CONTINUE READING" : {
@@ -140,7 +161,13 @@
     "Download model" : {
 
     },
+    "Download the model below to use this engine." : {
+
+    },
     "Downloading…" : {
+
+    },
+    "Enable AI features to choose an engine." : {
 
     },
     "English" : {
@@ -156,6 +183,12 @@
 
     },
     "Generate chapter summaries and ask about selected passages — without sending anything to a server." : {
+
+    },
+    "Generated with Apple Intelligence" : {
+
+    },
+    "Generated with Gemma 4 E4B (on-device)" : {
 
     },
     "Got it" : {
@@ -200,6 +233,9 @@
     "Model files are corrupt" : {
 
     },
+    "Model files are corrupt. Re-download below." : {
+
+    },
     "No book summary yet." : {
 
     },
@@ -209,10 +245,19 @@
     "No downloaded books" : {
 
     },
+    "No finished books" : {
+
+    },
     "No summary for this chapter — try analyzing again." : {
 
     },
+    "No unread books" : {
+
+    },
     "Not downloaded" : {
+
+    },
+    "Nothing in progress" : {
 
     },
     "OK" : {
@@ -424,6 +469,127 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Kios can only import EPUB files right now."
+          }
+        }
+      }
+    },
+    "stats.timeLeft" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ left"
+          }
+        }
+      }
+    },
+    "sync.error.cannotReachOPDS" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cannot reach OPDS at %@opds/."
+          }
+        }
+      }
+    },
+    "sync.error.invalidURL" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Invalid URL"
+          }
+        }
+      }
+    },
+    "sync.error.koboInitFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kobo init failed: %@"
+          }
+        }
+      }
+    },
+    "sync.error.kosyncAccessDenied" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Credentials work for OPDS but not /kosync. Check the user has kosync access."
+          }
+        }
+      }
+    },
+    "sync.error.kosyncAuthFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "kosync auth failed: %@"
+          }
+        }
+      }
+    },
+    "sync.error.noKoboEndpoint" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No Kobo sync endpoint at this URL. Check the path."
+          }
+        }
+      }
+    },
+    "sync.error.noKosyncEndpoint" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Server has no /kosync — iOS Reader requires Calibre-Web-Automated."
+          }
+        }
+      }
+    },
+    "sync.error.saveFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Failed to save: %@"
+          }
+        }
+      }
+    },
+    "sync.error.tokenRejected" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Token rejected by Kobo sync. Re-generate from CWA admin."
+          }
+        }
+      }
+    },
+    "sync.error.wrongCredentials" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wrong username or password."
           }
         }
       }

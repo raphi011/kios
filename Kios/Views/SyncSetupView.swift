@@ -143,7 +143,7 @@ struct SyncSetupView: View {
         let trimmed = kosyncServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed),
               url.scheme?.hasPrefix("http") == true else {
-            status = .failure("Invalid URL")
+            status = .failure(String(localized: "sync.error.invalidURL", defaultValue: "Invalid URL"))
             return
         }
         let basic = BasicCredentials(username: kosyncUsername, password: kosyncPassword)
@@ -155,10 +155,13 @@ struct SyncSetupView: View {
                 for: URLRequest(url: url.appendingPathComponent("opds/"))
             )
         } catch HTTPError.unauthorized {
-            status = .failure("Wrong username or password.")
+            status = .failure(String(localized: "sync.error.wrongCredentials", defaultValue: "Wrong username or password."))
             return
         } catch {
-            status = .failure("Cannot reach OPDS at \(url.absoluteString)opds/.")
+            status = .failure(String(
+                localized: "sync.error.cannotReachOPDS",
+                defaultValue: "Cannot reach OPDS at \(url.absoluteString)opds/."
+            ))
             return
         }
 
@@ -169,19 +172,18 @@ struct SyncSetupView: View {
             )
             _ = try await kosync.authenticate()
         } catch HTTPError.notFound {
-            status = .failure(
-                "Server has no /kosync — iOS Reader requires Calibre-Web-Automated."
-            )
+            status = .failure(String(localized: "sync.error.noKosyncEndpoint", defaultValue: "Server has no /kosync — iOS Reader requires Calibre-Web-Automated."))
             return
         } catch HTTPError.unauthorized {
             // Inconsistent: OPDS accepted but kosync rejected. Could happen
             // if the user has an OPDS-only account on CWA (rare).
-            status = .failure(
-                "Credentials work for OPDS but not /kosync. Check the user has kosync access."
-            )
+            status = .failure(String(localized: "sync.error.kosyncAccessDenied", defaultValue: "Credentials work for OPDS but not /kosync. Check the user has kosync access."))
             return
         } catch {
-            status = .failure("kosync auth failed: \(error.localizedDescription)")
+            status = .failure(String(
+                localized: "sync.error.kosyncAuthFailed",
+                defaultValue: "kosync auth failed: \(error.localizedDescription)"
+            ))
             return
         }
 
@@ -202,7 +204,10 @@ struct SyncSetupView: View {
             originalProtocol = .kosync
             status = .ok
         } catch {
-            status = .failure("Failed to save: \(error.localizedDescription)")
+            status = .failure(String(
+                localized: "sync.error.saveFailed",
+                defaultValue: "Failed to save: \(error.localizedDescription)"
+            ))
         }
     }
 
@@ -210,7 +215,7 @@ struct SyncSetupView: View {
         let trimmed = koboBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed),
               url.scheme?.hasPrefix("http") == true else {
-            status = .failure("Invalid URL")
+            status = .failure(String(localized: "sync.error.invalidURL", defaultValue: "Invalid URL"))
             return
         }
         let http = HTTPClient()  // Kobo auth is in the URL path, not headers
@@ -229,11 +234,14 @@ struct SyncSetupView: View {
             originalProtocol = .kobo
             status = .ok
         } catch HTTPError.unauthorized {
-            status = .failure("Token rejected by Kobo sync. Re-generate from CWA admin.")
+            status = .failure(String(localized: "sync.error.tokenRejected", defaultValue: "Token rejected by Kobo sync. Re-generate from CWA admin."))
         } catch HTTPError.notFound {
-            status = .failure("No Kobo sync endpoint at this URL. Check the path.")
+            status = .failure(String(localized: "sync.error.noKoboEndpoint", defaultValue: "No Kobo sync endpoint at this URL. Check the path."))
         } catch {
-            status = .failure("Kobo init failed: \(error.localizedDescription)")
+            status = .failure(String(
+                localized: "sync.error.koboInitFailed",
+                defaultValue: "Kobo init failed: \(error.localizedDescription)"
+            ))
         }
     }
 
