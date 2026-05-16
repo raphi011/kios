@@ -16,6 +16,9 @@ struct ReaderContentsView: View {
         let index: Int
         let roman: String
         let title: String
+        /// TOC nesting depth, 0 = top-level. Drives row indentation so the
+        /// hierarchy of the source TOC reads visually.
+        let depth: Int
         /// 1-based page (position) number. Aligned-right column.
         let page: Int
         let status: Status
@@ -193,28 +196,27 @@ struct ReaderContentsView: View {
 
 // MARK: - ChapterRow
 
-/// Single chapter row in the contents list. Roman numeral on the left, title
-/// (with optional "You are here" eyebrow) in the middle, checkmark + page on
-/// the right. The current chapter gets the `accentSoft` background fill and a
-/// 3pt accent-red leading bar — matches the editorial design.
+/// Single chapter row in the contents list. Title (with optional "You are
+/// here" eyebrow) on the left, checkmark + page on the right. Sub-chapters
+/// indent by depth and step down a typographic size so the source TOC's
+/// hierarchy reads visually. The current chapter gets the `accentSoft`
+/// background fill and a 3pt accent-red leading bar.
 private struct ChapterRow: View {
     let chapter: ReaderContentsView.Chapter
 
     private var isCurrent: Bool { chapter.status == .current }
     private var isUnread: Bool  { chapter.status == .unread }
     private var isRead: Bool    { chapter.status == .read }
+    private var isSub: Bool     { chapter.depth > 0 }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            Text("\(chapter.roman).")
-                .font(EditorialTheme.serif(size: 18, weight: .medium))
-                .italic()
-                .foregroundStyle(isCurrent ? EditorialTheme.accent : EditorialTheme.muted)
-                .frame(width: 38, alignment: .leading)
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(chapter.title)
-                    .font(EditorialTheme.serif(size: 16, weight: isCurrent ? .semibold : .medium))
+                    .font(EditorialTheme.serif(
+                        size: isSub ? 14 : 16,
+                        weight: isCurrent ? .semibold : .medium
+                    ))
                     .foregroundStyle(isUnread ? EditorialTheme.inkSoft : EditorialTheme.ink)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -223,6 +225,7 @@ private struct ChapterRow: View {
                         .editorialEyebrow(color: EditorialTheme.accent)
                 }
             }
+            .padding(.leading, CGFloat(chapter.depth) * 18)
 
             Spacer(minLength: 8)
 
@@ -239,8 +242,8 @@ private struct ChapterRow: View {
             }
         }
         .padding(.horizontal, EditorialTheme.rowSidePad)
-        .padding(.vertical, 14)
-        .frame(minHeight: 56)
+        .padding(.vertical, isSub ? 10 : 14)
+        .frame(minHeight: isSub ? 44 : 56)
         .background(isCurrent ? EditorialTheme.accentSoft : Color.clear)
         .overlay(alignment: .leading) {
             if isCurrent {

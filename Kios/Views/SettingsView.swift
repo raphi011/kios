@@ -21,6 +21,11 @@ struct SettingsView: View {
     @State private var pageTransition = "Slide"
     @State private var tapZones = "Edges"
 
+    /// Mirrors the AppStorage flag read by ReaderView. Default-on so first
+    /// launch matches the reader's behaviour without the user having to opt
+    /// in.
+    @AppStorage("reader.hapticChapterEnabled") private var hapticChapterEnabled: Bool = true
+
     // Library & sync — toggles persist in-session only.
     @State private var syncOverCellular = false
 
@@ -119,6 +124,12 @@ struct SettingsView: View {
             stubRow(label: "Page transition", value: pageTransition)
             EditorialHairline()
             stubRow(label: "Tap zones", value: tapZones)
+            EditorialHairline()
+            EditorialRow(
+                label: "Chapter haptics",
+                detail: "Subtle tap when finishing a chapter",
+                toggle: $hapticChapterEnabled
+            )
         }
     }
 

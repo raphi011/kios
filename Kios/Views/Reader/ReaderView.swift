@@ -21,6 +21,10 @@ struct ReaderView: View {
     @Query private var sessionsForBook: [ReadingSession]
 
     @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
+    /// On by default. Plays a subtle haptic when a normal swipe/tap crosses
+    /// into a new chapter. Silent for TOC jumps, scrubs, AI quote jumps, and
+    /// sync-resume — the toggle gates only linear chapter transitions.
+    @AppStorage("reader.hapticChapterEnabled") private var hapticChapterEnabled: Bool = true
 
     @State private var publication: Publication?
     @State private var initialLocator: Locator?
@@ -84,11 +88,16 @@ struct ReaderView: View {
     /// TOC entries flattened depth-first and tagged with their starting
     /// totalProgression. Sorted ascending; binary-searched to resolve the
     /// chapter heading for a scrub position.
-    @State private var tocProgressions: [(progression: Double, title: String)] = []
+    @State private var tocProgressions: [(progression: Double, title: String, depth: Int)] = []
     /// Resource path (anchor stripped) → chapter title. Built alongside
     /// `tocProgressions` so the cross-device prompt can name the chapter
     /// a peer is on without re-walking the TOC.
     @State private var tocTitlesByHref: [String: String] = [:]
+    /// 1-based chapter index of the last locator emission we processed.
+    /// Compared against the incoming locator's chapter to detect forward
+    /// transitions for the haptic. Nil until the first emission lands or
+    /// until the TOC has loaded.
+    @State private var lastSeenChapterIndex: Int?
 
     init(bookID: UUID) {
         self.bookID = bookID
@@ -294,6 +303,7 @@ struct ReaderView: View {
                 index: i + 1,
                 roman: romanNumeral(i + 1),
                 title: entry.title,
+                depth: entry.depth,
                 page: positionIdx + 1,
                 status: status,
                 locator: positions[positionIdx]
@@ -453,10 +463,16 @@ struct ReaderView: View {
     /// `<=` the current whole-book progression. nil when the TOC isn't loaded
     /// or the locator's progression precedes the first entry.
     private var currentChapterIndex: Int? {
-        guard let p = currentLocator?.locations.totalProgression else { return nil }
+        currentLocator?.locations.totalProgression.flatMap(chapterIndex(at:))
+    }
+
+    /// 1-based chapter index for an arbitrary whole-book progression. Shared
+    /// between the chrome eyebrow and the haptic detector so both agree on
+    /// what counts as "the current chapter."
+    private func chapterIndex(at progression: Double) -> Int? {
         var idx: Int?
         for (i, entry) in tocProgressions.enumerated() {
-            if entry.progression <= p {
+            if entry.progression <= progression {
                 idx = i
             } else {
                 break
@@ -776,20 +792,20 @@ struct ReaderView: View {
     private func buildTOCProgressions(
         toc: [ReadiumShared.Link],
         positions: [Locator]
-    ) -> (progressions: [(progression: Double, title: String)], titlesByHref: [String: String]) {
-        var flat: [(href: String, title: String)] = []
-        func walk(_ links: [ReadiumShared.Link]) {
+    ) -> (progressions: [(progression: Double, title: String, depth: Int)], titlesByHref: [String: String]) {
+        var flat: [(href: String, title: String, depth: Int)] = []
+        func walk(_ links: [ReadiumShared.Link], depth: Int) {
             for link in links {
                 let title = link.title ?? ""
                 if !title.isEmpty {
-                    flat.append((href: link.href, title: title))
+                    flat.append((href: link.href, title: title, depth: depth))
                 }
-                walk(link.children)
+                walk(link.children, depth: depth + 1)
             }
         }
-        walk(toc)
+        walk(toc, depth: 0)
 
-        var mapped: [(progression: Double, title: String)] = []
+        var mapped: [(progression: Double, title: String, depth: Int)] = []
         var titlesByHref: [String: String] = [:]
         for entry in flat {
             // TOC hrefs often include #anchor; positions key on the resource
@@ -801,7 +817,7 @@ struct ReaderView: View {
             }
             guard let pos = positions.first(where: { $0.href.string.hasSuffix(entryResource) || entryResource.hasSuffix($0.href.string) }),
                   let progression = pos.locations.totalProgression else { continue }
-            mapped.append((progression: progression, title: entry.title))
+            mapped.append((progression: progression, title: entry.title, depth: entry.depth))
         }
         return (mapped.sorted { $0.progression < $1.progression }, titlesByHref)
     }
@@ -1041,8 +1057,13 @@ struct ReaderView: View {
     }
 
     private func pushLocator(bookID: UUID, locator: Locator) async {
+        let newChapterIdx = chapterIndex(at: locator.locations.totalProgression ?? 0)
+        // Seed the baseline on the first (load-artifact) emission so the very
+        // next user advance has something to compare against. No haptic fires
+        // here because we return before the source/transition check.
         if !initialEmissionSeen {
             initialEmissionSeen = true
+            lastSeenChapterIndex = newChapterIdx
             return
         }
         userHasNavigated = true
@@ -1055,6 +1076,17 @@ struct ReaderView: View {
         // Stats: piggy-back on the same locator callback.
         let source = pendingJumpSource ?? .swipe
         pendingJumpSource = nil
+        // Haptic: only on linear (swipe/tap) forward chapter crossings.
+        // Non-linear sources (TOC, scrub, AI jump, resume) just refresh the
+        // baseline silently so the next linear advance compares correctly.
+        if hapticChapterEnabled,
+           source.isLinear,
+           let prev = lastSeenChapterIndex,
+           let new = newChapterIdx,
+           new > prev {
+            HapticFeedback.chapterChanged()
+        }
+        lastSeenChapterIndex = newChapterIdx
         if let positionIndex = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
             env.stats.sessionDidAdvance(
                 position: positionIndex,
