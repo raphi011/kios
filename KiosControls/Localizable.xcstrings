@@ -1,21 +1,56 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Continue Reading" : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "Continue Reading": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiterlesen"
+          }
+        }
+      }
     },
-    "No book to open yet." : {
-
+    "No book to open yet.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch kein Buch zum Öffnen."
+          }
+        }
+      }
     },
-    "Open Most Recent Book" : {
-
+    "Open Most Recent Book": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuletzt gelesenes Buch öffnen"
+          }
+        }
+      }
     },
-    "Opens the book you were last reading." : {
-
+    "Opens the book you were last reading.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnet das Buch, das du zuletzt gelesen hast."
+          }
+        }
+      }
     },
-    "Reading" : {
-
+    "Reading": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesen"
+          }
+        }
+      }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
