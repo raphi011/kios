@@ -8,16 +8,15 @@ import ReadiumShared
 ///
 /// - leading: `‹ Library` back action (accent red)
 /// - center: italic serif book title (truncates to a max width)
-/// - trailing: Contents (`list.bullet`) and Type settings (`Aa`)
+/// - trailing: bookmark (`bookmark`/`bookmark.fill`) and Contents (`list.bullet`), in that order.
 ///
-/// Contents + Type settings are stubs for now — they accept callbacks so
-/// they're easy to wire up later, but pass `nil` (or a no-op) to render
-/// disabled-looking buttons.
+/// Contents is wired up; the bookmark toggle accepts `isBookmarked` + `onToggleBookmark`.
 struct EditorialReaderTopBar: View {
     let title: String
     var onLibrary: () -> Void
     var onContents: () -> Void
-    var onTypeSettings: () -> Void
+    var isBookmarked: Bool
+    var onToggleBookmark: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -54,18 +53,18 @@ struct EditorialReaderTopBar: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 0) {
-                Button(action: onContents) {
-                    Image(systemName: "list.bullet")
+                Button(action: onToggleBookmark) {
+                    Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                         .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(ink)
+                        .foregroundStyle(isBookmarked ? EditorialTheme.accent : ink)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                Button(action: onTypeSettings) {
-                    Text("Aa")
-                        .font(EditorialTheme.serif(size: 18, weight: .semibold))
+                Button(action: onContents) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 18, weight: .regular))
                         .foregroundStyle(ink)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())

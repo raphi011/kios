@@ -11,4 +11,12 @@ enum HapticFeedback {
         let generator = UIImpactFeedbackGenerator(style: .soft)
         generator.impactOccurred()
     }
+
+    /// Light selection tap fired when the user toggles a bookmark in the
+    /// top bar. `.selection` matches the iOS-system feel for "this UI
+    /// state changed because you tapped a control".
+    static func bookmarkToggled() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
+    }
 }

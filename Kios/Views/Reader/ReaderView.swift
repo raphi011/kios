@@ -411,7 +411,8 @@ struct ReaderView: View {
                     title: book?.title ?? "",
                     onLibrary: { dismiss() },
                     onContents: { showContents = true },
-                    onTypeSettings: { /* stub — Type settings sheet not implemented yet */ }
+                    isBookmarked: false,
+                    onToggleBookmark: { /* wired in Task 4 */ }
                 )
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
