@@ -1,24 +1,36 @@
 import Foundation
 import Core
 
-/// Builds the `SyncBackend` + `CatalogBackend` pair appropriate for the
-/// user's currently-selected sync protocol. Existentials are returned so
-/// `SyncService` and `LibraryService` can compose without knowing which
-/// protocol is active.
 enum BackendFactory {
-    /// `auth` must already have all required state for the requested
-    /// protocol persisted (server creds for kosync, kobo creds for kobo).
-    /// Throws `BackendFactoryError.missingCredentials` if any of the
-    /// required state is absent.
+    /// Returns the (sync, catalog) pair for the given source. `sync` is `nil`
+    /// when the source kind has no sync protocol (`.local`, `.opdsReadOnly`).
+    /// Throws when a server kind has no credentials in `auth`.
+    /// `auth` is a protocol so `AppEnvironment.addSource` can probe with a
+    /// `TransientAuthStore` before the source is persisted to SwiftData.
     static func build(
-        auth: AuthStore,
+        source: Source,
+        auth: any AuthReading,
         deviceID: String,
         deviceName: String
-    ) throws -> (sync: any SyncBackend, catalog: any CatalogBackend) {
-        let proto = auth.loadActiveProtocol()
-        switch proto {
+    ) throws -> (sync: (any SyncBackend)?, catalog: any CatalogBackend) {
+        switch source.kind {
+        case .local:
+            return (nil, LocalImportCatalog())
+
+        case .opdsReadOnly:
+            guard let serverURL = source.serverURL else {
+                throw BackendFactoryError.missingServerURL
+            }
+            let http = HTTPClient()
+            let opdsClient = OPDSClient(http: http)
+            let catalog = OPDSCatalogAdapter(
+                client: opdsClient,
+                rootURL: serverURL
+            )
+            return (nil, catalog)
+
         case .kosync:
-            guard let creds = try auth.load() else {
+            guard let creds = try auth.load(sourceID: source.id) else {
                 throw BackendFactoryError.missingCredentials(.kosync)
             }
             let http = HTTPClient(credentials: creds.basic)
@@ -34,51 +46,17 @@ enum BackendFactory {
             return (sync, catalog)
 
         case .kobo:
-            guard let creds = try auth.loadKobo() else {
+            guard let creds = try auth.loadKobo(sourceID: source.id) else {
                 throw BackendFactoryError.missingCredentials(.kobo)
             }
             let backend = makeKoboBackend(
                 creds: creds, deviceID: deviceID, deviceName: deviceName
             )
-            // Same actor instance fills both slots — `KoboBackend` conforms
-            // to `SyncBackend` and `CatalogBackend` and shares cached state
-            // (e.g. `imageURLTemplate`) between the two roles.
+            // KoboBackend conforms to both SyncBackend and CatalogBackend
+            // and caches imageURLTemplate across the two roles.
             return (backend, backend)
         }
     }
-
-    /// Build a `SyncBackend` for an explicit protocol, regardless of the
-    /// active selection. Used by `SyncService` to honor `pendingProtocol`
-    /// at flush time so a buffered write under one protocol still flushes
-    /// via that protocol's backend even after the user switches.
-    static func buildSync(
-        auth: AuthStore,
-        protocol proto: SyncProtocol,
-        deviceID: String,
-        deviceName: String
-    ) throws -> any SyncBackend {
-        switch proto {
-        case .kosync:
-            guard let creds = try auth.load() else {
-                throw BackendFactoryError.missingCredentials(.kosync)
-            }
-            let http = HTTPClient(credentials: creds.basic)
-            return makeKOSyncBackend(
-                creds: creds, http: http,
-                deviceID: deviceID, deviceName: deviceName
-            )
-
-        case .kobo:
-            guard let creds = try auth.loadKobo() else {
-                throw BackendFactoryError.missingCredentials(.kobo)
-            }
-            return makeKoboBackend(
-                creds: creds, deviceID: deviceID, deviceName: deviceName
-            )
-        }
-    }
-
-    // MARK: - private
 
     private static func makeKOSyncBackend(
         creds: ServerCredentials,
@@ -86,14 +64,12 @@ enum BackendFactory {
         deviceID: String,
         deviceName: String
     ) -> KOSyncBackend {
-        let kosyncClient = KOSyncClient(
+        let client = KOSyncClient(
             baseURL: creds.serverURL.appendingPathComponent("kosync"),
             http: http
         )
         return KOSyncBackend(
-            client: kosyncClient,
-            deviceID: deviceID,
-            deviceName: deviceName
+            client: client, deviceID: deviceID, deviceName: deviceName
         )
     }
 
@@ -102,12 +78,14 @@ enum BackendFactory {
         deviceID: String,
         deviceName: String
     ) -> KoboBackend {
-        // Kobo auth is encoded in the URL path (`/kobo/{TOKEN}/`), not
-        // in an Authorization header — so no BasicCredentials here.
+        // Kobo auth lives in the URL path (`/kobo/{TOKEN}/`), not in an
+        // Authorization header — so no BasicCredentials here.
         let http = HTTPClient()
-        let koboClient = KoboClient(baseURL: creds.baseURL, http: http, deviceID: deviceID)
+        let client = KoboClient(
+            baseURL: creds.baseURL, http: http, deviceID: deviceID
+        )
         return KoboBackend(
-            client: koboClient,
+            client: client,
             deviceID: deviceID,
             deviceName: deviceName,
             imageURLTemplate: creds.imageURLTemplate
@@ -117,4 +95,5 @@ enum BackendFactory {
 
 enum BackendFactoryError: Error, Equatable {
     case missingCredentials(SyncProtocol)
+    case missingServerURL
 }
