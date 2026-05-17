@@ -5,9 +5,22 @@ import SwiftUI
 /// Editorial large-title nav bar. Matches the prototype's `KNavBar`: serif
 /// title, optional mono eyebrow above, trailing icons baseline-aligned with
 /// the title (Apple Books pattern, not floating above it).
-struct EditorialNavBar<Trailing: View>: View {
+/// Default serif title view used by the string-based `EditorialNavBar` init.
+struct EditorialNavBarStringTitle: View {
     let title: LocalizedStringKey
+    var body: some View {
+        Text(title)
+            .font(EditorialTheme.serif(size: 34, weight: .bold))
+            .tracking(-0.75)
+            .foregroundStyle(EditorialTheme.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+}
+
+struct EditorialNavBar<TitleContent: View, Trailing: View>: View {
     var eyebrow: String? = nil
+    @ViewBuilder var titleContent: () -> TitleContent
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
@@ -18,12 +31,7 @@ struct EditorialNavBar<Trailing: View>: View {
                     .padding(.bottom, 8)
             }
             HStack(alignment: .lastTextBaseline, spacing: 12) {
-                Text(title)
-                    .font(EditorialTheme.serif(size: 34, weight: .bold))
-                    .tracking(-0.75)
-                    .foregroundStyle(EditorialTheme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                titleContent()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 trailing()
             }
@@ -35,7 +43,15 @@ struct EditorialNavBar<Trailing: View>: View {
     }
 }
 
-extension EditorialNavBar where Trailing == EmptyView {
+extension EditorialNavBar where TitleContent == EditorialNavBarStringTitle {
+    init(title: LocalizedStringKey, eyebrow: String? = nil, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.eyebrow = eyebrow
+        self.titleContent = { EditorialNavBarStringTitle(title: title) }
+        self.trailing = trailing
+    }
+}
+
+extension EditorialNavBar where TitleContent == EditorialNavBarStringTitle, Trailing == EmptyView {
     init(title: LocalizedStringKey, eyebrow: String? = nil) {
         self.init(title: title, eyebrow: eyebrow, trailing: { EmptyView() })
     }

@@ -25,7 +25,11 @@ struct LibraryRootView: View {
 
     @Query private var progresses: [ReadingProgress]
 
+    @Query(sort: [SortDescriptor(\Source.sortOrder)]) private var allSources: [Source]
+
     @Environment(AppEnvironment.self) private var env
+
+    @AppStorage("library.selectedSourceID") private var selectedSourceIDString: String?
 
     @State private var filter: Filter = .all
     @State private var isRefreshing: Bool = false
@@ -42,6 +46,20 @@ struct LibraryRootView: View {
     @State private var searchQuery: String = ""
     @FocusState private var searchFocused: Bool
 
+    private var selectedSource: Source? {
+        if let id = selectedSourceIDString.flatMap(UUID.init(uuidString:)),
+           let match = allSources.first(where: { $0.id == id }) {
+            return match
+        }
+        return allSources.first(where: { $0.kind != .local })
+            ?? allSources.first(where: { $0.kind == .local })
+    }
+
+    private var booksInSelectedSource: [Book] {
+        guard let source = selectedSource else { return books }
+        return books.filter { $0.source.id == source.id }
+    }
+
     /// Whitespace-trimmed, lowercased query; empty when nothing's typed.
     private var normalizedQuery: String {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -53,7 +71,7 @@ struct LibraryRootView: View {
     private var searchResults: [Book] {
         let q = normalizedQuery
         guard !q.isEmpty else { return [] }
-        return books.filter { book in
+        return booksInSelectedSource.filter { book in
             book.title.lowercased().contains(q)
                 || book.authors.contains { $0.lowercased().contains(q) }
         }
@@ -66,7 +84,7 @@ struct LibraryRootView: View {
     }
 
     private var readingBooks: [Book] {
-        books.filter { book in
+        booksInSelectedSource.filter { book in
             let p = progressByBookID[book.id] ?? 0
             return book.finishedAt == nil && book.filename != nil && p > 0 && p < 1
         }
@@ -75,14 +93,14 @@ struct LibraryRootView: View {
     private var unreadBooks: [Book] {
         // Includes both freshly-downloaded books (progress 0) and catalog-only
         // books (filename == nil) so the user can see what's available to read.
-        books.filter { book in
+        booksInSelectedSource.filter { book in
             let p = progressByBookID[book.id] ?? 0
             return book.finishedAt == nil && p == 0
         }
     }
 
     private var finishedBooks: [Book] {
-        books.filter { $0.finishedAt != nil }
+        booksInSelectedSource.filter { $0.finishedAt != nil }
     }
 
     /// Footer for the last section — surfaces sync recency. Hidden until the
@@ -92,7 +110,7 @@ struct LibraryRootView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if books.isEmpty {
+                if booksInSelectedSource.isEmpty {
                     emptyState
                 } else {
                     libraryScroll
@@ -136,11 +154,8 @@ struct LibraryRootView: View {
                 }
                 Button("Sync now") {
                     Task {
+                        guard let src = selectedSource else { return }
                         isRefreshing = true
-                        // TODO: Task 19 — use selected source
-                        let src = env.sourceContexts.values
-                            .first(where: { $0.source.kind != .local })?.source
-                            ?? env.localSource!
                         try? await env.refreshLibrary(source: src)
                         isRefreshing = false
                     }
@@ -156,7 +171,7 @@ struct LibraryRootView: View {
     private var libraryScroll: some View {
         ScrollView {
             VStack(spacing: 0) {
-                EditorialNavBar(title: "Library") {
+                EditorialNavBar(titleContent: { SourcePickerHeader() }) {
                     EditorialNavIconButton(
                         systemName: galleryMode ? "list.bullet" : "square.grid.2x2",
                         accessibilityLabel: galleryMode ? "List view" : "Gallery view"
@@ -229,10 +244,7 @@ struct LibraryRootView: View {
             }
         }
         .refreshable {
-            // TODO: Task 19 — use selected source
-            let src = env.sourceContexts.values
-                .first(where: { $0.source.kind != .local })?.source
-                ?? env.localSource!
+            guard let src = selectedSource else { return }
             try? await env.refreshLibrary(source: src)
         }
     }
@@ -382,7 +394,7 @@ struct LibraryRootView: View {
 
     private var emptyState: some View {
         VStack(spacing: 0) {
-            EditorialNavBar(title: "Library") {
+            EditorialNavBar(titleContent: { SourcePickerHeader() }) {
                 EditorialNavIconButton(
                     systemName: "plus",
                     accessibilityLabel: "Add book"
