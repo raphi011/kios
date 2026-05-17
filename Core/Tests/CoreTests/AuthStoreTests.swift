@@ -132,6 +132,26 @@ struct AuthStoreTests {
         #expect(try store.loadOAuth(sourceID: id) == nil)
     }
 
+    // MARK: - KoboCredentials.parse
+
+    @Test func koboCredentialsParseAcceptsValidURL() {
+        let creds = KoboCredentials.parse("https://books.example.com/kobo/abc123/")
+        #expect(creds?.baseURL.absoluteString == "https://books.example.com/kobo/abc123/")
+    }
+
+    @Test func koboCredentialsParseRejectsMissingToken() {
+        #expect(KoboCredentials.parse("https://books.example.com/kobo/") == nil)
+    }
+
+    @Test func koboCredentialsParseRejectsMissingKoboPath() {
+        #expect(KoboCredentials.parse("https://books.example.com/foo/") == nil)
+    }
+
+    @Test func koboCredentialsParseAddsTrailingSlash() {
+        let creds = KoboCredentials.parse("https://books.example.com/kobo/abc123")
+        #expect(creds?.baseURL.absoluteString == "https://books.example.com/kobo/abc123/")
+    }
+
     @Test func authStoreIsolatedBySource() throws {
         let store = makeStore()
         let idA = UUID()

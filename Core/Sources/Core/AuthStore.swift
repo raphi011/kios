@@ -177,3 +177,23 @@ public final class AuthStore: Sendable {
 }
 
 extension AuthStore: AuthReading {}
+
+extension KoboCredentials {
+    /// Parses the URL the user pastes from CWA admin → Kobo sync. Accepts
+    /// the full `https://host/kobo/{TOKEN}/` form. Returns nil for inputs
+    /// that don't look like a valid Kobo sync URL.
+    public static func parse(_ raw: String) -> KoboCredentials? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              url.scheme == "https" || url.scheme == "http",
+              url.host != nil else { return nil }
+        // Require a `/kobo/{token}/` segment.
+        let parts = url.pathComponents.filter { $0 != "/" }
+        guard let koboIdx = parts.firstIndex(of: "kobo"),
+              parts.index(after: koboIdx) < parts.endIndex else { return nil }
+        // Normalize to a trailing-slash base URL the rest of the code expects.
+        let normalized = trimmed.hasSuffix("/") ? trimmed : trimmed + "/"
+        guard let baseURL = URL(string: normalized) else { return nil }
+        return KoboCredentials(baseURL: baseURL, imageURLTemplate: nil)
+    }
+}

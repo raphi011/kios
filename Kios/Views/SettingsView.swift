@@ -9,8 +9,7 @@ import Core
 ///
 /// Most rows are stubs — the design calls for placeholders so the chrome lands
 /// before the underlying features (themes, AI, transitions) exist. Rows that
-/// work today: Import EPUB, Sync protocol/URL (push to `SyncSetupView`),
-/// Signed in as, Sign out.
+/// work today: Import EPUB, Signed in as, Sign out.
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var modelContext
@@ -150,7 +149,7 @@ struct SettingsView: View {
             EditorialHairline()
 
             NavigationLink {
-                SyncSetupView()
+                Text("Sources") // TODO: Task 18 — Sources section
             } label: {
                 EditorialRow(
                     label: "Sync protocol",
@@ -162,7 +161,7 @@ struct SettingsView: View {
             EditorialHairline()
 
             NavigationLink {
-                SyncSetupView()
+                Text("Sources") // TODO: Task 18 — Sources section
             } label: {
                 EditorialRow(
                     label: "Sync URL",
