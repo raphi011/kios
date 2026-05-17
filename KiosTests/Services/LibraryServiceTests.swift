@@ -16,6 +16,8 @@ struct MockCatalogBackend: CatalogBackend {
     func resolveDownload(for entry: CatalogEntry) async throws -> URL {
         entry.downloadURL
     }
+
+    func probe() async throws {}
 }
 
 // MARK: - Helpers
