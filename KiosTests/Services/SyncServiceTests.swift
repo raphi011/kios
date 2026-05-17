@@ -248,9 +248,8 @@ struct SyncServiceTests {
 
             let backend = RecordingSyncBackend(fetchResult: serverProgress)
             let sync = SyncService(
-                backendForProtocol: { _ in backend },
+                backend: backend,
                 context: context,
-                activeProtocol: .kosync,
                 deviceID: deviceID,
                 deviceName: "iPhone"
             )
@@ -309,9 +308,7 @@ struct SyncServiceBufferFlushTests {
     }
 
     @MainActor
-    private static func makeEnv(
-        activeProtocol: SyncProtocol = .kosync
-    ) throws -> (sync: SyncService, book: Book, context: ModelContext, backend: RecordingSyncBackend) {
+    private static func makeEnv() throws -> (sync: SyncService, book: Book, context: ModelContext, backend: RecordingSyncBackend) {
         let container = try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
@@ -319,9 +316,8 @@ struct SyncServiceBufferFlushTests {
         let context = ModelContext(container)
         let backend = RecordingSyncBackend()
         let sync = SyncService(
-            backendForProtocol: { _ in backend },
+            backend: backend,
             context: context,
-            activeProtocol: activeProtocol,
             deviceID: "us",
             deviceName: "iPhone"
         )
@@ -393,9 +389,8 @@ struct SyncServiceBufferFlushTests {
         let context = ModelContext(container)
         let backend = RecordingSyncBackend()
         let sync = SyncService(
-            backendForProtocol: { _ in backend },
+            backend: backend,
             context: context,
-            activeProtocol: .kosync,
             deviceID: "us",
             deviceName: "iPhone"
         )
@@ -456,9 +451,8 @@ struct SyncServiceBufferFlushTests {
         let context = ModelContext(container)
         let backend = RecordingSyncBackend()
         let sync = SyncService(
-            backendForProtocol: { _ in backend },
+            backend: backend,
             context: context,
-            activeProtocol: .kobo,
             deviceID: "us",
             deviceName: "iPhone",
             spanResolver: resolver

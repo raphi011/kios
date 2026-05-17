@@ -4,14 +4,8 @@ import Core
 
 @MainActor
 final class SyncService {
-    /// Closure (not stored backend) so the factory output can change across
-    /// protocol switches without re-creating `SyncService`. Throwing so a
-    /// missing-credentials build failure at flush time falls through to the
-    /// same error-swallowing path as a network failure (row stays pending,
-    /// next trigger retries).
-    private let backendForProtocol: @MainActor (SyncProtocol) throws -> any SyncBackend
+    private let backend: any SyncBackend
     private let context: ModelContext
-    let activeProtocol: SyncProtocol
     let deviceID: String
     let deviceName: String
     private let spanResolver: (any KoboSpanResolving)?
@@ -22,16 +16,14 @@ final class SyncService {
     private static let promptThreshold: Double = 0.01
 
     init(
-        backendForProtocol: @escaping @MainActor (SyncProtocol) throws -> any SyncBackend,
+        backend: any SyncBackend,
         context: ModelContext,
-        activeProtocol: SyncProtocol,
         deviceID: String,
         deviceName: String,
         spanResolver: (any KoboSpanResolving)? = nil
     ) {
-        self.backendForProtocol = backendForProtocol
+        self.backend = backend
         self.context = context
-        self.activeProtocol = activeProtocol
         self.deviceID = deviceID
         self.deviceName = deviceName
         self.spanResolver = spanResolver
@@ -52,7 +44,6 @@ final class SyncService {
     /// percentage alone collapses every signal into one number and loses
     /// precision on cross-device handoffs.
     func onOpen(book: Book) async throws -> OnOpenAction {
-        let backend = try backendForProtocol(activeProtocol)
         guard let server = try await backend.fetchProgress(for: book.identity) else {
             return .useLocal
         }
@@ -146,9 +137,7 @@ final class SyncService {
     func flushPendingProgress(for book: Book) async {
         guard let row = currentLocalProgress(for: book.id),
               row.pendingUpload else { return }
-        let proto = activeProtocol
         do {
-            let backend = try backendForProtocol(proto)
             // The model's `canonical` carries `deviceName: ""` because it
             // doesn't know the service's identity. Fill it in here so the
             // backend can attach a meaningful device tag on the wire.
@@ -161,8 +150,7 @@ final class SyncService {
                 deviceName: deviceName
             )
             let pushed: CanonicalProgress
-            if proto == .kobo,
-               let resolver = spanResolver,
+            if let resolver = spanResolver,
                let fileURL = book.fileURL,
                let augmented = await augmentLocatorWithSpanID(
                    canonical: canonical, fileURL: fileURL, resolver: resolver
