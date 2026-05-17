@@ -73,13 +73,7 @@ struct BookCoverImage: View {
 
     @ViewBuilder
     private var kosync: some View {
-        // TODO: Task 14 — look up creds for `book.source` directly rather than
-        // falling back to the first kosync source in the context map.
-        let kosyncSource = env.sourceContexts.values
-            .first(where: { $0.source.kind == .kosync })?.source
-        let creds = kosyncSource.flatMap {
-            try? env.authStore.load(sourceID: $0.id)
-        }
+        let creds = try? env.authStore.load(sourceID: book.source.id)
         if let creds {
             CachedAsyncImage(
                 url: book.thumbnailURL,

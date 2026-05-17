@@ -15,8 +15,8 @@ struct RootView: View {
 
         // No first-run gate: the app ships with seeded books and supports
         // local EPUB imports, so it's usable without sync. Users who want
-        // sync configure it via Settings → Sync protocol; until then,
-        // `env.sync == nil` and the per-call `env.sync?.…` no-ops naturally.
+        // sync configure it via Settings; until then, sourceContexts has no
+        // entries with a sync service and the flush loop is a no-op.
         TabView(selection: $selectedTab) {
             HomeRootView()
                 .tabItem { Label("Read", systemImage: "book.pages") }
@@ -31,15 +31,22 @@ struct RootView: View {
         .editorialTabBarStyling()
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                Task { await env.sync?.flushAllPending() }
+                Task {
+                    await withTaskGroup(of: Void.self) { group in
+                        for ctx in env.sourceContexts.values {
+                            guard let sync = ctx.sync else { continue }
+                            group.addTask { await sync.flushAllPending() }
+                        }
+                    }
+                }
             }
             if newPhase == .background {
                 env.stats.sessionDidClose(reason: .backgrounded)
             }
         }
-        // After the user configures sync in Settings, jump them to Library —
-        // that's where the freshly refreshed catalog lives.
-        .onChange(of: env.sync != nil) { _, hasSync in
+        // After the user configures a server source in Settings, jump them to
+        // Library — that's where the freshly refreshed catalog lives.
+        .onChange(of: env.sourceContexts.contains(where: { $0.value.sync != nil })) { _, hasSync in
             if hasSync { selectedTab = 1 }
         }
         .onChange(of: coordinator.pendingBookID) { _, newValue in

@@ -61,21 +61,6 @@ final class AppEnvironment {
     /// before any caller can observe `self`.
     private(set) var localSource: Source!
 
-    // TODO: Task 14/19 — remove transitional shim
-    /// TRANSITIONAL: returns the first non-local source's sync. Removed when
-    /// Task 14 routes ReaderView through `context(for: book.source.id)`.
-    var sync: SyncService? {
-        sourceContexts.values.first(where: { $0.sync != nil })?.sync
-    }
-
-    // TODO: Task 14/19 — remove transitional shim
-    /// TRANSITIONAL: returns the first non-local source's downloads. Removed
-    /// when Task 14 routes DownloadingView through
-    /// `context(for: book.source.id)`.
-    var downloads: DownloadService? {
-        sourceContexts.values.first(where: { $0.downloads != nil })?.downloads
-    }
-
     /// Set when a reader is open. Drives the app-wide `.fullScreenCover` in
     /// `RootView`. Hoisted above `TabView` so both Home and Browse can present
     /// without double-stacking modals.

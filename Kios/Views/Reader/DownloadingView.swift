@@ -34,7 +34,7 @@ struct DownloadingView: View {
                         .padding(.horizontal, 24)
 
                     Button("Retry") {
-                        Task { _ = try? await env.downloads?.download(book: book) }
+                        Task { _ = try? await env.context(for: book.source.id)?.downloads?.download(book: book) }
                     }
                     .buttonStyle(.borderedProminent)
                 }

@@ -1063,7 +1063,7 @@ struct ReaderView: View {
     }
 
     private func resolveOpen() async {
-        guard let book, let sync = env.sync else { return }
+        guard let book, let sync = env.context(for: book.source.id)?.sync else { return }
         do {
             switch try await sync.onOpen(book: book) {
             case .useLocal:
@@ -1094,7 +1094,8 @@ struct ReaderView: View {
     }
 
     private func flush() async {
-        guard let sync = env.sync, let book = currentBook() else { return }
+        guard let book = currentBook(),
+              let sync = env.context(for: book.source.id)?.sync else { return }
         await sync.flushPendingProgress(for: book)
     }
 
@@ -1157,7 +1158,7 @@ struct ReaderView: View {
         guard let book = currentBook() else { return }
         let total = locator.locations.totalProgression ?? 0
         guard let json = try? locator.jsonString() else { return }
-        env.sync?.bufferLocator(
+        env.context(for: book.source.id)?.sync?.bufferLocator(
             book: book, locatorJSON: json, percentage: total
         )
         // Stats: piggy-back on the same locator callback.

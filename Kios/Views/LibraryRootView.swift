@@ -500,7 +500,7 @@ struct LibraryRootView: View {
             if book.serverIDProtocol == SyncProtocol.kobo.rawValue {
                 await env.refreshAcquisitionURL(for: book)
             }
-            _ = try? await env.downloads?.download(book: book)
+            _ = try? await env.context(for: book.source.id)?.downloads?.download(book: book)
         }
         env.openReader(book.id)
     }
