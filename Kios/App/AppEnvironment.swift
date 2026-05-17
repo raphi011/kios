@@ -558,6 +558,19 @@ private struct TransientAuthStore: AuthReading {
     let sourceID: UUID
     let kosync: ServerCredentials?
     let kobo: KoboCredentials?
+    let oauth: OAuthCredentials?
+
+    init(
+        sourceID: UUID,
+        kosync: ServerCredentials? = nil,
+        kobo: KoboCredentials? = nil,
+        oauth: OAuthCredentials? = nil
+    ) {
+        self.sourceID = sourceID
+        self.kosync = kosync
+        self.kobo = kobo
+        self.oauth = oauth
+    }
 
     func load(sourceID: UUID) throws -> ServerCredentials? {
         precondition(sourceID == self.sourceID)
@@ -567,5 +580,10 @@ private struct TransientAuthStore: AuthReading {
     func loadKobo(sourceID: UUID) throws -> KoboCredentials? {
         precondition(sourceID == self.sourceID)
         return kobo
+    }
+
+    func loadOAuth(sourceID: UUID) throws -> OAuthCredentials? {
+        precondition(sourceID == self.sourceID)
+        return oauth
     }
 }

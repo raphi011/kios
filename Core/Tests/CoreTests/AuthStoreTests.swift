@@ -54,7 +54,52 @@ struct AuthStoreTests {
         try store.purge(sourceID: id)
     }
 
-    @Test func authStorePurgeRemovesBothKinds() throws {
+    @Test func authStoreSaveLoadOAuthBySource() throws {
+        let store = makeStore()
+        let id = UUID()
+        let expiry = Date(timeIntervalSince1970: 9_999_999)
+
+        try store.save(
+            sourceID: id,
+            oauth: OAuthCredentials(
+                provider: "google.drive",
+                accessToken: "access-abc",
+                refreshToken: "refresh-xyz",
+                expiresAt: expiry
+            )
+        )
+
+        let loaded = try store.loadOAuth(sourceID: id)
+        #expect(loaded?.provider == "google.drive")
+        #expect(loaded?.accessToken == "access-abc")
+        #expect(loaded?.refreshToken == "refresh-xyz")
+        #expect(loaded?.expiresAt == expiry)
+
+        try store.purge(sourceID: id)
+    }
+
+    @Test func authStoreOAuthWithOptionalFieldsNil() throws {
+        let store = makeStore()
+        let id = UUID()
+
+        try store.save(
+            sourceID: id,
+            oauth: OAuthCredentials(
+                provider: "dropbox",
+                accessToken: "access-only"
+            )
+        )
+
+        let loaded = try store.loadOAuth(sourceID: id)
+        #expect(loaded?.provider == "dropbox")
+        #expect(loaded?.accessToken == "access-only")
+        #expect(loaded?.refreshToken == nil)
+        #expect(loaded?.expiresAt == nil)
+
+        try store.purge(sourceID: id)
+    }
+
+    @Test func authStorePurgeRemovesAllThreeKinds() throws {
         let store = makeStore()
         let id = UUID()
 
@@ -72,11 +117,19 @@ struct AuthStoreTests {
                 imageURLTemplate: "https://cdn.example/tmpl"
             )
         )
+        try store.save(
+            sourceID: id,
+            oauth: OAuthCredentials(
+                provider: "google.drive",
+                accessToken: "access-abc"
+            )
+        )
 
         try store.purge(sourceID: id)
 
         #expect(try store.load(sourceID: id) == nil)
         #expect(try store.loadKobo(sourceID: id) == nil)
+        #expect(try store.loadOAuth(sourceID: id) == nil)
     }
 
     @Test func authStoreIsolatedBySource() throws {

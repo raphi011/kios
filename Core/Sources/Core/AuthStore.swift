@@ -32,11 +32,39 @@ public struct KoboCredentials: Sendable, Equatable {
     }
 }
 
+/// OAuth credentials for a cloud-storage source (e.g. Google Drive, Dropbox).
+/// The entire struct is persisted as a JSON blob in Keychain — all fields are
+/// secret. One credential per source; a source cannot be both Google Drive and
+/// Dropbox simultaneously.
+public struct OAuthCredentials: Codable, Sendable, Equatable {
+    /// Free-form provider identifier, e.g. "google.drive" or "dropbox".
+    /// Future SourceKind cases will have a 1:1 mapping.
+    public let provider: String
+    public let accessToken: String
+    /// Some OAuth flows (e.g. implicit grant) do not issue a refresh token.
+    public let refreshToken: String?
+    /// Some providers omit expiry information.
+    public let expiresAt: Date?
+
+    public init(
+        provider: String,
+        accessToken: String,
+        refreshToken: String? = nil,
+        expiresAt: Date? = nil
+    ) {
+        self.provider = provider
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.expiresAt = expiresAt
+    }
+}
+
 /// Read-only access to per-source credentials. Adopted by `AuthStore` and
 /// `TransientAuthStore` (Task 13) so `BackendFactory.build` can accept either.
 public protocol AuthReading: Sendable {
     func load(sourceID: UUID) throws -> ServerCredentials?
     func loadKobo(sourceID: UUID) throws -> KoboCredentials?
+    func loadOAuth(sourceID: UUID) throws -> OAuthCredentials?
 }
 
 /// Persists per-source sync credentials.
@@ -79,6 +107,9 @@ public final class AuthStore: Sendable {
     private static func koboBaseURLAccount(for id: UUID) -> String {
         "source.\(id.uuidString).kobo.baseURL"
     }
+    private static func oauthAccount(for id: UUID) -> String {
+        "source.\(id.uuidString).oauth"
+    }
 
     /// Saves kosync credentials for `sourceID`. Replaces any existing entry.
     public func save(sourceID: UUID, credentials: ServerCredentials) throws {
@@ -117,13 +148,31 @@ public final class AuthStore: Sendable {
         return KoboCredentials(baseURL: url, imageURLTemplate: tmpl)
     }
 
-    /// Deletes all stored data (kosync + kobo) for `sourceID`. Idempotent.
+    /// Saves OAuth credentials for `sourceID` as a JSON blob in Keychain.
+    /// Replaces any existing entry.
+    public func save(sourceID: UUID, oauth: OAuthCredentials) throws {
+        let data = try JSONEncoder().encode(oauth)
+        guard let json = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.coderInvalidValue)
+        }
+        try keychain.set(json, account: Self.oauthAccount(for: sourceID))
+    }
+
+    /// Returns OAuth credentials for `sourceID`, or nil if no entry exists.
+    public func loadOAuth(sourceID: UUID) throws -> OAuthCredentials? {
+        guard let json = try keychain.get(account: Self.oauthAccount(for: sourceID)),
+              let data = json.data(using: .utf8) else { return nil }
+        return try JSONDecoder().decode(OAuthCredentials.self, from: data)
+    }
+
+    /// Deletes all stored data (kosync + kobo + oauth) for `sourceID`. Idempotent.
     public func purge(sourceID: UUID) throws {
         defaults.removeObject(forKey: Self.kosyncServerURLKey(for: sourceID))
         defaults.removeObject(forKey: Self.kosyncUsernameKey(for: sourceID))
         defaults.removeObject(forKey: Self.koboImageURLTemplateKey(for: sourceID))
         try keychain.delete(account: Self.kosyncPasswordAccount(for: sourceID))
         try keychain.delete(account: Self.koboBaseURLAccount(for: sourceID))
+        try keychain.delete(account: Self.oauthAccount(for: sourceID))
     }
 }
 
