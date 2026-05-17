@@ -29,10 +29,28 @@ struct ReaderContentsView: View {
 
     enum Status { case read, current, unread }
 
+    /// UI-facing bookmark — decoupled from the SwiftData @Model the same
+    /// way `Chapter` is. Caller (ReaderView) maps the persisted rows into
+    /// this shape.
+    struct Bookmark: Identifiable {
+        /// Matches the SwiftData entity's `id`. Handed back to `onDelete`.
+        let id: UUID
+        /// 1-based Readium position — shown in the right-hand column.
+        let page: Int
+        let chapterTitle: String
+        /// Jump target — handed to `onJumpToBookmark` on row tap.
+        let locator: Locator
+    }
+
     let bookTitle: String
     let chapters: [Chapter]
+    let bookmarks: [Bookmark]
     /// Tap a chapter row — caller sets `pendingJump` and dismisses.
     let onJump: (Locator) -> Void
+    /// Tap a bookmark row — caller sets `pendingJump` and dismisses.
+    let onJumpToBookmark: (Locator) -> Void
+    /// Tap the trailing trash — caller deletes by id.
+    let onDeleteBookmark: (UUID) -> Void
     let onDismiss: () -> Void
 
     // MARK: - Internal state
@@ -113,7 +131,7 @@ struct ReaderContentsView: View {
         EditorialSegmented(
             items: [
                 ("Contents · \(chapters.count)", Tab.contents),
-                ("Bookmarks · 0", Tab.bookmarks),
+                ("Bookmarks · \(bookmarks.count)", Tab.bookmarks),
                 ("Notes · 0", Tab.notes),
             ],
             selection: $tab
@@ -154,15 +172,32 @@ struct ReaderContentsView: View {
         return "Chapter \(current.roman) · \(current.title)"
     }
 
-    // MARK: - Empty states (Bookmarks / Notes)
+    // MARK: - Bookmarks
 
+    @ViewBuilder
     private var bookmarksTab: some View {
-        emptyState(
-            systemImage: "bookmark",
-            title: "No bookmarks yet",
-            detail: "Saving passages from the reader will land here. Coming soon."
-        )
-        .padding(.top, 80)
+        if bookmarks.isEmpty {
+            emptyState(
+                systemImage: "bookmark",
+                title: "No bookmarks yet",
+                detail: "Tap the bookmark in the top bar to save the current page. They'll appear here."
+            )
+            .padding(.top, 80)
+        } else {
+            EditorialList {
+                ForEach(bookmarks.indices, id: \.self) { i in
+                    let bookmark = bookmarks[i]
+                    BookmarkRow(
+                        bookmark: bookmark,
+                        onJump: { onJumpToBookmark(bookmark.locator) },
+                        onDelete: { onDeleteBookmark(bookmark.id) }
+                    )
+                    if i < bookmarks.count - 1 {
+                        EditorialHairline()
+                    }
+                }
+            }
+        }
     }
 
     private var notesTab: some View {
@@ -253,5 +288,52 @@ private struct ChapterRow: View {
             }
         }
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - BookmarkRow
+
+/// Single bookmark row. The whole row (chapter title middle, page
+/// number right) is one tap target that jumps; the trailing trash is
+/// a separate hit target that deletes.
+private struct BookmarkRow: View {
+    let bookmark: ReaderContentsView.Bookmark
+    let onJump: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 0) {
+            Button(action: onJump) {
+                HStack(alignment: .center, spacing: 14) {
+                    Text(bookmark.chapterTitle)
+                        .font(EditorialTheme.serif(size: 16, weight: .medium))
+                        .foregroundStyle(EditorialTheme.ink)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    Spacer(minLength: 8)
+
+                    Text(String(bookmark.page))
+                        .font(EditorialTheme.mono(size: 11))
+                        .tracking(0.2)
+                        .foregroundStyle(EditorialTheme.muted)
+                }
+                .padding(.leading, EditorialTheme.rowSidePad)
+                .padding(.vertical, 14)
+                .frame(minHeight: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(EditorialTheme.muted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 4)
+        }
     }
 }

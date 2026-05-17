@@ -226,11 +226,18 @@ struct ReaderView: View {
             ReaderContentsView(
                 bookTitle: book?.title ?? "",
                 chapters: chapterEntries,
+                bookmarks: bookmarkEntries,
                 onJump: { locator in
                     pendingJumpSource = .tocJump
                     pendingJump = locator
                     showContents = false
                 },
+                onJumpToBookmark: { locator in
+                    pendingJumpSource = .tocJump
+                    pendingJump = locator
+                    showContents = false
+                },
+                onDeleteBookmark: { id in deleteBookmark(id: id) },
                 onDismiss: { showContents = false }
             )
         }
@@ -312,6 +319,30 @@ struct ReaderView: View {
             ))
         }
         return out
+    }
+
+    /// Maps the persisted Bookmark rows into the view-facing struct.
+    /// Bookmarks whose stored locator JSON can no longer be parsed are
+    /// dropped — defensive, shouldn't happen in practice. Sorted by
+    /// position ascending so the list reads top-to-bottom in book order.
+    private var bookmarkEntries: [ReaderContentsView.Bookmark] {
+        bookmarksForBook
+            .sorted { $0.position < $1.position }
+            .compactMap { b in
+                guard let loc = parseLocator(b.locatorJSON) else { return nil }
+                return ReaderContentsView.Bookmark(
+                    id: b.id,
+                    page: b.position,
+                    chapterTitle: b.chapterTitle,
+                    locator: loc
+                )
+            }
+    }
+
+    private func deleteBookmark(id: UUID) {
+        guard let target = bookmarksForBook.first(where: { $0.id == id }) else { return }
+        context.delete(target)
+        try? context.save()
     }
 
     /// Highest progression reached for this book — drives the "read" check
