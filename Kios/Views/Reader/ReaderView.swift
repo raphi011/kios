@@ -19,6 +19,7 @@ struct ReaderView: View {
     @Query private var downloads: [Download]
     /// Sessions for this book — drives the "time left" estimate in the chrome.
     @Query private var sessionsForBook: [ReadingSession]
+    @Query private var bookmarksForBook: [Bookmark]
 
     @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
     /// On by default. Plays a subtle haptic when a normal swipe/tap crosses
@@ -105,6 +106,7 @@ struct ReaderView: View {
         _books = Query(filter: #Predicate<Book> { $0.id == id })
         _downloads = Query(filter: #Predicate<Download> { $0.bookID == id })
         _sessionsForBook = Query(filter: #Predicate<ReadingSession> { $0.bookID == id })
+        _bookmarksForBook = Query(filter: #Predicate<Bookmark> { $0.bookID == id })
     }
 
     private var book: Book? { books.first }
@@ -322,6 +324,25 @@ struct ReaderView: View {
         return Double(book.furthestLinearPosition) / Double(positions.count - 1)
     }
 
+    /// 1-based Readium position index for the locator on screen. Prefer
+    /// the locator's own `position` (set by the publication's positions
+    /// service); fall back to the largest position whose totalProgression
+    /// is ≤ the current one — same lookup style as `chapterEntries`.
+    private var currentPositionIndex: Int? {
+        if let pos = currentLocator?.locations.position { return pos }
+        guard let prog = currentLocator?.locations.totalProgression,
+              !positions.isEmpty else { return nil }
+        let idx = positions.lastIndex { ($0.locations.totalProgression ?? 0) <= prog }
+        return idx.map { $0 + 1 }
+    }
+
+    /// True when a bookmark exists for `(book.id, currentPositionIndex)`.
+    /// Drives the bookmark glyph's filled vs outline state.
+    private var isCurrentPageBookmarked: Bool {
+        guard let bookID = book?.id, let position = currentPositionIndex else { return false }
+        return bookmarksForBook.contains { $0.bookID == bookID && $0.position == position }
+    }
+
     @ViewBuilder
     private var content: some View {
         if let book {
@@ -411,8 +432,8 @@ struct ReaderView: View {
                     title: book?.title ?? "",
                     onLibrary: { dismiss() },
                     onContents: { showContents = true },
-                    isBookmarked: false,
-                    onToggleBookmark: { /* wired in Task 4 */ }
+                    isBookmarked: isCurrentPageBookmarked,
+                    onToggleBookmark: { toggleBookmark() }
                 )
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -1055,6 +1076,26 @@ struct ReaderView: View {
         pendingJumpSource = .programmaticReturn
         pendingJump = positions[target.fromPosition]
         env.stats.dismissJumpPill(commitStay: false)
+    }
+
+    /// Toggles a bookmark at the current page. Snapshots the locator JSON
+    /// and chapter title at the moment of bookmark so the row survives a
+    /// later TOC reload. Plays a selection haptic. No-op when we don't
+    /// have a current locator yet.
+    @MainActor
+    private func toggleBookmark() {
+        guard let bookID = book?.id,
+              let position = currentPositionIndex,
+              let locator = currentLocator,
+              let json = try? locator.jsonString() else { return }
+        BookmarkToggle.toggle(
+            in: context,
+            bookID: bookID,
+            position: position,
+            locatorJSON: json,
+            chapterTitle: chapterTitleForCurrent
+        )
+        HapticFeedback.bookmarkToggled()
     }
 
     private func pushLocator(bookID: UUID, locator: Locator) async {
