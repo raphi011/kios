@@ -4,7 +4,7 @@
 
 ## Context
 
-This iOS app — codenamed `ios-reader` in the repo, product name **Kios** — is a native SwiftUI + SwiftData EPUB reader (iOS 17+, iPhone + iPad) that talks to self-hosted Calibre-Web/CWA servers and supports KOSync/Kobo sync. It's well-tested (168 tests passing) and feature-complete on the `feat/v1` branch, but **not yet ready for App Store submission**: no Apple Developer account, no signing team, no version numbers, no app icon, no privacy manifest, no App Store Connect record, no screenshots, no marketing copy.
+This iOS app — codenamed `ios-reader` in the repo, product name **Kios** — is a native SwiftUI + SwiftData EPUB reader (iOS 17+, iPhone + iPad) that talks to self-hosted servers over OPDS (catalogue), KOSync, and the Kobo sync protocol. As of **2026-05-18**, build 1.0(21) is **submitted to Apple Beta App Review** for the *Public Beta* external TestFlight group; once approved (~24h), external testers become invitable. Remaining work for full App Store launch: real app icon, screenshots, marketing copy, ATS decision.
 
 This document captures the full set of requirements, decisions, and process steps so future submission work has a single reference.
 
@@ -13,13 +13,14 @@ This document captures the full set of requirements, decisions, and process step
 - **App name**: **Kios**. App Store listing name: **Kios Reader** (the "Reader" descriptor differentiates Class 9 goods from the existing *Kios, Inc.* mark and adds modest ASO weight). Home-screen `CFBundleDisplayName` stays as **Kios**. Treated as a coined word — no public reference to the Kobo+iOS etymology in marketing, store copy, or readme. Project is free + open source + niche, so the residual risks (kiosk search-collision, low-probability C&D from Kios, Inc.) are recoverable rather than existential. See "Phase 0a — Picking a name" for the analysis trail (including the rejected *Aldus* alternative).
 - **Bundle ID**: `com.raphi011.kios`. Locked. Matches the GitHub-handle namespace; short and ages well. Replaces the working-title `me.iosreader.iOSReader`.
 - **Apple Developer enrollment**: deferred until the app is "ready to launch."
-- **Reviewer access strategy**: add local EPUB file import so the app is fully testable offline; demo Calibre-Web server credentials in App Review Notes as backup.
+- **Reviewer access strategy**: add local EPUB file import so the app is fully testable offline; reviewer notes emphasize the two bundled sample books (Frankenstein, Moby-Dick) — sync features are optional and not required to evaluate the app. No demo server credentials needed.
+- **Positioning is server-agnostic**: never name a specific server implementation in user-facing copy. Sync protocols (OPDS, KOSync, Kobo) are open specs and the app works with any compliant server. This avoids App Store 4.2 "wrapper" framing risk and is factually accurate.
 - **Visual assets**: still need designed mark + screenshots. A **placeholder icon from [IconikAI](https://www.iconikai.com/) is wired into the build** (`Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`) so the simulator install + Xcode validation pipelines work end-to-end today. The placeholder **must be replaced with a real designed mark before public launch** — see "1.6 App icon assets" for the AI tooling shortlist evaluated during the placeholder pass.
 - **Submission path**: TestFlight beta first, then promote to App Store review.
 
 ## Current state (verified via codebase exploration)
 
-TestFlight internal builds are live as of 2026-05-14, so most Phase 1–4 plumbing is done.
+TestFlight internal builds have been live since 2026-05-14. Build 1.0(21) was submitted for external Beta App Review on 2026-05-18.
 
 | Area | Status |
 |---|---|
@@ -38,8 +39,9 @@ TestFlight internal builds are live as of 2026-05-14, so most Phase 1–4 plumbi
 | Capabilities/entitlements | None declared (no iCloud, push, IAP, App Groups, Sign in with Apple) |
 | Third-party SDKs | Readium (swift-toolkit 3.9+), ZIPFoundation; **no analytics, no ad SDKs, no trackers** |
 | CI/CD | Makefile only; no fastlane, no GitHub Actions, no `ExportOptions.plist`. TestFlight uploads currently manual via Xcode Organizer. |
-| App Store Connect metadata | App record exists (TestFlight works). Marketing copy / screenshots / public-listing metadata still to write. |
-| Privacy policy + beta test info | 🟡 Drafted in-repo as `PRIVACY.md` and `BETA.md` (committed 2026-05-17). Privacy policy still needs public hosting (GitHub Pages); BETA.md ready to paste into ASC's TestFlight Test Information + per-build "What to Test" notes. |
+| App Store Connect metadata | ✅ App Information (Primary Books / Secondary Productivity, Content Rights No, Age Rating 4+), Pricing $0.00 worldwide, App Privacy "Data Not Collected" published, TestFlight Test Information filled. **Marketing copy + screenshots still pending** for full App Store submission (not required for TestFlight). |
+| Privacy policy + beta test info | ✅ `PRIVACY.md` hosted at https://raphi011.github.io/kios/PRIVACY via GitHub Pages (live since 2026-05-17). `BETA.md` content pasted into ASC TestFlight Test Information + per-build "What to Test". Both files scrubbed of any specific server-implementation references — strictly server-agnostic framing. |
+| External TestFlight | 🟡 Build 1.0(21) **submitted to Beta App Review 2026-05-18** (~24h Apple turnaround). `Public Beta` external group created. After approval, invite testers via public link or email. |
 
 ---
 
@@ -160,14 +162,15 @@ Things you can pin down today; they all become inputs to App Store Connect later
 
 - [x] **Confirm bundle ID** — locked to `com.raphi011.kios`.
 - [x] **App display name** — home screen `CFBundleDisplayName` = `Kios`; App Store listing name = `Kios Reader`.
-- [ ] **Subtitle** (up to 30 chars) — appears under the name in the App Store listing. Examples to consider: `Self-hosted EPUB reader`, `Your library, beautifully read`, `Calibre-Web reader for iOS`.
-- [ ] **Primary category + secondary category** — likely Primary: *Books*, Secondary: *Productivity*.
-- [ ] **Pricing model** — free, paid, or free with IAP? (IAP requires StoreKit work; free is simplest for v1.)
-- [ ] **Age rating** — App Store Connect asks a 20-question questionnaire. Likely 4+ for this app.
-- [ ] **Marketing copy**: short description (170 chars), full description (4000 chars), keywords (100 chars), promotional text (170 chars, editable post-release without re-review), what's new in version (4000 chars).
-- 🟡 **Privacy policy URL** — content drafted at repo root as `PRIVACY.md` (committed 2026-05-17). Still needs public hosting; simplest path is GitHub Pages on this repo (Settings → Pages → main branch). Resulting URL goes into App Store Connect → App Privacy → Privacy Policy URL, and also into TestFlight Test Information for external review.
-- [ ] **Support URL** — public page where users can reach you (GitHub issues page works).
-- [ ] **Description framing** — frame Calibre-Web/Kobo sync as *optional advanced features*, not headline. See "Risks" section below.
+- [ ] **Subtitle** (up to 30 chars) — appears under the name in the App Store listing. Examples to consider: `Self-hosted EPUB reader`, `Your library, beautifully read`. Avoid naming any specific server product.
+- [x] **Primary + secondary category** (set 2026-05-17): Primary *Books*, Secondary *Productivity*.
+- [x] **Pricing model** (set 2026-05-17): Free ($0.00), worldwide (175 regions).
+- [x] **Age rating** (set 2026-05-17): 4+ (173 countries, AL in Brazil, ALL in Korea). 20-question questionnaire answered NO/NONE across all categories.
+- [ ] **Marketing copy**: short description (170 chars), full description (4000 chars), keywords (100 chars), promotional text (170 chars, editable post-release without re-review), what's new in version (4000 chars). Frame in server-agnostic terms: "self-hosted libraries that speak OPDS / KOSync / Kobo sync."
+- [x] **Privacy policy URL** (live 2026-05-17): https://raphi011.github.io/kios/PRIVACY. Hosted via GitHub Pages on `main` branch root. Set in ASC → App Privacy → Privacy Policy URL **and** in TestFlight Test Information → Privacy Policy URL.
+- [x] **Marketing URL** (set 2026-05-17): https://github.com/raphi011/kios (GitHub repo as marketing landing).
+- [ ] **Support URL** — public page where users can reach you. GitHub issues page is the simplest choice (https://github.com/raphi011/kios/issues).
+- [x] **Description framing** — sync features framed as *optional advanced features*, not headline. Reviewer Notes emphasize local mode + bundled samples.
 
 ---
 
@@ -200,7 +203,7 @@ Audit confirmed no first-party use of disk-space, system-boot-time, or active-ke
 
 The `README.md` still hedges: "HTTPS strongly recommended either way. Plain HTTP requires an `NSAppTransportSecurity` exception in `Info.plist` for the specific host." No exception is currently in `Kios/Info.plist`. Pick one before submission:
 
-- **Option A — HTTPS-only**: Don't add ATS exceptions. Tighten the README to "HTTPS required". Cleanest review path. Cost: users with HTTP-only home setups need to put a reverse proxy / Tailscale / Caddy in front of their Calibre-Web server.
+- **Option A — HTTPS-only**: Don't add ATS exceptions. Tighten the README to "HTTPS required". Cleanest review path. Cost: users with HTTP-only home setups need to put a reverse proxy / Tailscale / Caddy in front of their server.
 - **Option B — Permissive**: Add `NSAppTransportSecurity` with `NSAllowsArbitraryLoads = true`, plus a justification in App Review Notes ("users connect to self-hosted servers they configure, which may be on local networks without TLS"). Reviewers sometimes accept this for self-hosted-server apps, sometimes don't. Higher review risk.
 - **Option C — Per-host exception via UI**: Don't whitelist globally; let users configure the host in-app and add an exception narrowly when they do. Most complex; probably overkill for v1.
 
@@ -281,15 +284,15 @@ Team `KVS38S75S8` is enrolled and wired into `project.yml:14`. Renewal note: Dev
 
 ---
 
-## Phase 3 — App Store Connect setup — 🟡 PARTIAL
+## Phase 3 — App Store Connect setup — ✅ DONE for TestFlight (marketing assets for App Store proper still pending)
 
-The bundle ID and app record exist (proof: TestFlight builds upload and install). The public-listing metadata still needs filling in before the final submission step.
+All app-record metadata that gates external Beta App Review is complete as of 2026-05-17. The remaining App Store assets (screenshots, marketing copy) are not required for TestFlight and are scheduled under Phase 6.
 
 - [x] **Register the bundle ID** — `com.raphi011.kios` is registered.
 - [x] **Create the app record** — name `Kios Reader`, bundle ID `com.raphi011.kios`.
-- [ ] **App Information**: category (Primary: Books, Secondary: Productivity), content rights questionnaire, age rating questionnaire (20 questions, expect 4+).
-- [ ] **Pricing & Availability**: free vs paid tier, country/region availability.
-- [ ] **App Privacy**: declare data types collected. Recommended answer: "Data Not Collected" — no analytics, no server-side telemetry, Calibre-Web sync goes to the user's own server, not yours.
+- [x] **App Information** (2026-05-17): Primary *Books*, Secondary *Productivity*, Content Rights = No (no third-party content distributed by the app; bundled samples are public domain). Age Rating = 4+ globally.
+- [x] **Pricing & Availability** (2026-05-17): Free ($0.00) in 175 regions, Worldwide availability.
+- [x] **App Privacy** (PUBLISHED 2026-05-17): "Data Not Collected". Privacy Policy URL: https://raphi011.github.io/kios/PRIVACY. Truthful: no analytics, no server-side telemetry, all sync traffic goes to the user's own configured server.
 - [ ] **(Optional) Create an App Store Connect API key** at App Store Connect → Users and Access → Integrations → App Store Connect API. Generate a `.p8` key, save it (download is one-time only), note the Issuer ID and Key ID. Needed for fastlane/CI uploads.
 
 ---
@@ -311,27 +314,52 @@ Note: there is no `.xcworkspace` here — `make xcodegen` generates `Kios.xcodep
 
 ---
 
-## Phase 5 — TestFlight beta — 🟡 INTERNAL DONE; EXTERNAL OPEN
+## Phase 5 — TestFlight beta — ✅ INTERNAL DONE; 🟡 EXTERNAL SUBMITTED 2026-05-18 (awaiting Beta Review approval)
 
-Internal testing is live as of 2026-05-14.
+Internal testing live since 2026-05-14. External Beta App Review submitted 2026-05-18 for build 1.0(21) and group `Public Beta`.
 
 - [x] Build processed by App Store Connect.
 - [x] Internal tester(s) installed via TestFlight app.
-- 🟡 Fill out **Test Information** in TestFlight tab: beta app description, email, marketing URL, privacy policy URL (some of these are also required for external review). Content drafted in `BETA.md` (per-build "What to Test") and `PRIVACY.md` (policy text) at repo root — paste-ready into ASC once the privacy policy is hosted.
-- [ ] **Real-device coverage** — confirm at least one iPhone *and* one iPad have been used end-to-end: cold launch, local EPUB import, Calibre-Web sync, reading a book, progress persistence, killing and relaunching, offline behavior, iOS rotation, dark mode.
-- [ ] **External testing** (optional, requires Apple "Beta App Review" — first build only, ~24hr): up to 10,000 testers via public link or email invite. Useful for catching edge cases your devices don't have (older iPhones, locales, accessibility settings).
-  - Prerequisites before submitting for Beta Review: hosted privacy policy URL (see Phase 0b — currently 🟡), Test Information filled out (use `BETA.md`), App Privacy questionnaire complete in ASC (answer: "Data Not Collected"), external testing group created, "What to Test" notes attached to the build.
+- [x] **Test Information** filled out and saved (2026-05-17). Fields: Beta App Description, Feedback Email (raphi011@gmail.com), Marketing URL (https://github.com/raphi011/kios), Privacy Policy URL, Contact info (Raphael Gruber + phone), Review Notes (emphasize local mode + bundled samples; sync optional and not required for review). Sign-in required: **unchecked**.
+- [ ] **Real-device coverage** — confirm at least one iPhone *and* one iPad have been used end-to-end: cold launch, local EPUB import, server-backed library sync, reading a book, progress persistence, killing and relaunching, offline behavior, iOS rotation, dark mode.
+- 🟡 **External testing** (Beta App Review submitted 2026-05-18, ~24h Apple turnaround):
+  - **Public Beta** external group created (ASC TestFlight → External Testing → `Public Beta`).
+  - Build 1.0(21) added to Public Beta group on 2026-05-18 and submitted for Beta App Review the same day. Status: "Waiting for Review" → expected "In Review" within hours → "Ready to Test" on approval.
+  - After approval, invite testers via the group page → Invite Testers (public link or email; up to 10,000 external testers).
   - Note: bumping `CFBundleShortVersionString` (marketing version, e.g. 1.0 → 1.1) re-triggers Beta Review; bumping only `CFBundleVersion` (build number) within the same marketing version usually doesn't. Stay on `1.0` build N+1, N+2… while iterating with external testers to avoid per-build re-review.
 - [ ] Iterate: each fix → bump build number → re-archive → re-upload → re-test. TestFlight builds expire after 90 days.
+
+### Build-eligibility gotcha (learned 2026-05-18)
+
+**TestFlight build eligibility for external testing is captured at upload time, not retroactively.** Builds 1.0(16)–1.0(20) were uploaded *before* full App Information / Pricing / App Privacy were complete. Even after filling all of those in, those builds remained internal-only ("Testing" status) and refused to appear in the external group's build picker — neither the *group→Add Build* picker nor the *build→Add Group* picker would surface the external relationship.
+
+The fix: re-archive and upload as build 1.0(21) *after* all app-record metadata is in place. The fresh upload gets `Ready to Submit` status (yellow dot) and is eligible for external Beta App Review.
+
+**Implication for future TestFlight uploads on this app record**: complete every prerequisite below *before* the upload, not after.
+
+### Verified prerequisites for external Beta App Review
+
+The doc previously listed only five prereqs. Empirically, **all of these must be in place before the upload that you intend to submit externally**:
+
+1. ✅ Hosted Privacy Policy URL (Phase 0b)
+2. ✅ Test Information saved in TestFlight tab (Beta App Description, Feedback Email, Marketing URL, Privacy Policy URL, Contact info **including phone number** — ASC rejects empty phone)
+3. ✅ App Privacy questionnaire **published** in ASC ("Data Not Collected"; Publish button must be clicked, not just Save)
+4. ✅ **App Information**: Category (Primary + Secondary), Content Rights, Age Rating questionnaire (4+ for a reader app with no objectionable content)
+5. ✅ **Pricing & Availability**: at least one price tier ($0.00 for free) and at least one country (worldwide is simplest)
+6. ✅ External testing group created (`Public Beta`)
+7. ✅ "What to Test" notes saved on the specific build before submission
+8. ✅ Sign-In Information modal during submission: **uncheck** "Sign-in required" since local mode covers reviewer's full path
+
+If any of #1–#5 are missing at upload time, the build's eligibility is locked to internal-only and a re-upload is required.
 
 ---
 
 ## Phase 6 — App Store submission
 
-- [ ] **Screenshots**: required sizes for iOS 17+ are **6.9" iPhone** (e.g., iPhone 16 Pro Max, 1290×2796) and **13" iPad** (e.g., iPad Pro M4, 2064×2752) — Apple auto-scales these to all smaller sizes. Min 3, max 10 per device class. Use real app screens, not mockups. Tools: SimGenie, fastlane snapshot, or take from a real device. Consider one "what is this app" screenshot, one local-files screenshot, one Calibre-Web screenshot, one reading-view screenshot, one settings screenshot.
+- [ ] **Screenshots**: required sizes for iOS 17+ are **6.9" iPhone** (e.g., iPhone 16 Pro Max, 1290×2796) and **13" iPad** (e.g., iPad Pro M4, 2064×2752) — Apple auto-scales these to all smaller sizes. Min 3, max 10 per device class. Use real app screens, not mockups. Tools: SimGenie, fastlane snapshot, or take from a real device. Consider one "what is this app" screenshot, one local-files screenshot, one server-backed library screenshot, one reading-view screenshot, one settings screenshot.
 - [ ] **App preview video** (optional, 15–30 sec, captured from device): skippable for v1.
 - [ ] **App Review Information**:
-  - Sign-in required? If yes (for Calibre-Web testing), provide demo credentials. If you've built local EPUB import per Phase 1.1, mark "Sign-in required: No" and write in **Notes**: *"The app's primary mode (local EPUB reading) works offline with no account. Optional Calibre-Web sync can be tested with the demo server at https://demo.calibre-web.example with username `demo` / password `demo`."*
+  - Sign-in required? Mark "Sign-in required: No" and write in **Notes**: *"The app's primary mode (local EPUB reading) works fully offline with no account. Two sample books (Frankenstein, Moby-Dick) are bundled and auto-seeded on first launch. Optional sync features (OPDS catalogue browsing, KOSync reading-progress sync, Kobo sync protocol) connect to a server the user configures in Settings — the developer does not operate a backend. These features are not required to evaluate the app and can be skipped for review."*
   - Contact info: phone, email.
 - [ ] **Version Release**: choose Manual ("I'll release it when I'm ready"), Automatic ("release as soon as approved"), or Phased (7-day staged rollout to % of users). **Recommended for v1: Manual** — gives you a chance to post a social announcement at launch.
 - [ ] **Select the build** (promote the TestFlight build that's baked).
@@ -349,7 +377,7 @@ Rejections are normal; the goal is to fix them fast.
 | **4.2 — Minimum Functionality** | "This is just a wrapper around a self-hosted server" | Highlight Readium-based reader, themes, fonts, progress, local files in description |
 | **5.1.1 — Data Collection and Storage** | Privacy policy missing or vague | Explicit policy: "No data leaves your device except to servers you configure" |
 | **5.1.2 — Data Use and Sharing** | App Privacy declaration doesn't match behavior | Truthfully declare "Data Not Collected" (you don't) |
-| **3.1.1 — In-App Purchase** | "Users buy books on a third-party site" | Only an issue if you sell content. Calibre-Web is the user's *own* library → safe. Don't add any "Buy more books" links to external stores. |
+| **3.1.1 — In-App Purchase** | "Users buy books on a third-party site" | Only an issue if you sell content. Source servers are the user's *own* library → safe. Don't add any "Buy more books" links to external stores. |
 | **4.3 — Spam** | "There are already 50 EPUB readers" | Your USP is "works with your self-hosted library + cross-device sync." Lead with that in description. |
 | **2.5.1 — Software Requirements / private APIs** | None expected; Readium and ZIPFoundation are public | n/a |
 | **NSAppTransportSecurity rejection** | Plain HTTP exception triggers "explain why you need cleartext" | Either go HTTPS-only (Phase 1.5 option A) or write a strong justification |
@@ -363,17 +391,17 @@ When rejected: respond in App Store Connect → Resolution Center within a day. 
 | Phase | Effort | Wall clock |
 |---|---|---|
 | 0a. Name & bundle ID | ✅ done | — |
-| 0b. Marketing copy, subtitle, support/privacy URLs | 0.5–1 day of writing | Async |
+| 0b. Subtitle + marketing copy + support URL | 0.5–1 day of writing | Async |
 | 1. Code prep (local files + privacy + version + encryption) | ✅ done | — |
 | 1.5 ATS decision | ~30 min once decided | Same day |
 | 1.6 Real app icon (replacing placeholder) | 0.5–1 day | Async |
 | 2. Apple Dev enrollment | ✅ done | — |
-| 3. App Store Connect listing metadata (categories, age rating, App Privacy, pricing) | 1–2 hours | Same day |
+| 3. App Store Connect listing metadata (categories, age rating, App Privacy, pricing) | ✅ done 2026-05-17 | — |
 | 4. Archive + upload | ✅ done; recurring 30 min per build | Same day |
-| 5. TestFlight beta | ✅ internal live; external optional (~24hr review) | 1 week real-device baking |
+| 5. TestFlight beta | ✅ internal live; 🟡 external submitted 2026-05-18 (~24h Apple review) | ~24h Beta Review + real-device baking |
 | 6. Screenshots (6.9" iPhone + 13" iPad) + submission | 0.5–1 day | Same day to submit |
 | 7. Review wait | n/a | 24–48 hrs typical |
-| **Total remaining** | **~2–4 dev days of work** | **~1–2 weeks elapsed** to public launch |
+| **Total remaining** | **~1–2 dev days of work** | **~1 week elapsed** to public launch (after external TF approval) |
 
 ---
 
@@ -384,19 +412,17 @@ When rejected: respond in App Store Connect → Resolution Center within a day. 
 | `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` | Replace IconikAI placeholder with the real designed mark |
 | `Kios/Info.plist` | Optionally `NSAppTransportSecurity` once Phase 1.5 is decided; bump `CFBundleVersion` per upload |
 | `README.md` | Tighten HTTPS guidance to match the Phase 1.5 decision |
-| `PRIVACY.md` | Drafted at repo root; host publicly (GitHub Pages) and paste URL into ASC |
-| `BETA.md` | Drafted at repo root; paste content into TestFlight Test Information + per-build "What to Test" |
 | `fastlane/` (optional, NEW) | Automated upload pipeline — not required for v1 |
 
-Already in their final v1 shape (no further action needed): `project.yml`, `Kios/Resources/PrivacyInfo.xcprivacy`, `Kios/Services/LocalImportService.swift`, `Kios/Views/LibraryRootView.swift`, `Kios/Views/SettingsView.swift`, `Kios/Views/RootView.swift`, `Kios/App/AppEnvironment.swift`, sample books under `Kios/Resources/SampleBooks/`.
+Already in their final v1 shape (no further action needed): `project.yml`, `Kios/Resources/PrivacyInfo.xcprivacy`, `Kios/Services/LocalImportService.swift`, `Kios/Views/LibraryRootView.swift`, `Kios/Views/SettingsView.swift`, `Kios/Views/RootView.swift`, `Kios/App/AppEnvironment.swift`, sample books under `Kios/Resources/SampleBooks/`, `PRIVACY.md` (hosted), `BETA.md` (pasted into ASC), `CLAUDE.md`/`README.md` (rewritten 2026-05-17 to use generic protocol names).
 
 ## Definition of "done" per phase (verification rubric)
 
 - **Phase 1 done** ✅ — build produces a valid `.app` / `.ipa` with placeholder icon, correct version, privacy manifest bundled, and local EPUB import works end-to-end on a simulator with airplane mode on. (Real icon is the only Phase 1 item still outstanding before public launch.)
 - **Phase 2 done** ✅ — Team ID `KVS38S75S8` active.
-- **Phase 3 done** 🟡 — app record exists; listing metadata still being filled in.
+- **Phase 3 done** ✅ — Categories, Content Rights, Age Rating, Pricing & Availability, App Privacy all set 2026-05-17. App Store marketing copy + screenshots tracked under Phase 6, not Phase 3.
 - **Phase 4 done** ✅ — build appears under TestFlight → Builds with status "Ready to Test."
-- **Phase 5 done** when you've installed from TestFlight on a real iPhone *and* iPad, used it for a full day, and found no crashes.
+- **Phase 5 done** 🟡 — internal complete; external Beta App Review submitted 2026-05-18 for build 1.0(21). Fully done when build status flips to "Ready to Test" externally AND you've installed from TestFlight on a real iPhone *and* iPad, used it for a full day, and found no crashes.
 - **Phase 6 done** when status is "Waiting for Review" → "In Review" → "Ready for Sale" (or "Pending Developer Release" if manual).
 
 ---
@@ -413,11 +439,10 @@ Each of the above is a follow-up planning task when the time comes.
 
 ## Suggested next steps (ordered by blocking impact)
 
-1. **Host `PRIVACY.md`** — enable GitHub Pages on this repo (Settings → Pages → main branch). Resulting URL unlocks both ASC's "Privacy Policy URL" field and TestFlight external Beta Review. Lowest effort, highest unblock.
+1. **Wait for Beta App Review approval** (~24h from 2026-05-18) — once `Public Beta` becomes "Ready to Test", invite testers from the group page (public link or email up to 10,000). No action required from us in the meantime; Apple emails on status change.
 2. **Decide ATS direction** (Phase 1.5) — HTTPS-only vs `NSAllowsArbitraryLoads`. Tightening to HTTPS-only is the cleanest review path; the README's hedge needs to match whichever choice wins.
-3. **Real app icon** (Phase 1.6) — the IconikAI placeholder is fine for internal TestFlight but is the single visible "this is unfinished" signal at public launch. Workflow recommendation: Ideogram 3 + Recraft for concept variants → Flux 2 Pro for refinement → Affinity/Figma polish → drop into `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`.
-4. **App Store Connect listing metadata** (Phase 3) — categories, age-rating questionnaire, App Privacy declaration ("Data Not Collected"), pricing & availability, support URL, privacy policy URL.
-5. **External TestFlight** (Phase 5) — once privacy URL is hosted: fill Test Information from `BETA.md`, complete App Privacy questionnaire, create external testing group, submit current build for Beta Review (~24h).
-6. **Marketing copy** (Phase 0b) — subtitle (≤30 chars), short description (170), full description (4000), keywords (100), promotional text (170), what's new in version (4000).
-7. **Screenshots** (Phase 6) — 6.9" iPhone (1290×2796) + 13" iPad (2064×2752), 3–10 per device class. Consider: hero "what is this app", local-files import, Calibre-Web library, reading view, settings.
-8. **Final App Store submission** (Phase 6).
+3. **Real app icon** (Phase 1.6) — the IconikAI placeholder is fine for TestFlight but is the single visible "this is unfinished" signal at public launch. Workflow recommendation: Ideogram 3 + Recraft for concept variants → Flux 2 Pro for refinement → Affinity/Figma polish → drop into `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`.
+4. **Real-device baking** (Phase 5) — install from TestFlight on a real iPhone + iPad after external approval, run for a full day, watch for crashes/regressions before promoting to App Store review.
+5. **Marketing copy** (Phase 0b) — subtitle (≤30 chars), short description (170), full description (4000), keywords (100), promotional text (170), what's new in version (4000). Keep server-agnostic framing.
+6. **Screenshots** (Phase 6) — 6.9" iPhone (1290×2796) + 13" iPad (2064×2752), 3–10 per device class. Consider: hero "what is this app", local-files import, server-backed library, reading view, settings.
+7. **Final App Store submission** (Phase 6).
