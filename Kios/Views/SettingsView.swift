@@ -7,9 +7,9 @@ import Core
 /// Reading / Library & sync / AI assistant / Account sections in grouped
 /// inset cards under a big serif **Settings** title, with a version footer.
 ///
-/// Most rows are stubs — the design calls for placeholders so the chrome lands
-/// before the underlying features (themes, AI, transitions) exist. Rows that
-/// work today: Import EPUB, Signed in as, Sign out.
+/// Library & sync shows the configured Sources list (each row navigates to
+/// SourceDetailView) plus an Add Source link and global toggles. Sources are
+/// added/removed individually — there is no global sign-out.
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var modelContext
@@ -32,9 +32,6 @@ struct SettingsView: View {
     @State private var showFileImporter = false
     @State private var importError: String?
 
-    // Sign-out confirmation.
-    @State private var showSignOutConfirm = false
-
     // First-enable explainer sheet — shown the first time the master AI
     // toggle is flipped on. Subsequent toggles are silent.
     @State private var showFirstEnableSheet = false
@@ -54,7 +51,6 @@ struct SettingsView: View {
                 librarySyncSection
                 aiSection
                 cacheSection
-                accountSection
 
                 Text(versionLine)
                     .editorialEyebrow()
@@ -83,18 +79,6 @@ struct SettingsView: View {
             Button("OK") { importError = nil }
         } message: {
             Text(importError ?? "")
-        }
-        .confirmationDialog(
-            "Sign out?",
-            isPresented: $showSignOutConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Sign out", role: .destructive) {
-                Task { await env.signOut() }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Catalog will be cleared. Downloaded books and reading progress stay on this device.")
         }
         .sheet(isPresented: $showFirstEnableSheet) {
             AIFirstEnableSheet(
@@ -136,7 +120,7 @@ struct SettingsView: View {
     private var librarySyncSection: some View {
         EditorialList(
             "Library & sync",
-            footer: "Paste the URL from CWA admin → enable Kobo sync. The URL contains your auth token; treat it as a password."
+            footer: "Sources sync your library from CWA / calibre-web / public OPDS catalogs. Add as many as you like."
         ) {
             Button { showFileImporter = true } label: {
                 EditorialRow(
@@ -148,33 +132,19 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             EditorialHairline()
 
+            SourcesList()
+            EditorialHairline()
+
             NavigationLink {
-                Text("Sources") // TODO: Task 18 — Sources section
+                AddSourceView()
             } label: {
                 EditorialRow(
-                    label: "Sync protocol",
-                    value: syncProtocolName,
+                    label: "Add source",
+                    detail: "kosync, Kobo, or OPDS",
                     chevron: true
                 )
             }
             .buttonStyle(.plain)
-            EditorialHairline()
-
-            NavigationLink {
-                Text("Sources") // TODO: Task 18 — Sources section
-            } label: {
-                EditorialRow(
-                    label: "Sync URL",
-                    value: syncURLMasked,
-                    chevron: true
-                )
-            }
-            .buttonStyle(.plain)
-            EditorialHairline()
-
-            // Last synced is a display-only row until the sync layer surfaces
-            // a real timestamp. Showing "—" keeps the layout intact.
-            EditorialRow(label: "Last synced", value: "—")
             EditorialHairline()
 
             EditorialRow(
@@ -319,20 +289,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Account
-
-    private var accountSection: some View {
-        EditorialList("Account") {
-            EditorialRow(label: "Signed in as", value: signedInLabel)
-            EditorialHairline()
-
-            Button { showSignOutConfirm = true } label: {
-                EditorialRow(label: "Sign out", danger: true)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
     // MARK: - Helpers
 
     /// Display-only row for an unimplemented setting. Renders the editorial
@@ -341,23 +297,6 @@ struct SettingsView: View {
     /// touching call sites.
     private func stubRow(label: LocalizedStringKey, value: String) -> some View {
         EditorialRow(label: label, value: value, chevron: true)
-    }
-
-    // TODO: Task 18 — rewrite Settings for multi-source
-    private var syncProtocolName: String {
-        "Migrating…"
-    }
-
-    // TODO: Task 18 — rewrite Settings for multi-source
-    /// Placeholder while the legacy single-source AuthStore API is gone and
-    /// the Settings Sources section (Task 18) hasn't been wired yet.
-    private var syncURLMasked: String {
-        "Migrating…"
-    }
-
-    // TODO: Task 18 — rewrite Settings for multi-source
-    private var signedInLabel: String {
-        "Migrating…"
     }
 
     private var versionLine: String {
@@ -385,6 +324,57 @@ struct SettingsView: View {
             }
         case .failure(let error):
             importError = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Sources list
+
+/// Inline Sources list for the Library & sync section. Fetches all sources
+/// sorted by `sortOrder` and renders one editorial row per source; each row
+/// pushes `SourceDetailView`. When there are no server sources yet, the list
+/// is empty (the "Add source" row below it serves as the CTA).
+private struct SourcesList: View {
+    @Query(sort: [SortDescriptor(\Source.sortOrder)]) private var sources: [Source]
+
+    var body: some View {
+        ForEach(sources) { source in
+            NavigationLink {
+                SourceDetailView(source: source)
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(source.displayName)
+                            .font(EditorialTheme.sans(size: 17))
+                            .foregroundStyle(EditorialTheme.ink)
+                    }
+                    Spacer(minLength: 8)
+                    Text(kindLabel(source.kind))
+                        .font(EditorialTheme.mono(size: 13))
+                        .foregroundStyle(EditorialTheme.muted)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.secondary.opacity(0.5))
+                }
+                .padding(.horizontal, EditorialTheme.rowSidePad)
+                .padding(.vertical, 12)
+                .frame(minHeight: EditorialTheme.cellMin)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if source != sources.last {
+                EditorialHairline()
+            }
+        }
+    }
+
+    private func kindLabel(_ kind: SourceKind) -> String {
+        switch kind {
+        case .local: return "Local"
+        case .opdsReadOnly: return "OPDS"
+        case .kosync: return "kosync"
+        case .kobo: return "Kobo"
         }
     }
 }
