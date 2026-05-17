@@ -122,8 +122,8 @@ targets:
       - path: Kios/Models/Download.swift
       - path: Kios/Models/DownloadState.swift
       - path: Kios/Models/ReadingProgress.swift
-      - path: Kios/Models/Source.swift
       - path: Kios/Models/ReadingSession.swift
+      - path: Kios/Models/Source.swift
       - path: Kios/Views/Home/StatsAggregator.swift
     settings:
       base:
