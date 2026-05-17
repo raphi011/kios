@@ -232,6 +232,14 @@ final class ReaderContainerVC: UIViewController {
         else { return }
         onAskAIRequested?(text)
     }
+
+    /// True when the user has an active text selection in the webview.
+    /// SwiftUI's swipe-down-to-dismiss gesture queries this at gesture-end
+    /// time and bails — a multi-line selection drag looks identical to a
+    /// downward dismiss drag and would otherwise close the reader.
+    func hasCurrentSelection() -> Bool {
+        navigator?.currentSelection != nil
+    }
 }
 
 // MARK: - EPUBNavigatorDelegate

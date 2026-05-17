@@ -3,6 +3,16 @@ import UIKit
 import ReadiumShared
 import ReadiumNavigator
 
+/// Reference-typed bridge that lets SwiftUI synchronously ask the
+/// underlying `ReaderContainerVC` whether the user currently has text
+/// selected. ReaderHost rebinds `hasSelection` to a `[weak vc]` closure
+/// each time the container is created or re-wired, so the probe never
+/// keeps a stale container alive.
+@MainActor
+final class ReaderSelectionProbe {
+    var hasSelection: () -> Bool = { false }
+}
+
 /// Wraps `ReaderContainerVC` for SwiftUI. The host carries inputs (font size,
 /// status-bar visibility) and outputs (locator changes, taps, pinch, dismiss).
 /// EPUB only in v1; non-EPUB publications surface an error label.
@@ -33,6 +43,10 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// Fires with the selected text when the user picks "Ask AI" from the
     /// edit menu. SwiftUI uses this to present `AskAboutSelectionSheet`.
     var onAskAIRequested: (String) -> Void
+    /// Reference-typed probe that the host points at the underlying
+    /// container so SwiftUI can synchronously query "is text selected?"
+    /// from gesture handlers.
+    let selectionProbe: ReaderSelectionProbe
 
     func makeUIViewController(context: Context) -> UIViewController {
         if publication.conforms(to: .epub) {
@@ -50,6 +64,7 @@ struct ReaderHost: UIViewControllerRepresentable {
             vc.onBrightnessUpdate = onBrightnessUpdate
             vc.onDismissRequested = onDismissRequested
             vc.onAskAIRequested = onAskAIRequested
+            selectionProbe.hasSelection = { [weak vc] in vc?.hasCurrentSelection() ?? false }
             vc.applyPendingJump(pendingJump)
             return vc
         } else {
@@ -71,6 +86,7 @@ struct ReaderHost: UIViewControllerRepresentable {
         container.onBrightnessUpdate = onBrightnessUpdate
         container.onDismissRequested = onDismissRequested
         container.onAskAIRequested = onAskAIRequested
+        selectionProbe.hasSelection = { [weak container] in container?.hasCurrentSelection() ?? false }
         container.applyPendingJump(pendingJump)
     }
 

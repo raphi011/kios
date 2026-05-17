@@ -99,6 +99,10 @@ struct ReaderView: View {
     /// transitions for the haptic. Nil until the first emission lands or
     /// until the TOC has loaded.
     @State private var lastSeenChapterIndex: Int?
+    /// Synchronous bridge to the underlying container's selection state.
+    /// Consulted by `swipeDownDismissGesture` so a multi-line text-selection
+    /// drag doesn't trigger a dismiss. Stable for the lifetime of this view.
+    @State private var selectionProbe = ReaderSelectionProbe()
 
     init(bookID: UUID) {
         self.bookID = bookID
@@ -433,7 +437,8 @@ struct ReaderView: View {
                         }
                     },
                     onDismissRequested: { dismiss() },
-                    onAskAIRequested: { selection in presentAskSheet(selection: selection) }
+                    onAskAIRequested: { selection in presentAskSheet(selection: selection) },
+                    selectionProbe: selectionProbe
                 )
                 .alert(item: $pendingPrompt) { info in
                     Alert(
@@ -793,6 +798,12 @@ struct ReaderView: View {
     private func swipeDownDismissGesture() -> some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
+                // Skip dismiss whenever the user has text selected — a
+                // multi-line selection drag (long-press + extend handles
+                // downward) matches the same translation/velocity shape as a
+                // dismiss drag and would otherwise close the reader on the
+                // user mid-selection.
+                if selectionProbe.hasSelection() { return }
                 // Drags that start in the left-edge brightness zone belong
                 // to that UIKit pan recognizer — skip dismiss so a brightness
                 // drag doesn't accidentally close the reader.
