@@ -29,6 +29,9 @@ public struct CatalogEntry: Sendable, Equatable {
 }
 
 public protocol CatalogBackend: Sendable {
+    /// Cheap reachability + auth check. Throws if the source is not usable.
+    /// Used by `AppEnvironment.addSource` before persisting any state.
+    func probe() async throws
     func listLibrary() async throws -> [CatalogEntry]
     func resolveDownload(for entry: CatalogEntry) async throws -> URL
 }

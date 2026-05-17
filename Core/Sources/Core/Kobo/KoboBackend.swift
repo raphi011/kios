@@ -35,6 +35,10 @@ public actor KoboBackend: SyncBackend, CatalogBackend {
         self.imageURLTemplate = imageURLTemplate
     }
 
+    public func probe() async throws {
+        try await authenticate()
+    }
+
     public func authenticate() async throws {
         let res = try await client.initialization()
         self.imageURLTemplate = res.imageURLTemplate

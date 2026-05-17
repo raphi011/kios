@@ -23,6 +23,10 @@ struct OPDSCatalogAdapter: CatalogBackend {
     /// this from `AuthStore.load().serverURL` plus the canonical OPDS path.
     let rootURL: URL
 
+    func probe() async throws {
+        _ = try await client.fetchFeed(url: rootURL)
+    }
+
     func listLibrary() async throws -> [CatalogEntry] {
         var results: [CatalogEntry] = []
         var pageURL: URL? = rootURL
