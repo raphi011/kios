@@ -38,6 +38,29 @@ struct LibraryRootView: View {
     /// `false` = the editorial row list; `true` = a covers-only grid.
     @AppStorage("library.galleryMode") private var galleryMode: Bool = false
 
+    @State private var searchActive: Bool = false
+    @State private var searchQuery: String = ""
+    @FocusState private var searchFocused: Bool
+
+    /// Whitespace-trimmed, lowercased query; empty when nothing's typed.
+    private var normalizedQuery: String {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    /// Books matching the active query in title or any author. Empty when
+    /// the query is empty; in that case the body falls back to the normal
+    /// grouped view rather than rendering "Results · 0".
+    private var searchResults: [Book] {
+        let q = normalizedQuery
+        guard !q.isEmpty else { return [] }
+        return books.filter { book in
+            book.title.lowercased().contains(q)
+                || book.authors.contains { $0.lowercased().contains(q) }
+        }
+    }
+
+    private var isSearching: Bool { searchActive && !normalizedQuery.isEmpty }
+
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
     }
@@ -140,7 +163,7 @@ struct LibraryRootView: View {
                         systemName: "magnifyingglass",
                         accessibilityLabel: "Search"
                     ) {
-                        // Stub: search isn't implemented yet.
+                        toggleSearch()
                     }
                     EditorialNavIconButton(
                         systemName: isRefreshing ? "arrow.triangle.2.circlepath" : "plus",
@@ -150,18 +173,36 @@ struct LibraryRootView: View {
                     }
                 }
 
-                EditorialSegmented(
-                    items: [
-                        ("All", Filter.all),
-                        ("Reading", Filter.reading),
-                        ("Unread", Filter.unread),
-                        ("Finished", Filter.finished),
-                    ],
-                    selection: $filter
-                )
-                .padding(.horizontal, EditorialTheme.listSidePad)
+                if searchActive {
+                    searchBar
+                }
 
-                if isFilteredEmpty {
+                if !searchActive {
+                    EditorialSegmented(
+                        items: [
+                            ("All", Filter.all),
+                            ("Reading", Filter.reading),
+                            ("Unread", Filter.unread),
+                            ("Finished", Filter.finished),
+                        ],
+                        selection: $filter
+                    )
+                    .padding(.horizontal, EditorialTheme.listSidePad)
+                }
+
+                if isSearching {
+                    if searchResults.isEmpty {
+                        searchEmptyState
+                    } else if galleryMode {
+                        gallerySection("Results", books: searchResults)
+                            .padding(.top, 8)
+                    } else {
+                        section("Results", books: searchResults, kind: .reading)
+                    }
+                } else if searchActive {
+                    // Search bar shown but query is empty — leave space.
+                    Spacer().frame(height: 40)
+                } else if isFilteredEmpty {
                     filteredEmptyState
                 } else if galleryMode {
                     galleryBody
@@ -186,6 +227,62 @@ struct LibraryRootView: View {
         .refreshable {
             try? await env.refreshLibrary()
         }
+    }
+
+    // MARK: - Search
+
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(EditorialTheme.muted)
+            TextField("Search title or author", text: $searchQuery)
+                .focused($searchFocused)
+                .submitLabel(.search)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .foregroundStyle(EditorialTheme.ink)
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                    searchFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(EditorialTheme.muted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+            Button("Cancel", action: closeSearch)
+                .foregroundStyle(EditorialTheme.accent)
+        }
+        .padding(.horizontal, EditorialTheme.listSidePad)
+        .padding(.vertical, 8)
+    }
+
+    private var searchEmptyState: some View {
+        ContentUnavailableView(
+            "No matches",
+            systemImage: "magnifyingglass",
+            description: Text("Nothing in your library matches \u{201C}\(searchQuery)\u{201D}.")
+        )
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
+    }
+
+    private func toggleSearch() {
+        if searchActive {
+            closeSearch()
+        } else {
+            searchActive = true
+            // Focus on the next runloop so the field is in the tree first.
+            DispatchQueue.main.async { searchFocused = true }
+        }
+    }
+
+    private func closeSearch() {
+        searchActive = false
+        searchQuery = ""
+        searchFocused = false
     }
 
     // MARK: - Gallery

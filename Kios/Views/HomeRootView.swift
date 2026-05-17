@@ -4,7 +4,7 @@ import Core
 
 /// Editorial "Today" home screen. Matches the design package's `EditorialHome`:
 ///
-/// - Large serif **Today** title with a dated eyebrow + trailing search icon
+/// - Large serif **Today** title with a dated eyebrow
 /// - 3-cell stats card (Read time / Pages / Streak) under a "Today, so far" header
 /// - Hero "Continue reading" card with the most-recently-touched book
 /// - Editorial book rows for the rest of the library, with a "Last synced" footer
@@ -80,14 +80,7 @@ struct HomeRootView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
-                            EditorialNavBar(title: "Today", eyebrow: todayEyebrow) {
-                                EditorialNavIconButton(
-                                    systemName: "magnifyingglass",
-                                    accessibilityLabel: "Search"
-                                ) {
-                                    // Stub: search isn't implemented yet.
-                                }
-                            }
+                            EditorialNavBar(title: "Today", eyebrow: todayEyebrow)
 
                             EditorialList("Today, so far") {
                                 EditorialStatsCard(cells: statCells)
