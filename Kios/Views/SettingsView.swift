@@ -344,35 +344,21 @@ struct SettingsView: View {
         EditorialRow(label: label, value: value, chevron: true)
     }
 
+    // TODO: Task 18 — rewrite Settings for multi-source
     private var syncProtocolName: String {
-        switch env.authStore.loadActiveProtocol() {
-        case .kosync: return "KOReader Sync"
-        case .kobo:   return "Kobo Sync"
-        }
+        "Migrating…"
     }
 
-    /// Masked URL hint — last 8 chars of host. Avoids surfacing the full
-    /// token-bearing path while still letting the user recognise their server.
+    // TODO: Task 18 — rewrite Settings for multi-source
+    /// Placeholder while the legacy single-source AuthStore API is gone and
+    /// the Settings Sources section (Task 18) hasn't been wired yet.
     private var syncURLMasked: String {
-        if let creds = try? env.authStore.load(),
-           let host = creds.serverURL.host {
-            return "••••" + String(host.suffix(8))
-        }
-        if let kobo = try? env.authStore.loadKobo(),
-           let host = kobo.baseURL.host {
-            return "••••" + String(host.suffix(8))
-        }
-        return "Not set"
+        "Migrating…"
     }
 
+    // TODO: Task 18 — rewrite Settings for multi-source
     private var signedInLabel: String {
-        if let creds = try? env.authStore.load() {
-            return creds.basic.username
-        }
-        if let kobo = try? env.authStore.loadKobo() {
-            return kobo.baseURL.host ?? "Kobo"
-        }
-        return "Not signed in"
+        "Migrating…"
     }
 
     private var versionLine: String {
@@ -387,15 +373,9 @@ struct SettingsView: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             do {
-                // TODO: Task 11 — pass Local singleton from AppEnvironment
                 let outcome = try await env.localImporter.import(
                     from: url,
-                    localSource: Source(
-                        displayName: "Local",
-                        kind: .local,
-                        serverURL: nil,
-                        sortOrder: .max
-                    )
+                    localSource: env.localSource
                 )
                 switch outcome {
                 case .imported(let book), .existing(let book):

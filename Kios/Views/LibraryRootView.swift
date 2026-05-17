@@ -137,7 +137,11 @@ struct LibraryRootView: View {
                 Button("Sync now") {
                     Task {
                         isRefreshing = true
-                        try? await env.refreshLibrary()
+                        // TODO: Task 19 — use selected source
+                        let src = env.sourceContexts.values
+                            .first(where: { $0.source.kind != .local })?.source
+                            ?? env.localSource!
+                        try? await env.refreshLibrary(source: src)
                         isRefreshing = false
                     }
                 }
@@ -225,7 +229,11 @@ struct LibraryRootView: View {
             }
         }
         .refreshable {
-            try? await env.refreshLibrary()
+            // TODO: Task 19 — use selected source
+            let src = env.sourceContexts.values
+                .first(where: { $0.source.kind != .local })?.source
+                ?? env.localSource!
+            try? await env.refreshLibrary(source: src)
         }
     }
 
@@ -462,15 +470,9 @@ struct LibraryRootView: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             do {
-                // TODO: Task 11 — pass Local singleton from AppEnvironment
                 let outcome = try await env.localImporter.import(
                     from: url,
-                    localSource: Source(
-                        displayName: "Local",
-                        kind: .local,
-                        serverURL: nil,
-                        sortOrder: .max
-                    )
+                    localSource: env.localSource
                 )
                 switch outcome {
                 case .imported(let book), .existing(let book):

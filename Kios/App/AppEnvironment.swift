@@ -6,8 +6,8 @@ import Core
 import ReadiumShared
 
 /// Composes the app's services. Created once at launch by `KiosApp`.
-/// Services are nil until valid credentials are loaded; `bootIfCredentialsPresent`
-/// is called from init AND from `SettingsView` after a successful save.
+/// Per-source runtime services live in `sourceContexts`, built lazily via
+/// `makeContext(for:)` and torn down by `removeSource`.
 @MainActor
 @Observable
 final class AppEnvironment {
@@ -50,10 +50,31 @@ final class AppEnvironment {
     /// services depend on.
     let aiModelProvider: AILanguageModelProvider
 
-    /// nil when credentials are absent. Re-populated by `bootIfCredentialsPresent`.
-    private(set) var sync: SyncService?
-    private(set) var downloads: DownloadService?
-    private(set) var opds: OPDSClient?
+    /// Runtime contexts, keyed by `Source.id` (UUID). Built lazily by
+    /// `makeContext(for:)`; tear-down via `tearDown(sourceID:)` /
+    /// `removeSource(id:)`. The `local` source is materialised eagerly in
+    /// `init` so it's always present.
+    private(set) var sourceContexts: [UUID: SourceContext] = [:]
+
+    /// The Local source singleton. Seeded on first launch by
+    /// `seedLocalSourceIfNeeded()`. Force-unwrapped because the seed runs
+    /// before any caller can observe `self`.
+    private(set) var localSource: Source!
+
+    // TODO: Task 14/19 — remove transitional shim
+    /// TRANSITIONAL: returns the first non-local source's sync. Removed when
+    /// Task 14 routes ReaderView through `context(for: book.source.id)`.
+    var sync: SyncService? {
+        sourceContexts.values.first(where: { $0.sync != nil })?.sync
+    }
+
+    // TODO: Task 14/19 — remove transitional shim
+    /// TRANSITIONAL: returns the first non-local source's downloads. Removed
+    /// when Task 14 routes DownloadingView through
+    /// `context(for: book.source.id)`.
+    var downloads: DownloadService? {
+        sourceContexts.values.first(where: { $0.downloads != nil })?.downloads
+    }
 
     /// Set when a reader is open. Drives the app-wide `.fullScreenCover` in
     /// `RootView`. Hoisted above `TabView` so both Home and Browse can present
@@ -160,9 +181,38 @@ final class AppEnvironment {
             self.deviceID = generated
         }
 
-        recoverInterruptedAnalyses()
+        // Seed the Local Source singleton before anything that depends on
+        // having a Source row (sample import, eager Local context, etc.).
+        seedLocalSourceIfNeeded()
+        // Eagerly materialise Local — has no credentials and no network.
+        _ = try? self.makeContext(for: self.localSource)
 
-        try bootIfCredentialsPresent()
+        recoverInterruptedAnalyses()
+    }
+
+    /// Inserts the Local Source row on first launch and assigns
+    /// `self.localSource`. On subsequent launches, reuses the existing row.
+    private func seedLocalSourceIfNeeded() {
+        // Predicate-on-enum-rawValue trips the SwiftData macro in some
+        // configurations; fetch all + filter is the portable fallback.
+        let all = (try? modelContext.fetch(FetchDescriptor<Source>())) ?? []
+        if let existing = all.first(where: { $0.kind == .local }) {
+            self.localSource = existing
+            return
+        }
+        let local = Source(
+            displayName: NSLocalizedString(
+                "source.local.displayName",
+                value: "Local",
+                comment: "Local source name"
+            ),
+            kind: .local,
+            serverURL: nil,
+            sortOrder: .max
+        )
+        modelContext.insert(local)
+        try? modelContext.save()
+        self.localSource = local
     }
 
     /// Marks any `BookAnalysis` rows left in `"in_progress"` from a prior
@@ -184,112 +234,166 @@ final class AppEnvironment {
         try? modelContext.save()
     }
 
-    /// Construct (or rebuild) the credentialled services. Called on init and
-    /// after the user saves credentials in SettingsView. Dispatches on the
-    /// active sync protocol — kosync needs OPDS + Basic-auth downloads;
-    /// kobo skips OPDS (catalog is via KoboBackend) but still needs a
-    /// DownloadService — constructed with nil credentials so the per-request
-    /// Authorization header is omitted (Kobo serves pre-signed CDN URLs).
-    func bootIfCredentialsPresent() throws {
-        let activeProtocol = authStore.loadActiveProtocol()
-        let hasCredentials: Bool
-        switch activeProtocol {
-        case .kosync: hasCredentials = (try? authStore.load()) != nil
-        case .kobo:   hasCredentials = (try? authStore.loadKobo()) != nil
+    /// Returns an already-materialised context, or nil.
+    func context(for sourceID: UUID) -> SourceContext? {
+        sourceContexts[sourceID]
+    }
+
+    /// Lazily builds the runtime context for a source. Idempotent.
+    /// Synchronous — probe runs only in `addSource`.
+    @discardableResult
+    func makeContext(for source: Source) throws -> SourceContext {
+        if let cached = sourceContexts[source.id] { return cached }
+        let (syncBackend, catalog) = try BackendFactory.build(
+            source: source,
+            auth: authStore,
+            deviceID: deviceID,
+            deviceName: UIDevice.current.name
+        )
+        let sync = syncBackend.map { backend in
+            SyncService(
+                backend: backend,
+                context: modelContext,
+                deviceID: deviceID,
+                deviceName: UIDevice.current.name,
+                spanResolver: spanResolver
+            )
         }
-        guard hasCredentials else {
-            self.sync = nil
-            self.opds = nil
-            // Note: we do NOT nil out `downloads`. Once created, it persists
-            // for the life of the process so its background URLSession isn't
-            // recreated. If credentials are cleared, the session simply has
-            // no in-flight work; on next save we update the credentials.
+        let downloads: DownloadService? = {
+            switch source.kind {
+            case .local:
+                return nil
+            case .opdsReadOnly:
+                return DownloadService(context: modelContext, credentials: nil)
+            case .kosync:
+                let creds = try? authStore.load(sourceID: source.id)
+                return DownloadService(
+                    context: modelContext, credentials: creds?.basic
+                )
+            case .kobo:
+                // Kobo serves pre-signed CDN URLs — no auth header.
+                return DownloadService(context: modelContext, credentials: nil)
+            }
+        }()
+        let ctx = SourceContext(
+            source: source,
+            sync: sync,
+            downloads: downloads,
+            catalog: catalog
+        )
+        sourceContexts[source.id] = ctx
+        return ctx
+    }
+
+    /// Releases a source's runtime context. Does not delete the SwiftData row.
+    func tearDown(sourceID: UUID) {
+        sourceContexts.removeValue(forKey: sourceID)
+        // SyncService / DownloadService don't currently have explicit cancel
+        // hooks; references drop here, in-flight tasks complete naturally.
+    }
+
+    /// Probe + persist + initial refresh. Throws on probe failure with no
+    /// SwiftData/Keychain trace. Step-6 failure marks `needsAttention`.
+    @discardableResult
+    func addSource(
+        displayName: String,
+        kind: SourceKind,
+        serverURL: URL?,
+        kosyncCredentials: ServerCredentials? = nil,
+        koboCredentials: KoboCredentials? = nil
+    ) async throws -> Source {
+        // Build a transient Source value (NOT inserted yet) with a fresh UUID.
+        let transient = Source(
+            displayName: displayName,
+            kind: kind,
+            serverURL: serverURL,
+            sortOrder: nextSortOrder()
+        )
+        // Probe via TransientAuthStore — fails fast without persistence.
+        let probeAuth = TransientAuthStore(
+            sourceID: transient.id,
+            kosync: kosyncCredentials,
+            kobo: koboCredentials
+        )
+        let (_, catalog) = try BackendFactory.build(
+            source: transient,
+            auth: probeAuth,
+            deviceID: deviceID,
+            deviceName: UIDevice.current.name
+        )
+        try await catalog.probe()
+
+        // Insert SwiftData row.
+        modelContext.insert(transient)
+        try modelContext.save()
+
+        // Persist credentials under the now-persisted source ID.
+        if let kosync = kosyncCredentials {
+            try authStore.save(sourceID: transient.id, credentials: kosync)
+        }
+        if let kobo = koboCredentials {
+            try authStore.save(sourceID: transient.id, kobo: kobo)
+        }
+
+        // Build context + initial refresh. Failure here is non-fatal —
+        // flag needsAttention so Settings can surface it.
+        do {
+            let ctx = try makeContext(for: transient)
+            try await library.refresh(using: ctx.catalog, source: transient)
+        } catch {
+            transient.needsAttention = true
+            try? modelContext.save()
+        }
+        return transient
+    }
+
+    /// Removes a source: tears down its context, purges Keychain entries,
+    /// and deletes the SwiftData row (cascades into its books). Falls back
+    /// `library.selectedSourceID` to another source when the removed source
+    /// was the selected one. Refuses to delete the Local singleton.
+    func removeSource(id: UUID) async throws {
+        guard let source = try modelContext.fetch(
+            FetchDescriptor<Source>(predicate: #Predicate { $0.id == id })
+        ).first else { return }
+        guard source.kind != .local else {
+            assertionFailure("Local source cannot be deleted")
             return
         }
+        tearDown(sourceID: id)
+        try authStore.purge(sourceID: id)
+        modelContext.delete(source)
+        try modelContext.save()
 
-        // Capture the authStore by reference so the closure picks up live
-        // credentials at each call (e.g. a flush after the user updates
-        // settings re-reads from the same AuthStore instance).
-        let auth = self.authStore
-        let device = self.deviceID
-        let name = UIDevice.current.name
-        self.sync = SyncService(
-            backendForProtocol: { proto in
-                try BackendFactory.buildSync(
-                    auth: auth,
-                    protocol: proto,
-                    deviceID: device,
-                    deviceName: name
-                )
-            },
-            context: modelContext,
-            activeProtocol: activeProtocol,
-            deviceID: deviceID,
-            deviceName: name,
-            spanResolver: spanResolver
+        // Fall back if this was the selected source.
+        let key = "library.selectedSourceID"
+        let defaults = UserDefaults.standard
+        if defaults.string(forKey: key) == id.uuidString {
+            let remaining = try modelContext.fetch(
+                FetchDescriptor<Source>(sortBy: [SortDescriptor(\.sortOrder)])
+            )
+            let fallback = remaining.first(where: { $0.kind != .local })
+                ?? remaining.first(where: { $0.kind == .local })
+            defaults.set(fallback?.id.uuidString, forKey: key)
+        }
+    }
+
+    /// Computes the next sortOrder for a new server source. Server sources
+    /// occupy [0…N); Local stays pinned at `.max`. New sources go after the
+    /// highest existing server source.
+    private func nextSortOrder() -> Int {
+        let fetch = FetchDescriptor<Source>(
+            sortBy: [SortDescriptor(\Source.sortOrder, order: .reverse)]
         )
-
-        switch activeProtocol {
-        case .kosync:
-            // Only kosync has an OPDS catalog and Basic-auth downloads.
-            // Force-unwrap is safe — `hasCredentials` guard above proved it.
-            let creds = try authStore.load()!
-            let http = HTTPClient(credentials: creds.basic)
-            self.opds = OPDSClient(http: http)
-            if let existing = self.downloads {
-                // Reuse to avoid re-creating the background URLSession —
-                // Apple throws NSGenericException if a session with the same
-                // identifier already exists.
-                existing.update(credentials: creds.basic)
-            } else {
-                self.downloads = DownloadService(
-                    context: modelContext, credentials: creds.basic
-                )
-            }
-        case .kobo:
-            // Kobo catalog is served by KoboBackend (acquired via SyncService's
-            // backend closure); no parallel OPDSClient needed. Downloads run
-            // through the same DownloadService — constructed with nil
-            // credentials so no Authorization header is attached to the
-            // pre-signed CDN URLs Kobo hands out.
-            if let existing = self.downloads {
-                // Reuse to avoid re-creating the background URLSession —
-                // Apple throws NSGenericException if a session with the same
-                // identifier already exists.
-                existing.update(credentials: nil)
-            } else {
-                self.downloads = DownloadService(
-                    context: modelContext, credentials: nil
-                )
-            }
-            self.opds = nil
-        }
+        let all = (try? modelContext.fetch(fetch)) ?? []
+        let highest = all.first(where: { $0.kind != .local })?.sortOrder
+        return (highest ?? -1) + 1
     }
 
-    /// Sign out: wipe credentials, all session caches, and catalog-only Book rows.
-    /// Downloaded files + their Book rows are left on disk (re-auth re-links via serverID).
+    /// TRANSITIONAL: legacy sign-out kept as a no-op so SettingsView still
+    /// compiles. Multi-source replaces this with per-source `removeSource`.
+    /// Task 18 removes this call site entirely.
     func signOut() async {
-        try? authStore.clear()
-        await opds?.invalidateAll()
-        Self.performSignOut(context: modelContext)
-        try? bootIfCredentialsPresent()   // re-run guard, clears sync/opds
-    }
-
-    /// Synchronous half of sign-out, broken out for unit-testability. Wipes
-    /// the image + URL caches and deletes catalog-only Book rows. The async
-    /// `signOut()` wraps this with the keychain + OPDS-cache invalidations.
-    static func performSignOut(context: ModelContext) {
-        ImageMemoryCache.shared.removeAll()
-        URLCache.shared.removeAllCachedResponses()
-
-        // Delete catalog-only server Book rows (no local file). Leave
-        // local books alone — they belong to the device, not the account.
-        if let books = try? context.fetch(FetchDescriptor<Book>()) {
-            for book in books where book.filename == nil && book.source.kind != .local {
-                context.delete(book)
-            }
-        }
-        try? context.save()
+        // No-op. Per-source removal is the new flow.
     }
 
     /// Opens the reader for `bookID`. No-op when a reader is already open.
@@ -314,48 +418,22 @@ final class AppEnvironment {
             let url = bundle.url(forResource: name, withExtension: "epub")
                 ?? bundle.url(forResource: name, withExtension: "epub", subdirectory: "SampleBooks")
             guard let url else { continue }
-            // TODO: Task 11 — pass Local singleton from AppEnvironment
-            let placeholder = Source(
-                displayName: "Local", kind: .local,
-                serverURL: nil, sortOrder: .max
-            )
-            _ = try? await localImporter.import(from: url, localSource: placeholder)
+            _ = try? await localImporter.import(from: url, localSource: self.localSource)
         }
         UserDefaults.standard.set(true, forKey: key)
     }
 
-    /// Pulls a fresh catalog snapshot for the active protocol and reconciles
-    /// it against the local Book store. Throws if credentials are absent or
-    /// the network call fails. Used by `LibraryRootView`'s pull-to-refresh
-    /// and by `SettingsView` after every successful Test & Save.
-    func refreshLibrary() async throws {
-        let name = UIDevice.current.name
-        let (_, catalog) = try BackendFactory.build(
-            auth: authStore,
-            deviceID: deviceID,
-            deviceName: name
-        )
-        let activeProtocol = authStore.loadActiveProtocol()
-        // TODO: Task 13 — fetch the Source row for the active protocol from
-        // the source catalog instead of constructing a throwaway placeholder.
-        let placeholderSource = Source(
-            displayName: "Catalog",
-            kind: activeProtocol == .kobo ? .kobo : .kosync,
-            serverURL: nil,
-            sortOrder: 0
-        )
-        try await library.refresh(
-            using: catalog,
-            activeProtocol: activeProtocol,
-            source: placeholderSource
-        )
+    /// Pull-to-refresh for one source's catalog. Reconciles with the local
+    /// Book store. Throws if credentials/network fails. Called by
+    /// LibraryRootView's pull-to-refresh and by SettingsView after a save.
+    func refreshLibrary(source: Source) async throws {
+        let ctx = try makeContext(for: source)
+        try await library.refresh(using: ctx.catalog, source: source)
     }
 
-    /// Refreshes `book.acquisitionURL` via the active protocol's catalog
-    /// backend. For Kobo, the listLibrary response embeds pre-signed CDN URLs
-    /// that expire in minutes — re-resolving the entry returns a fresh URL.
-    /// KoboBackend's `resolveDownload` is a pass-through today; CWA-side TTL
-    /// handling can swap in a fresh URL later without touching call sites.
+    /// Refreshes `book.acquisitionURL` via the source's catalog backend.
+    /// For Kobo, the listLibrary response embeds pre-signed CDN URLs that
+    /// expire in minutes — re-resolving the entry returns a fresh URL.
     /// Silently no-ops on failure so the caller's download attempt can still
     /// proceed with the stale URL and surface a real download error rather
     /// than blocking on the refresh.
@@ -366,10 +444,7 @@ final class AppEnvironment {
             return
         }
         do {
-            let name = UIDevice.current.name
-            let (_, catalog) = try BackendFactory.build(
-                auth: authStore, deviceID: deviceID, deviceName: name
-            )
+            let ctx = try makeContext(for: book.source)
             let entry = CatalogEntry(
                 serverID: serverID,
                 title: book.title,
@@ -379,7 +454,7 @@ final class AppEnvironment {
                 format: book.format,
                 thumbnailURL: book.thumbnailURL
             )
-            let fresh = try await catalog.resolveDownload(for: entry)
+            let fresh = try await ctx.catalog.resolveDownload(for: entry)
             book.acquisitionURL = fresh
             try? modelContext.save()
         } catch {
@@ -474,5 +549,23 @@ final class AppEnvironment {
         defaults.removeObject(forKey: "AppleLanguages")
         defaults.removeObject(forKey: "kios.languagePreference")
         defaults.set(true, forKey: flagKey)
+    }
+}
+
+/// Wraps just-in-time credentials so `BackendFactory.build` can probe a
+/// not-yet-persisted source. Conforms to `AuthReading`.
+private struct TransientAuthStore: AuthReading {
+    let sourceID: UUID
+    let kosync: ServerCredentials?
+    let kobo: KoboCredentials?
+
+    func load(sourceID: UUID) throws -> ServerCredentials? {
+        precondition(sourceID == self.sourceID)
+        return kosync
+    }
+
+    func loadKobo(sourceID: UUID) throws -> KoboCredentials? {
+        precondition(sourceID == self.sourceID)
+        return kobo
     }
 }
