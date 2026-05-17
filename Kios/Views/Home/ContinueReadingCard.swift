@@ -84,27 +84,19 @@ private struct BookCoverThumb: View {
         Group {
             switch book.source {
             case .local:
-                if let url = book.coverFileURL {
-                    AsyncImage(url: url) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: { placeholder }
-                } else {
-                    placeholder
-                }
+                CachedAsyncImage(url: book.coverFileURL) { placeholder }
+                    .scaledToFill()
             case .synced:
                 if book.serverIDProtocol == SyncProtocol.kosync.rawValue,
                    let creds = try? env.authStore.load() {
-                    AuthenticatedAsyncImage(
+                    CachedAsyncImage(
                         url: book.thumbnailURL,
                         http: Core.HTTPClient(credentials: creds.basic)
                     ) { placeholder }
                         .scaledToFill()
-                } else if let url = book.thumbnailURL {
-                    AsyncImage(url: url) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: { placeholder }
                 } else {
-                    placeholder
+                    CachedAsyncImage(url: book.thumbnailURL) { placeholder }
+                        .scaledToFill()
                 }
             }
         }

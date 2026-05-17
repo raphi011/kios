@@ -78,27 +78,18 @@ struct BookRow: View {
 
     @ViewBuilder
     private var localThumbnail: some View {
-        if let url = book.coverFileURL {
-            AsyncImage(url: url) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
-                placeholder
-            }
-        } else {
-            placeholder
-        }
+        CachedAsyncImage(url: book.coverFileURL) { placeholder }
+            .scaledToFill()
     }
 
     @ViewBuilder
     private var kosyncThumbnail: some View {
         if let creds = try? env.authStore.load() {
-            AuthenticatedAsyncImage(
+            CachedAsyncImage(
                 url: book.thumbnailURL,
                 http: Core.HTTPClient(credentials: creds.basic)
-            ) {
-                placeholder
-            }
-            .scaledToFill()
+            ) { placeholder }
+                .scaledToFill()
         } else {
             placeholder
         }
@@ -106,15 +97,8 @@ struct BookRow: View {
 
     @ViewBuilder
     private var koboThumbnail: some View {
-        if let url = book.thumbnailURL {
-            AsyncImage(url: url) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
-                placeholder
-            }
-        } else {
-            placeholder
-        }
+        CachedAsyncImage(url: book.thumbnailURL) { placeholder }
+            .scaledToFill()
     }
 
     private var placeholder: some View {
