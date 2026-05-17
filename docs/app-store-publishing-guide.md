@@ -39,6 +39,7 @@ TestFlight internal builds are live as of 2026-05-14, so most Phase 1–4 plumbi
 | Third-party SDKs | Readium (swift-toolkit 3.9+), ZIPFoundation; **no analytics, no ad SDKs, no trackers** |
 | CI/CD | Makefile only; no fastlane, no GitHub Actions, no `ExportOptions.plist`. TestFlight uploads currently manual via Xcode Organizer. |
 | App Store Connect metadata | App record exists (TestFlight works). Marketing copy / screenshots / public-listing metadata still to write. |
+| Privacy policy + beta test info | 🟡 Drafted in-repo as `PRIVACY.md` and `BETA.md` (committed 2026-05-17). Privacy policy still needs public hosting (GitHub Pages); BETA.md ready to paste into ASC's TestFlight Test Information + per-build "What to Test" notes. |
 
 ---
 
@@ -164,7 +165,7 @@ Things you can pin down today; they all become inputs to App Store Connect later
 - [ ] **Pricing model** — free, paid, or free with IAP? (IAP requires StoreKit work; free is simplest for v1.)
 - [ ] **Age rating** — App Store Connect asks a 20-question questionnaire. Likely 4+ for this app.
 - [ ] **Marketing copy**: short description (170 chars), full description (4000 chars), keywords (100 chars), promotional text (170 chars, editable post-release without re-review), what's new in version (4000 chars).
-- [ ] **Privacy policy URL** — Apple requires a public URL. A static page on GitHub Pages or your domain is fine. Must declare what data the app collects (in your case: nothing leaves the device except to user-configured servers).
+- 🟡 **Privacy policy URL** — content drafted at repo root as `PRIVACY.md` (committed 2026-05-17). Still needs public hosting; simplest path is GitHub Pages on this repo (Settings → Pages → main branch). Resulting URL goes into App Store Connect → App Privacy → Privacy Policy URL, and also into TestFlight Test Information for external review.
 - [ ] **Support URL** — public page where users can reach you (GitHub issues page works).
 - [ ] **Description framing** — frame Calibre-Web/Kobo sync as *optional advanced features*, not headline. See "Risks" section below.
 
@@ -316,9 +317,11 @@ Internal testing is live as of 2026-05-14.
 
 - [x] Build processed by App Store Connect.
 - [x] Internal tester(s) installed via TestFlight app.
-- [ ] Fill out **Test Information** in TestFlight tab: beta app description, email, marketing URL, privacy policy URL (some of these are also required for external review).
+- 🟡 Fill out **Test Information** in TestFlight tab: beta app description, email, marketing URL, privacy policy URL (some of these are also required for external review). Content drafted in `BETA.md` (per-build "What to Test") and `PRIVACY.md` (policy text) at repo root — paste-ready into ASC once the privacy policy is hosted.
 - [ ] **Real-device coverage** — confirm at least one iPhone *and* one iPad have been used end-to-end: cold launch, local EPUB import, Calibre-Web sync, reading a book, progress persistence, killing and relaunching, offline behavior, iOS rotation, dark mode.
 - [ ] **External testing** (optional, requires Apple "Beta App Review" — first build only, ~24hr): up to 10,000 testers via public link or email invite. Useful for catching edge cases your devices don't have (older iPhones, locales, accessibility settings).
+  - Prerequisites before submitting for Beta Review: hosted privacy policy URL (see Phase 0b — currently 🟡), Test Information filled out (use `BETA.md`), App Privacy questionnaire complete in ASC (answer: "Data Not Collected"), external testing group created, "What to Test" notes attached to the build.
+  - Note: bumping `CFBundleShortVersionString` (marketing version, e.g. 1.0 → 1.1) re-triggers Beta Review; bumping only `CFBundleVersion` (build number) within the same marketing version usually doesn't. Stay on `1.0` build N+1, N+2… while iterating with external testers to avoid per-build re-review.
 - [ ] Iterate: each fix → bump build number → re-archive → re-upload → re-test. TestFlight builds expire after 90 days.
 
 ---
@@ -381,6 +384,8 @@ When rejected: respond in App Store Connect → Resolution Center within a day. 
 | `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png` | Replace IconikAI placeholder with the real designed mark |
 | `Kios/Info.plist` | Optionally `NSAppTransportSecurity` once Phase 1.5 is decided; bump `CFBundleVersion` per upload |
 | `README.md` | Tighten HTTPS guidance to match the Phase 1.5 decision |
+| `PRIVACY.md` | Drafted at repo root; host publicly (GitHub Pages) and paste URL into ASC |
+| `BETA.md` | Drafted at repo root; paste content into TestFlight Test Information + per-build "What to Test" |
 | `fastlane/` (optional, NEW) | Automated upload pipeline — not required for v1 |
 
 Already in their final v1 shape (no further action needed): `project.yml`, `Kios/Resources/PrivacyInfo.xcprivacy`, `Kios/Services/LocalImportService.swift`, `Kios/Views/LibraryRootView.swift`, `Kios/Views/SettingsView.swift`, `Kios/Views/RootView.swift`, `Kios/App/AppEnvironment.swift`, sample books under `Kios/Resources/SampleBooks/`.
@@ -408,9 +413,11 @@ Each of the above is a follow-up planning task when the time comes.
 
 ## Suggested next steps (ordered by blocking impact)
 
-1. **Decide ATS direction** (Phase 1.5) — HTTPS-only vs `NSAllowsArbitraryLoads`. Tightening to HTTPS-only is the cleanest review path; the README's hedge needs to match whichever choice wins.
-2. **Real app icon** (Phase 1.6) — the IconikAI placeholder is fine for internal TestFlight but is the single visible "this is unfinished" signal at public launch. Workflow recommendation: Ideogram 3 + Recraft for concept variants → Flux 2 Pro for refinement → Affinity/Figma polish → drop into `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`.
-3. **App Store Connect listing metadata** (Phase 3) — categories, age-rating questionnaire, App Privacy declaration ("Data Not Collected"), pricing & availability, support URL, privacy policy URL.
-4. **Marketing copy** (Phase 0b) — subtitle (≤30 chars), short description (170), full description (4000), keywords (100), promotional text (170), what's new in version (4000).
-5. **Screenshots** (Phase 6) — 6.9" iPhone (1290×2796) + 13" iPad (2064×2752), 3–10 per device class. Consider: hero "what is this app", local-files import, Calibre-Web library, reading view, settings.
-6. **External TestFlight + final submission** (Phases 5–6).
+1. **Host `PRIVACY.md`** — enable GitHub Pages on this repo (Settings → Pages → main branch). Resulting URL unlocks both ASC's "Privacy Policy URL" field and TestFlight external Beta Review. Lowest effort, highest unblock.
+2. **Decide ATS direction** (Phase 1.5) — HTTPS-only vs `NSAllowsArbitraryLoads`. Tightening to HTTPS-only is the cleanest review path; the README's hedge needs to match whichever choice wins.
+3. **Real app icon** (Phase 1.6) — the IconikAI placeholder is fine for internal TestFlight but is the single visible "this is unfinished" signal at public launch. Workflow recommendation: Ideogram 3 + Recraft for concept variants → Flux 2 Pro for refinement → Affinity/Figma polish → drop into `Kios/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`.
+4. **App Store Connect listing metadata** (Phase 3) — categories, age-rating questionnaire, App Privacy declaration ("Data Not Collected"), pricing & availability, support URL, privacy policy URL.
+5. **External TestFlight** (Phase 5) — once privacy URL is hosted: fill Test Information from `BETA.md`, complete App Privacy questionnaire, create external testing group, submit current build for Beta Review (~24h).
+6. **Marketing copy** (Phase 0b) — subtitle (≤30 chars), short description (170), full description (4000), keywords (100), promotional text (170), what's new in version (4000).
+7. **Screenshots** (Phase 6) — 6.9" iPhone (1290×2796) + 13" iPad (2064×2752), 3–10 per device class. Consider: hero "what is this app", local-files import, Calibre-Web library, reading view, settings.
+8. **Final App Store submission** (Phase 6).
