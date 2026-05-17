@@ -336,11 +336,12 @@ struct ReaderView: View {
         return idx.map { $0 + 1 }
     }
 
-    /// True when a bookmark exists for `(book.id, currentPositionIndex)`.
-    /// Drives the bookmark glyph's filled vs outline state.
+    /// True when a bookmark exists for the current page. `bookmarksForBook`
+    /// is already filtered by `bookID` in the `@Query` predicate, so no
+    /// second book-scope check here.
     private var isCurrentPageBookmarked: Bool {
-        guard let bookID = book?.id, let position = currentPositionIndex else { return false }
-        return bookmarksForBook.contains { $0.bookID == bookID && $0.position == position }
+        guard let position = currentPositionIndex else { return false }
+        return bookmarksForBook.contains { $0.position == position }
     }
 
     @ViewBuilder
@@ -1082,7 +1083,6 @@ struct ReaderView: View {
     /// and chapter title at the moment of bookmark so the row survives a
     /// later TOC reload. Plays a selection haptic. No-op when we don't
     /// have a current locator yet.
-    @MainActor
     private func toggleBookmark() {
         guard let bookID = book?.id,
               let position = currentPositionIndex,
