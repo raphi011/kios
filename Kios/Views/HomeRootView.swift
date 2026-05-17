@@ -113,7 +113,8 @@ struct HomeRootView: View {
                                                 author: book.authors.joined(separator: ", "),
                                                 progress: progressByBookID[book.id] ?? 0,
                                                 meta: bookMeta(book),
-                                                finishedLabel: nil
+                                                finishedLabel: nil,
+                                                sourceLabel: book.source.displayName
                                             ) {
                                                 AnyView(BookCoverImage(book: book))
                                             }

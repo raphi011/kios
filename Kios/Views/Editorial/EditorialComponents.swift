@@ -254,9 +254,31 @@ struct EditorialBookRow: View {
     /// "9 Apr" — the date the book was marked finished. Non-nil for finished
     /// rows; renders "✓ Finished {date}" in muted mono.
     let finishedLabel: String?
+    /// When non-nil, rendered inline with the author as "Author · Source".
+    /// Pass `nil` (the default) to suppress the chip (e.g. on the Library tab
+    /// where the list is already scoped to a single source).
+    let sourceLabel: String?
     /// Cover view — built by the caller (so existing thumbnail logic for
     /// kosync/Kobo/local can be reused without duplicating it here).
     @ViewBuilder var cover: () -> AnyView
+
+    init(
+        title: String,
+        author: String,
+        progress: Double,
+        meta: String?,
+        finishedLabel: String?,
+        sourceLabel: String? = nil,
+        @ViewBuilder cover: @escaping () -> AnyView
+    ) {
+        self.title = title
+        self.author = author
+        self.progress = progress
+        self.meta = meta
+        self.finishedLabel = finishedLabel
+        self.sourceLabel = sourceLabel
+        self.cover = cover
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -274,12 +296,23 @@ struct EditorialBookRow: View {
                     .truncationMode(.tail)
                     .multilineTextAlignment(.leading)
 
-                Text(author)
-                    .font(EditorialTheme.serif(size: 14))
-                    .italic()
-                    .foregroundStyle(EditorialTheme.inkSoft)
-                    .lineLimit(1)
-                    .padding(.top, 3)
+                HStack(spacing: 6) {
+                    Text(author)
+                        .font(EditorialTheme.serif(size: 14))
+                        .italic()
+                        .foregroundStyle(EditorialTheme.inkSoft)
+                        .lineLimit(1)
+                    if let sourceLabel {
+                        Text("·")
+                            .font(EditorialTheme.serif(size: 14))
+                            .foregroundStyle(EditorialTheme.inkSoft.opacity(0.6))
+                        Text(sourceLabel)
+                            .font(EditorialTheme.serif(size: 14))
+                            .foregroundStyle(EditorialTheme.inkSoft)
+                            .lineLimit(1)
+                    }
+                }
+                .padding(.top, 3)
 
                 trailingState
                     .padding(.top, 8)
