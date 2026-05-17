@@ -43,4 +43,15 @@ struct KeychainStoreTests {
         // Expectation: no throw.
         try store.delete(account: "ghost")
     }
+
+    @Test func deleteAllRemovesEveryAccount() throws {
+        let store = KeychainStore(service: "test.\(UUID().uuidString)")
+        try store.set("a", account: "alpha")
+        try store.set("b", account: "beta")
+        try store.set("c", account: "gamma")
+        try store.deleteAll()
+        #expect(try store.get(account: "alpha") == nil)
+        #expect(try store.get(account: "beta") == nil)
+        #expect(try store.get(account: "gamma") == nil)
+    }
 }

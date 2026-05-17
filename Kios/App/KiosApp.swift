@@ -11,6 +11,7 @@ struct KiosApp: App {
             diskCapacity: 50 * 1024 * 1024,
             directory: nil
         )
+        AppEnvironment.applyMultiSourceWipeIfNeeded()
         do {
             _environment = State(initialValue: try AppEnvironment())
         } catch {

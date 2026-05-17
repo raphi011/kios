@@ -100,4 +100,32 @@ public struct KeychainStore: Sendable {
             throw Error.unhandled(status)
         }
     }
+
+    /// Removes every keychain item for this store's `service`. Idempotent.
+    public func deleteAll() throws {
+        // First, enumerate all accounts under this service, then delete each.
+        // This approach works on both macOS and iOS regardless of keychain
+        // access group or data-protection flags.
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        switch status {
+        case errSecItemNotFound:
+            return  // nothing to delete
+        case errSecSuccess:
+            break
+        default:
+            throw Error.unhandled(status)
+        }
+        guard let items = result as? [[String: Any]] else { return }
+        for item in items {
+            guard let account = item[kSecAttrAccount as String] as? String else { continue }
+            try delete(account: account)
+        }
+    }
 }

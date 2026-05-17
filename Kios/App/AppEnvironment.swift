@@ -418,6 +418,48 @@ final class AppEnvironment {
         )
     }
 
+    /// First-launch-of-multi-source-build cleanup. Drops the SwiftData store
+    /// and every Keychain entry under the legacy single-slot keys + any
+    /// per-source keys from a partial install. Runs once, gated by a
+    /// UserDefaults sentinel. Must run BEFORE `ModelContainer.kios()` opens
+    /// the store — deleting the file under an open container is racy.
+    static func applyMultiSourceWipeIfNeeded(
+        defaults: UserDefaults = .standard
+    ) {
+        let sentinelKey = "kios.multiSource.wipeApplied.v1"
+        guard !defaults.bool(forKey: sentinelKey) else { return }
+
+        // 1. Drop SwiftData store files (main + WAL + SHM).
+        let support = try? FileManager.default.url(
+            for: .applicationSupportDirectory, in: .userDomainMask,
+            appropriateFor: nil, create: false
+        )
+        if let support {
+            let base = support.appendingPathComponent("default.store")
+            let fm = FileManager.default
+            try? fm.removeItem(at: base)
+            try? fm.removeItem(at: support.appendingPathComponent("default.store-wal"))
+            try? fm.removeItem(at: support.appendingPathComponent("default.store-shm"))
+        }
+
+        // 2. Purge the credentials Keychain service. Catches legacy single-slot
+        //    entries AND any per-source entries from a partial install attempt.
+        let keychain = KeychainStore(service: "com.raphi011.kios.credentials")
+        try? keychain.deleteAll()
+
+        // 3. Clear legacy single-source UserDefaults keys + the source picker
+        //    selection (in case a previous build was already in this branch).
+        for legacyKey in [
+            "Kios.serverURL", "Kios.username", "Kios.activeProtocol",
+            "Kios.koboImageURLTemplate",
+            "library.selectedSourceID"
+        ] {
+            defaults.removeObject(forKey: legacyKey)
+        }
+
+        defaults.set(true, forKey: sentinelKey)
+    }
+
     /// One-shot revert to system language. Drops any persisted
     /// `AppleLanguages` override (was written by the now-removed
     /// LanguagePicker) plus the stored picker selection. iOS reads
