@@ -1,13 +1,14 @@
 # TestFlight — Beta Testing Notes
 
-Thanks for helping test Kios. The app is a native iOS reader for a
-self-hosted Calibre-Web-Automated (CWA) server. You will need a CWA
-instance you can reach from your device (HTTPS strongly recommended).
+Thanks for helping test Kios. The app is a native iOS reader for
+self-hosted book servers that speak OPDS, KOSync, or the Kobo sync
+protocol. You will need a server you can reach from your device
+(HTTPS strongly recommended).
 
 ## What to test
 
 ### Setup
-- [ ] Add a CWA server in **Settings**: URL, username, password
+- [ ] Add a server in **Settings**: URL, username, password
 - [ ] Pick sync protocol: **kosync** (KOReader) or **Kobo**
   - kosync: same `/opds` credentials are reused for `/kosync`
   - Kobo: paste the sync URL from your server's admin panel
