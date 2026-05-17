@@ -30,12 +30,6 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// default (no override); non-empty = CSS family name (`Iowan Old
     /// Style`, `Georgia`, …).
     let fontFamilyRaw: String
-    /// Drives whether the navigator advertises the "Ask AI" custom edit-menu
-    /// action. Resolved by SwiftUI from `AIAvailability`. Read once at
-    /// `makeUIViewController` time — toggling AI mid-read won't add or remove
-    /// the action until the reader is reopened, matching how Readium consumes
-    /// `Configuration.editingActions`.
-    let canAskAI: Bool
     var onLocatorChange: @Sendable (Locator) -> Void
     var onCenterTap: () -> Void
     var onPageTurn: () -> Void
@@ -45,9 +39,6 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// release so SwiftUI fades the HUD.
     var onBrightnessUpdate: (Int?) -> Void
     var onDismissRequested: () -> Void
-    /// Fires with the selected text when the user picks "Ask AI" from the
-    /// edit menu. SwiftUI uses this to present `AskAboutSelectionSheet`.
-    var onAskAIRequested: (String) -> Void
     /// Reference-typed probe that the host points at the underlying
     /// container so SwiftUI can synchronously query "is text selected?"
     /// from gesture handlers.
@@ -57,8 +48,7 @@ struct ReaderHost: UIViewControllerRepresentable {
         if publication.conforms(to: .epub) {
             let vc = ReaderContainerVC(
                 publication: publication,
-                initialLocator: initialLocator,
-                canAskAI: canAskAI
+                initialLocator: initialLocator
             )
             vc.update(fontSizePct: fontSizePct, fontFamilyRaw: fontFamilyRaw)
             vc.onLocatorChange = { locator in onLocatorChange(locator) }
@@ -68,7 +58,6 @@ struct ReaderHost: UIViewControllerRepresentable {
             vc.onPinchCommitToSwiftUI = onPinchCommit
             vc.onBrightnessUpdate = onBrightnessUpdate
             vc.onDismissRequested = onDismissRequested
-            vc.onAskAIRequested = onAskAIRequested
             selectionProbe.hasSelection = { [weak vc] in vc?.hasCurrentSelection() ?? false }
             vc.applyPendingJump(pendingJump)
             return vc
@@ -90,7 +79,6 @@ struct ReaderHost: UIViewControllerRepresentable {
         container.onPinchCommitToSwiftUI = onPinchCommit
         container.onBrightnessUpdate = onBrightnessUpdate
         container.onDismissRequested = onDismissRequested
-        container.onAskAIRequested = onAskAIRequested
         selectionProbe.hasSelection = { [weak container] in container?.hasCurrentSelection() ?? false }
         container.applyPendingJump(pendingJump)
     }

@@ -28,28 +28,6 @@ final class AppEnvironment {
     /// construct it eagerly at init.
     let localImporter: LocalImportService
 
-    /// On-device AI feature switches (master toggle, preferred engine, cellular
-    /// allowance). UserDefaults-backed; safe to construct eagerly.
-    let aiSettings: AISettings
-
-    /// Filesystem store for downloaded model assets (Gemma weights). Pure-local,
-    /// no credentials required.
-    let aiAssetStore: ModelAssetStore
-
-    /// Background-session model downloader. Built once at boot so a single
-    /// `URLSession` identifier is reused across the process lifetime.
-    let aiDownloadService: ModelDownloadService
-
-    /// Shared MLX runtime — actor-isolated, lazily loads the Gemma container
-    /// on first use and evicts after the idle timeout. Built once at boot so
-    /// repeated summary/ask invocations reuse the same loaded weights.
-    let aiModelRuntime: ModelRuntime
-
-    /// Shared language-model provider. Adapts `aiAssetStore` + `aiModelRuntime`
-    /// (and on iOS 26+, FoundationModels) into the protocol the reader's AI
-    /// services depend on.
-    let aiModelProvider: AILanguageModelProvider
-
     /// Runtime contexts, keyed by `Source.id` (UUID). Built lazily by
     /// `makeContext(for:)`; tear-down via `tearDown(sourceID:)` /
     /// `removeSource(id:)`. The `local` source is materialised eagerly in
@@ -91,62 +69,6 @@ final class AppEnvironment {
         self.stats = ReadingStatsService(context: self.modelContext)
         self.localImporter = LocalImportService(context: self.modelContext)
 
-        // AI services — all pure-local, no credentials required. Constructed
-        // eagerly so SettingsView (and later the reader's summary/ask sheets)
-        // can read live state without nil-checks.
-        self.aiSettings = AISettings()
-        self.aiAssetStore = ModelAssetStore(rootDirectory: AppPaths.aiModelsDirectory)
-        // Drop any on-disk model directory that isn't in the current catalog.
-        // Triggers on every launch — cheap (one directory listing) and makes
-        // asset-ID renames clean up after themselves automatically.
-        try? self.aiAssetStore.cleanupOrphanDirectories(
-            keepingAssetIDs: ModelCatalog.allKnownAssetIDs
-        )
-        // Background-capable URLSession config: survives app suspension during
-        // the multi-GB Gemma download. Identifier is stable across launches so
-        // iOS can resume any in-flight tasks after a kill + relaunch.
-        let aiDlConfig = URLSessionConfiguration.background(withIdentifier: "com.raphi011.kios.aimodel.download")
-        self.aiDownloadService = ModelDownloadService(
-            assetStore: self.aiAssetStore,
-            configuration: aiDlConfig
-        )
-        #if canImport(MLXLLM)
-        self.aiModelRuntime = ModelRuntime(loader: MLXRunnerLoader())
-        #else
-        self.aiModelRuntime = ModelRuntime(loader: UnavailableRunnerLoader())
-        #endif
-        self.aiModelProvider = AILanguageModelProvider(
-            assetStore: self.aiAssetStore,
-            runtime: self.aiModelRuntime
-        )
-
-        // Subscribe to MetricKit so jetsam OOM kills (which write no .ips
-        // file and never appear in Xcode Organizer's Crashes tab) and real
-        // crash payloads are persisted under Application Support/kios/
-        // diagnostics/ for offline retrieval via `Xcode → Devices → Download
-        // Container`. Registration happens on every launch — MetricKit does
-        // not buffer payloads while we're unsubscribed.
-        AICrashDiagnosticsLogger.shared.install()
-
-        // Release the heavy MLX model on memory pressure or backgrounding.
-        // The container holds ~5 GB of Metal-resident weights + KV cache;
-        // dropping it on pressure prevents jetsam from killing the whole
-        // process for a transient spike, and backgrounding the app while
-        // the model is resident is a near-guaranteed jetsam on return.
-        let runtime = self.aiModelRuntime
-        for name in [
-            UIApplication.didReceiveMemoryWarningNotification,
-            UIApplication.didEnterBackgroundNotification,
-        ] {
-            NotificationCenter.default.addObserver(
-                forName: name,
-                object: nil,
-                queue: .main
-            ) { _ in
-                Task { await runtime.release() }
-            }
-        }
-
         // Touch the books directory so it's created before any download runs.
         _ = AppPaths.booksDirectory
 
@@ -171,8 +93,6 @@ final class AppEnvironment {
         seedLocalSourceIfNeeded()
         // Eagerly materialise Local — has no credentials and no network.
         _ = try? self.makeContext(for: self.localSource)
-
-        recoverInterruptedAnalyses()
     }
 
     /// Inserts the Local Source row on first launch and assigns
@@ -198,25 +118,6 @@ final class AppEnvironment {
         modelContext.insert(local)
         try? modelContext.save()
         self.localSource = local
-    }
-
-    /// Marks any `BookAnalysis` rows left in `"in_progress"` from a prior
-    /// launch as `"failed"` with `failureReason = "Interrupted"`. The analyze
-    /// pipeline can be killed mid-flight (MLX/Metal completion fault, jetsam,
-    /// force-quit) without its `catch` block running, leaving rows stuck on a
-    /// status the in-process cancel button can't clear because the original
-    /// `Task` no longer exists. Runs once at startup so the failed state is
-    /// visible before any sheet is opened.
-    private func recoverInterruptedAnalyses() {
-        let descriptor = FetchDescriptor<BookAnalysis>(
-            predicate: #Predicate { $0.status == "in_progress" }
-        )
-        guard let rows = try? modelContext.fetch(descriptor), !rows.isEmpty else { return }
-        for row in rows {
-            row.status = "failed"
-            row.failureReason = "Interrupted"
-        }
-        try? modelContext.save()
     }
 
     /// Returns an already-materialised context, or nil.
@@ -445,37 +346,6 @@ final class AppEnvironment {
         } catch {
             // Stale URL — let the download attempt anyway.
         }
-    }
-
-    /// Builds a `BookAnalysisService` bound to the given Readium `publication`.
-    ///
-    /// Each open reader session needs its own analysis service: the extractor
-    /// and chapter list are derived from the per-reader `Publication`, which
-    /// isn't shared across books. Callers (today: `ReaderView` via Task 22)
-    /// hold one `Publication` reference for the book they're rendering and
-    /// pass it in here.
-    ///
-    /// `Publication` is not `Sendable`, so we pre-resolve the chapter refs
-    /// outside the `@Sendable` closure (the `[ChapterRef]` array is a value
-    /// type and copies cleanly). The extractor wraps the `Publication` with
-    /// its own `@unchecked Sendable` shield.
-    func makeBookAnalysisService(publication: Publication) -> BookAnalysisService {
-        let extractor = PublicationChapterTextExtractor(publication: publication)
-        let chapterRefs: [ChapterRef] = publication.readingOrder.enumerated().map { idx, link in
-            ChapterRef(index: idx, href: link.href, title: link.title ?? "")
-        }
-        let summaryHelper = AISummaryService(
-            modelContext: modelContext,
-            modelProvider: aiModelProvider,
-            textExtractor: extractor
-        )
-        return BookAnalysisService(
-            modelContext: modelContext,
-            provider: aiModelProvider,
-            extractor: extractor,
-            summaryHelper: summaryHelper,
-            chaptersFor: { _ in chapterRefs }
-        )
     }
 
     /// First-launch-of-multi-source-build cleanup. Drops the SwiftData store

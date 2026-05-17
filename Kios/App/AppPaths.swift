@@ -22,22 +22,6 @@ enum AppPaths {
         return dir
     }
 
-    /// `<applicationSupport>/kios/ai-models`. Root for on-device model assets.
-    /// Marked `isExcludedFromBackup` per-file by `ModelDownloadService` so the
-    /// multi-GB Gemma weights never enter iCloud Backup.
-    static var aiModelsDirectory: URL {
-        let support = try! FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let dir = support.appendingPathComponent("kios/ai-models")
-        try? FileManager.default.createDirectory(
-            at: dir, withIntermediateDirectories: true
-        )
-        return dir
-    }
 }
 
 extension AppPaths {

@@ -13,16 +13,14 @@ struct AdvanceSourceTests {
     func nonLinearSources() {
         #expect(!AdvanceSource.scrubCommit.isLinear)
         #expect(!AdvanceSource.tocJump.isLinear)
-        #expect(!AdvanceSource.aiQuoteJump.isLinear)
         #expect(!AdvanceSource.resumeFromSync.isLinear)
         #expect(!AdvanceSource.programmaticReturn.isLinear)
     }
 
-    @Test("only scrubCommit/tocJump/aiQuoteJump trigger the pill")
+    @Test("only scrubCommit/tocJump trigger the pill")
     func pillTriggers() {
         #expect(AdvanceSource.scrubCommit.triggersJumpPill)
         #expect(AdvanceSource.tocJump.triggersJumpPill)
-        #expect(AdvanceSource.aiQuoteJump.triggersJumpPill)
         #expect(!AdvanceSource.swipe.triggersJumpPill)
         #expect(!AdvanceSource.tap.triggersJumpPill)
         #expect(!AdvanceSource.resumeFromSync.triggersJumpPill)
@@ -32,7 +30,7 @@ struct AdvanceSourceTests {
     @Test("only resumeFromSync bumps the watermark on resume")
     func resumeBump() {
         #expect(AdvanceSource.resumeFromSync.bumpsWatermarkOnResume)
-        for source in [AdvanceSource.swipe, .tap, .scrubCommit, .tocJump, .aiQuoteJump, .programmaticReturn] {
+        for source in [AdvanceSource.swipe, .tap, .scrubCommit, .tocJump, .programmaticReturn] {
             #expect(!source.bumpsWatermarkOnResume)
         }
     }
@@ -41,7 +39,7 @@ struct AdvanceSourceTests {
     func rawValueRoundTrip() {
         let cases: [AdvanceSource] = [
             .swipe, .tap, .scrubCommit, .tocJump,
-            .aiQuoteJump, .resumeFromSync, .programmaticReturn
+            .resumeFromSync, .programmaticReturn
         ]
         for source in cases {
             #expect(AdvanceSource(rawValue: source.rawValue) == source)

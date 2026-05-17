@@ -7,7 +7,7 @@ import ReadiumShared
 /// screen edges, with three slots:
 ///
 /// - leading: `‹ Library` back action (accent red)
-/// - center: italic serif book title (truncates to a max width)
+/// - center: serif book title (truncates to a max width)
 /// - trailing: bookmark toggle (`bookmark`/`bookmark.fill`)
 ///
 /// Contents access lives on the bottom bar's chapter row — tap there to
@@ -43,12 +43,11 @@ struct EditorialReaderTopBar: View {
             Spacer(minLength: 8)
 
             Text(title)
-                .font(EditorialTheme.serif(size: 14, weight: .medium))
-                .italic()
+                .font(EditorialTheme.serif(size: 17, weight: .medium))
                 .foregroundStyle(ink)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .frame(maxWidth: 160)
+                .frame(maxWidth: 200)
 
             Spacer(minLength: 8)
 
@@ -81,44 +80,35 @@ struct EditorialReaderTopBar: View {
 
 // MARK: - Bottom bar
 
-/// Editorial reader bottom bar. A floating Liquid Glass card containing the
-/// chapter info row, a scrubbable progress slider with TOC tick marks, and a
-/// trailing AI quick-action row separated by a hairline.
+/// Editorial reader bottom bar. A floating Liquid Glass card containing
+/// the chapter info row and a scrubbable progress slider with TOC tick
+/// marks.
 ///
 /// Most fields are display-only strings the caller resolves from the locator
 /// and TOC. The slider is fully wired: drag updates `scrubProgress`, release
 /// commits via `onScrubCommit`.
 struct EditorialReaderBottomBar: View {
-    let chapterEyebrow: String         // e.g. "CHAPTER IV"
-    let chapterTitle: String           // e.g. "The Platonic Fold"
-    let pageLabel: String              // e.g. "p. 142 / 316"
-    let timeLeftLabel: String?         // e.g. "3h 12m left" (nil hides line)
+    let chapterTitle: String           // e.g. "30. Kaz"
+    let pageLabel: String              // e.g. "p. 390"
+    let timeLeftLabel: String?         // e.g. "8m left" (nil hides segment)
 
     let locator: Locator?
     let scrubProgress: Double?
     let tocProgressions: [Double]      // 0...1 progressions for tick marks
+    /// Resolves the chapter title for an arbitrary whole-book progression
+    /// so the row's title updates live during a scrub to reflect *where
+    /// the slider is*, not the locator the page still shows.
     let resolveChapterTitle: (Double) -> String
     var onScrubUpdate: (Double) -> Void
     var onScrubCommit: (Double) -> Void
     var onScrubCancel: () -> Void
     var onContents: () -> Void
-    var onInsights: () -> Void
-    /// When `false`, the AI quick-action row (divider + "Insights" button)
-    /// is suppressed entirely. Gated by the caller on AI being enabled and
-    /// a usable engine being available.
-    var canShowInsights: Bool = false
-    /// Displayed in the AI quick-action row's eyebrow line — names the
-    /// engine that will run the analysis (e.g. "Built-in (Apple
-    /// Intelligence)" or "Gemma 4 E4B (on-device)"). Ignored when
-    /// `canShowInsights` is false.
-    var engineLabel: String = "On-device"
 
     @Environment(\.colorScheme) private var colorScheme
 
     private var dark: Bool { colorScheme == .dark }
     private var ink: Color { dark ? EditorialTheme.bg : EditorialTheme.ink }
     private var muted: Color { dark ? EditorialTheme.muted.opacity(0.85) : EditorialTheme.muted }
-    private var rule: Color { dark ? Color.white.opacity(0.10) : EditorialTheme.rule }
     private var trackOff: Color { dark ? Color.white.opacity(0.18) : Color.black.opacity(0.18) }
     private var tickColor: Color { dark ? Color.white.opacity(0.35) : Color.black.opacity(0.30) }
 
@@ -128,13 +118,22 @@ struct EditorialReaderBottomBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            chapterRow
-            slider
-                .padding(.top, 12)
-            if canShowInsights {
-                divider
-                    .padding(.vertical, 12)
-                aiActionRow
+            // The chevron sits as a sibling of the progress-row + slider
+            // VStack — NOT nested inside the progress row — so
+            // `HStack(.center)` aligns it with the true vertical center
+            // of the card's main content (title/meta on top, slider on
+            // bottom). Nesting it inside the progress row would pin it
+            // to the top section and leave more empty card below than
+            // above.
+            HStack(alignment: .center, spacing: Self.chevronSpacing) {
+                VStack(spacing: 0) {
+                    progressRow
+                    slider
+                        .padding(.top, 12)
+                }
+                .frame(maxWidth: .infinity)
+
+                chevronButton
             }
         }
         .padding(.horizontal, 18)
@@ -154,80 +153,74 @@ struct EditorialReaderBottomBar: View {
 
     // MARK: - Rows
 
-    private var chapterRow: some View {
+    /// Two-line progress row: chapter title on top, a muted meta eyebrow
+    /// (time left · page · percent) below. The trailing chevron is a
+    /// sibling in the parent `HStack` so it can center to the card, not
+    /// the row. Both this row and the chevron tap to the same TOC sheet.
+    /// During a scrub the chapter title and percent track the slider
+    /// preview so the row stays in sync with the centered HUD.
+    private var progressRow: some View {
         Button(action: onContents) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(chapterEyebrow)
-                        .editorialEyebrow(color: muted)
-                    Text(displayChapterTitle)
-                        .font(EditorialTheme.serif(size: 16, weight: .medium))
-                        .italic()
-                        .foregroundStyle(ink)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(pageLabel)
-                        .editorialEyebrow(color: muted)
-                    if let timeLeftLabel {
-                        Text(timeLeftLabel)
-                            .font(EditorialTheme.serif(size: 13))
-                            .italic()
-                            .foregroundStyle(muted)
-                            .lineLimit(1)
-                    }
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(muted)
+            VStack(alignment: .leading, spacing: Self.rowSpacing) {
+                Text(displayChapterTitle)
+                    .font(EditorialTheme.serif(size: 20, weight: .semibold))
+                    .foregroundStyle(ink)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(metaLine)
+                    .editorialEyebrow(color: muted)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            .frame(minHeight: 44)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Chapter \(chapterEyebrow), \(displayChapterTitle)")
+        .accessibilityLabel("\(displayChapterTitle), \(metaLine)")
         .accessibilityHint("Opens the table of contents")
     }
 
-    private var divider: some View {
-        Rectangle()
-            .fill(rule)
-            .frame(height: 0.5)
-            .padding(.horizontal, -18)
-    }
-
-    private var aiActionRow: some View {
-        Button(action: onInsights) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(EditorialTheme.accentSoft)
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(EditorialTheme.accent)
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Insights")
-                        .font(EditorialTheme.sans(size: 15, weight: .medium))
-                        .foregroundStyle(ink)
-                    Text(engineLabel)
-                        .editorialEyebrow(color: muted)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(muted)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+    /// Standalone trailing chevron, sibling of (progress row + slider)
+    /// so its vertical center lands on the card's content center. Same
+    /// action as the progress row.
+    private var chevronButton: some View {
+        Button(action: onContents) {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(muted)
+                .frame(width: Self.chevronWidth)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Table of contents")
+    }
+
+    fileprivate static let chevronWidth: CGFloat = 12
+    fileprivate static let chevronSpacing: CGFloat = 14
+    fileprivate static let rowSpacing: CGFloat = 4
+
+    /// Single meta line under the chapter title: "8m left · p. 390 · 67%".
+    /// `editorialEyebrow` uppercases and tracks it. Time-left collapses
+    /// gracefully when not yet extrapolated.
+    private var metaLine: String {
+        var parts: [String] = []
+        if let timeLeftLabel { parts.append(timeLeftLabel) }
+        parts.append(pageLabel)
+        parts.append("\(progressPctText)%")
+        return parts.joined(separator: " · ")
+    }
+
+    private var progressPctText: String {
+        String(Int((displayProgress * 100).rounded()))
+    }
+
+    /// Live chapter title: scrub preview during a drag, persisted locator
+    /// title otherwise. Lets the row's chapter line mirror the centered
+    /// scrub HUD without needing a second source of truth.
+    private var displayChapterTitle: String {
+        if let sp = scrubProgress { return resolveChapterTitle(sp) }
+        return chapterTitle
     }
 
     // MARK: - Slider
@@ -279,11 +272,6 @@ struct EditorialReaderBottomBar: View {
     private func clamped(_ x: CGFloat, width: CGFloat) -> Double {
         guard width > 0 else { return 0 }
         return max(0, min(1, Double(x / width)))
-    }
-
-    private var displayChapterTitle: String {
-        if let sp = scrubProgress { return resolveChapterTitle(sp) }
-        return chapterTitle
     }
 }
 

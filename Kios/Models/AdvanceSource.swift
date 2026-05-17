@@ -14,7 +14,6 @@ enum AdvanceSource: String, Sendable, Codable {
     case tap
     case scrubCommit
     case tocJump
-    case aiQuoteJump
     case resumeFromSync
     case programmaticReturn
 
@@ -22,7 +21,7 @@ enum AdvanceSource: String, Sendable, Codable {
 
     var triggersJumpPill: Bool {
         switch self {
-        case .scrubCommit, .tocJump, .aiQuoteJump: true
+        case .scrubCommit, .tocJump: true
         case .swipe, .tap, .resumeFromSync, .programmaticReturn: false
         }
     }

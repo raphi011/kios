@@ -8,8 +8,8 @@ struct PaceEstimate: Equatable {
 
 /// Aggregated stats for the Home tab. `totalSeconds` / `totalPages` are
 /// lifetime; `todaySeconds` / `todayPages` are local-day-of-`now`. Both are
-/// populated so the strip can switch between "Today, so far" and lifetime
-/// without recomputing.
+/// populated so the strip can switch between today and lifetime without
+/// recomputing.
 struct HomeStats: Equatable {
     let booksRead: Int
     let totalSeconds: Int

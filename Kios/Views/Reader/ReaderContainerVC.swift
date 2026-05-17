@@ -20,10 +20,6 @@ final class ReaderContainerVC: UIViewController {
     /// release so SwiftUI can fade the HUD.
     var onBrightnessUpdate: ((Int?) -> Void)?
     var onDismissRequested: (() -> Void)?
-    /// Fires when the user picks "Ask AI" from the text-selection edit menu.
-    /// The string is `selection.locator.text.highlight` from the navigator,
-    /// captured at tap time. SwiftUI presents the Ask sheet in response.
-    var onAskAIRequested: ((String) -> Void)?
 
     // MARK: - Inputs (set via update())
 
@@ -39,11 +35,6 @@ final class ReaderContainerVC: UIViewController {
 
     private let publication: Publication
     private let initialLocator: Locator?
-    /// When true, the "Ask AI" custom editing action is added to the navigator
-    /// config so the system edit menu surfaces it on text selection. Gated by
-    /// the SwiftUI host via resolved AI availability — when AI is off / no
-    /// engine is usable, the action is omitted entirely so it never appears.
-    private let canAskAI: Bool
     private var navigator: EPUBNavigatorViewController?
     private var inputHandlers: ReaderInputHandlers?
     /// Retained so its `.tap` / `.click` / `.key` observer closures stay alive.
@@ -60,10 +51,9 @@ final class ReaderContainerVC: UIViewController {
     /// the chrome shows/hides the status bar.
     private var maxObservedInsets: UIEdgeInsets = .zero
 
-    init(publication: Publication, initialLocator: Locator?, canAskAI: Bool) {
+    init(publication: Publication, initialLocator: Locator?) {
         self.publication = publication
         self.initialLocator = initialLocator
-        self.canAskAI = canAskAI
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -117,17 +107,9 @@ final class ReaderContainerVC: UIViewController {
 
     private func installNavigator() {
         let prefs = makePreferences()
-        // Append the custom "Ask AI" action only when AI is available — the
-        // edit menu should not advertise a feature that's gated off. Readium's
-        // `EditingActionsController` consults the responder chain for the
-        // selector, so `askAITapped(_:)` lives on this VC below.
-        var actions = EditingAction.defaultActions
-        if canAskAI {
-            actions.append(EditingAction(title: "Ask AI", action: #selector(askAITapped(_:))))
-        }
         let config = EPUBNavigatorViewController.Configuration(
             preferences: prefs,
-            editingActions: actions
+            editingActions: EditingAction.defaultActions
         )
         do {
             let nav = try EPUBNavigatorViewController(
@@ -238,23 +220,6 @@ final class ReaderContainerVC: UIViewController {
             fontFamily: family,
             fontSize: Double(fontSizePct) / 100.0
         )
-    }
-
-    // MARK: - Ask AI edit-menu action
-
-    /// Invoked by the UIKit responder chain when the user picks "Ask AI" from
-    /// the text-selection edit menu. Readium routes the selector to the
-    /// `EditingAction(title:action:)` registered in the navigator config.
-    /// Reads the live selection from `navigator.currentSelection` (the
-    /// `EditingActionsController` keeps this in sync with the WKWebView) and
-    /// hands the highlighted text up to SwiftUI via `onAskAIRequested`.
-    @objc func askAITapped(_ sender: Any?) {
-        guard let nav = navigator,
-              let selection = nav.currentSelection,
-              let text = selection.locator.text.highlight,
-              !text.isEmpty
-        else { return }
-        onAskAIRequested?(text)
     }
 
     /// True when the user has an active text selection in the webview.

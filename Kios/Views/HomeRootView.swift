@@ -5,7 +5,7 @@ import Core
 /// Editorial "Today" home screen. Matches the design package's `EditorialHome`:
 ///
 /// - Large serif **Today** title with a dated eyebrow
-/// - 3-cell stats card (Read time / Pages / Streak) under a "Today, so far" header
+/// - 3-cell stats card (Read time / Pages / Streak), unlabeled — the section's "Today" title covers it
 /// - Hero "Continue reading" card with the most-recently-touched book
 /// - Editorial book rows for the rest of the library, with a "Last synced" footer
 ///
@@ -82,7 +82,7 @@ struct HomeRootView: View {
                         VStack(spacing: 0) {
                             EditorialNavBar(title: "Today", eyebrow: todayEyebrow)
 
-                            EditorialList("Today, so far") {
+                            EditorialList {
                                 EditorialStatsCard(cells: statCells)
                             }
 

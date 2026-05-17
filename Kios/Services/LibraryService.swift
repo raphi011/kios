@@ -120,11 +120,9 @@ final class LibraryService {
     }
 
     /// Deletes a book and all its derived state: the downloaded file, the
-    /// pending `Download` row, `ReadingProgress`, and the book-analysis rows
-    /// (`BookAnalysis` / `CharacterMention` / `CharacterProfile` /
-    /// `ChapterSummary` / `BookSummary`).
-    /// `ReadingSession` rows are intentionally preserved as historical
-    /// statistics — they survive book deletion.
+    /// pending `Download` row, and `ReadingProgress`. `ReadingSession` rows
+    /// are intentionally preserved as historical statistics — they survive
+    /// book deletion.
     func delete(book: Book) throws {
         if let url = book.fileURL {
             try? FileManager.default.removeItem(at: url)
@@ -140,30 +138,6 @@ final class LibraryService {
         ).first {
             context.delete(progress)
         }
-        // Analysis cascade — no inverse relationship on the @Models, so do
-        // it explicitly here. Keeping this in LibraryService (rather than at
-        // the call site) means future deletion paths (Settings "remove all
-        // local files", account sign-out, etc.) inherit the cascade for free.
-        let analyses = try context.fetch(FetchDescriptor<BookAnalysis>(
-            predicate: #Predicate { $0.bookID == bookID }
-        ))
-        for a in analyses { context.delete(a) }
-        let mentions = try context.fetch(FetchDescriptor<CharacterMention>(
-            predicate: #Predicate { $0.bookID == bookID }
-        ))
-        for m in mentions { context.delete(m) }
-        let profiles = try context.fetch(FetchDescriptor<CharacterProfile>(
-            predicate: #Predicate { $0.bookID == bookID }
-        ))
-        for p in profiles { context.delete(p) }
-        let chapterSummaries = try context.fetch(FetchDescriptor<ChapterSummary>(
-            predicate: #Predicate { $0.bookID == bookID }
-        ))
-        for s in chapterSummaries { context.delete(s) }
-        let bookSummaries = try context.fetch(FetchDescriptor<BookSummary>(
-            predicate: #Predicate { $0.bookID == bookID }
-        ))
-        for s in bookSummaries { context.delete(s) }
         context.delete(book)
         try context.save()
     }

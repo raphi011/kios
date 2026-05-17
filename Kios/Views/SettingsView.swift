@@ -3,15 +3,14 @@ import SwiftData
 import Core
 
 /// Editorial settings screen. Matches the design package's `EditorialSettings`:
-/// Reading / Library & sync / AI assistant / Account sections in grouped
-/// inset cards under a big serif **Settings** title, with a version footer.
+/// Reading / Library & sync sections in grouped inset cards under a big serif
+/// **Settings** title, with a version footer.
 ///
 /// Library & sync shows the configured Sources list (each row navigates to
 /// SourceDetailView) plus an Add Source link and global toggles. Sources are
 /// added/removed individually — there is no global sign-out.
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
-    @Environment(\.modelContext) private var modelContext
 
     /// Mirrors the AppStorage key the reader reads to override Readium's
     /// `EPUBPreferences.fontFamily`. Empty string = "Publisher default"
@@ -32,16 +31,6 @@ struct SettingsView: View {
     // Library & sync — toggles persist in-session only.
     @State private var syncOverCellular = false
 
-    // First-enable explainer sheet — shown the first time the master AI
-    // toggle is flipped on. Subsequent toggles are silent.
-    @State private var showFirstEnableSheet = false
-
-    /// Bumped after operations that mutate on-disk model state (delete,
-    /// download completion). The asset store reads the filesystem on each
-    /// access but isn't `@Observable`, so we need a manual nudge to make
-    /// SwiftUI re-evaluate `aiAvailability` and refresh the download cell.
-    @State private var modelStateVersion = 0
-
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -49,8 +38,6 @@ struct SettingsView: View {
 
                 readingSection
                 librarySyncSection
-                aiSection
-                cacheSection
 
                 Text(versionLine)
                     .editorialEyebrow()
@@ -62,19 +49,6 @@ struct SettingsView: View {
         }
         .background(EditorialTheme.bg)
         .navigationBarHidden(true)
-        .sheet(isPresented: $showFirstEnableSheet) {
-            AIFirstEnableSheet(
-                availability: AIAvailability.resolve(
-                    userEnabled: true,
-                    preferredEngine: env.aiSettings.preferredEngine,
-                    capability: .current,
-                    assetStore: env.aiAssetStore,
-                    downloads: env.aiDownloadService
-                )
-            ) {
-                showFirstEnableSheet = false
-            }
-        }
     }
 
     // MARK: - Reading
@@ -157,141 +131,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - AI assistant
-
-    /// Live availability snapshot. Cheap to compute per render —
-    /// `installationStatus(for:)` stats files and `currentDownload()` reads a
-    /// single MainActor-isolated property. Recomputing here keeps the picker
-    /// and download cell in lockstep with `aiSettings.preferredEngine` and
-    /// `aiDownloadService.progress` without an intermediate cache.
-    private var aiAvailability: AIAvailability {
-        AIAvailability.resolve(
-            userEnabled: env.aiSettings.featuresEnabled,
-            preferredEngine: env.aiSettings.preferredEngine,
-            capability: .current,
-            assetStore: env.aiAssetStore,
-            downloads: env.aiDownloadService
-        )
-    }
-
-    private var featuresEnabledBinding: Binding<Bool> {
-        Binding(
-            get: { env.aiSettings.featuresEnabled },
-            set: { newValue in
-                env.aiSettings.featuresEnabled = newValue
-                guard newValue else { return }
-                // First flip-on shows the explainer sheet once.
-                if !env.aiSettings.didShowFirstEnableSheet {
-                    showFirstEnableSheet = true
-                    env.aiSettings.didShowFirstEnableSheet = true
-                }
-                // On devices without 8 GB of RAM, snap preference to FM so
-                // the picker never advertises an engine the device can't run.
-                if !DeviceCapability.current.supportsGemma4_e4b {
-                    env.aiSettings.preferredEngine = .foundationModels
-                }
-            }
-        )
-    }
-
-    private var preferredEngineBinding: Binding<AIEngine> {
-        Binding(
-            get: { env.aiSettings.preferredEngine },
-            set: { env.aiSettings.preferredEngine = $0 }
-        )
-    }
-
-    private var allowCellularBinding: Binding<Bool> {
-        Binding(
-            get: { env.aiSettings.allowCellularDownload },
-            set: { env.aiSettings.allowCellularDownload = $0 }
-        )
-    }
-
-    private var aiSection: some View {
-        EditorialList(
-            "AI assistant",
-            footer: "Summarize chapters and ask about selected text — entirely on-device. Disable the master switch to make no AI calls at all."
-        ) {
-            EditorialRow(label: "Enable AI features", toggle: featuresEnabledBinding)
-
-            if env.aiSettings.featuresEnabled {
-                EditorialHairline()
-                AIEnginePicker(
-                    availability: aiAvailability,
-                    preferredEngine: preferredEngineBinding
-                )
-                .padding(.horizontal, EditorialTheme.rowSidePad)
-                .padding(.vertical, 12)
-
-                EditorialHairline()
-                EditorialRow(
-                    label: "Device RAM",
-                    value: DeviceCapability.current.ramDisplay
-                )
-
-                if env.aiSettings.preferredEngine == .gemma4_e4b
-                    && DeviceCapability.current.supportsGemma4_e4b {
-                    EditorialHairline()
-                    ModelDownloadCell(
-                        asset: ModelCatalog.gemma4_e4b,
-                        status: env.aiAssetStore.installationStatus(for: ModelCatalog.gemma4_e4b),
-                        progress: env.aiDownloadService.progress,
-                        onDownload: {
-                            Task {
-                                await env.aiDownloadService.startDownload(
-                                    of: ModelCatalog.gemma4_e4b,
-                                    allowCellular: env.aiSettings.allowCellularDownload
-                                )
-                            }
-                        },
-                        onCancel: { env.aiDownloadService.cancel() },
-                        onDelete: {
-                            try? env.aiAssetStore.delete(ModelCatalog.gemma4_e4b)
-                            modelStateVersion += 1
-                        }
-                    )
-                    .id(modelStateVersion)
-                    .padding(.horizontal, EditorialTheme.rowSidePad)
-                    .padding(.vertical, 12)
-
-                    EditorialHairline()
-                    EditorialRow(
-                        label: "Allow cellular download",
-                        toggle: allowCellularBinding
-                    )
-                }
-            }
-        }
-    }
-
-    // MARK: - Cache
-
-    private var cacheSection: some View {
-        EditorialList("Cache") {
-            Button(role: .destructive) {
-                clearAllChapterSummaries()
-            } label: {
-                EditorialRow(label: "Clear cached summaries", danger: true)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    /// Wipes every persisted `ChapterSummary` row. Best-effort: failures are
-    /// swallowed because the user can simply retry — no data integrity risk
-    /// since rows are derivable from chapter text on demand.
-    private func clearAllChapterSummaries() {
-        do {
-            let rows = try modelContext.fetch(FetchDescriptor<ChapterSummary>())
-            for row in rows { modelContext.delete(row) }
-            try modelContext.save()
-        } catch {
-            // Best-effort; user can retry. Not surfaced because the failure
-            // mode (corrupt store) is already escalated elsewhere.
-        }
-    }
-
     // MARK: - Helpers
 
     private var versionLine: String {
@@ -306,22 +145,37 @@ struct SettingsView: View {
 // MARK: - Sources list
 
 /// Inline Sources list for the Library & sync section. Fetches all sources
-/// sorted by `sortOrder` and renders one editorial row per source; each row
-/// pushes `SourceDetailView`. When there are no server sources yet, the list
-/// is empty (the "Add source" row below it serves as the CTA).
+/// sorted by `sortOrder` and renders one editorial row per server source;
+/// each row pushes `SourceDetailView`. The local source is filtered out —
+/// it always exists for sideloaded EPUBs and has no per-source config, so
+/// surfacing it here would just be noise. When there are no server sources
+/// yet, the list is empty (the "Add source" row below it serves as the CTA).
 private struct SourcesList: View {
     @Query(sort: [SortDescriptor(\Source.sortOrder)]) private var sources: [Source]
 
+    private var serverSources: [Source] {
+        sources.filter { $0.kind != .local }
+    }
+
     var body: some View {
-        ForEach(sources) { source in
+        ForEach(serverSources) { source in
             NavigationLink {
                 SourceDetailView(source: source)
             } label: {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(source.displayName)
+                        Text(urlLabel(source.serverURL))
                             .font(EditorialTheme.sans(size: 17))
                             .foregroundStyle(EditorialTheme.ink)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        if !source.displayName.isEmpty {
+                            Text(source.displayName)
+                                .font(EditorialTheme.sans(size: 13))
+                                .foregroundStyle(EditorialTheme.muted)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
                     }
                     Spacer(minLength: 8)
                     Text(kindLabel(source.kind))
@@ -338,10 +192,23 @@ private struct SourcesList: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            if source != sources.last {
+            if source != serverSources.last {
                 EditorialHairline()
             }
         }
+    }
+
+    /// URL identifies the source; the user-typed display name is
+    /// secondary. Prefer host + port to keep the row scannable — full
+    /// URLs with scheme and path bloat the line without adding info
+    /// (the source's kind already implies the protocol).
+    private func urlLabel(_ url: URL?) -> String {
+        guard let url else { return "—" }
+        if let host = url.host(percentEncoded: false) {
+            if let port = url.port { return "\(host):\(port)" }
+            return host
+        }
+        return url.absoluteString
     }
 
     private func kindLabel(_ kind: SourceKind) -> String {

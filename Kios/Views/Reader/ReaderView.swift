@@ -27,8 +27,8 @@ struct ReaderView: View {
     /// CSS family name passed through to Readium verbatim.
     @AppStorage("reader.fontFamily") private var fontFamilyRaw: String = ""
     /// On by default. Plays a subtle haptic when a normal swipe/tap crosses
-    /// into a new chapter. Silent for TOC jumps, scrubs, AI quote jumps, and
-    /// sync-resume — the toggle gates only linear chapter transitions.
+    /// into a new chapter. Silent for TOC jumps, scrubs, and sync-resume —
+    /// the toggle gates only linear chapter transitions.
     @AppStorage("reader.hapticChapterEnabled") private var hapticChapterEnabled: Bool = true
 
     @State private var publication: Publication?
@@ -51,18 +51,6 @@ struct ReaderView: View {
     /// Set true by the `⊟` button in the reader top bar to present the
     /// Contents / Bookmarks / Notes modal. Setting back to false dismisses.
     @State private var showContents: Bool = false
-    /// Non-nil while the Insights sheet is presented. Holds the snapshot of
-    /// chapter context taken at tap time, plus the per-session
-    /// `BookAnalysisService`, so the sheet sees a stable context even if the
-    /// reader navigates while it's open.
-    @State private var insightsSheet: InsightsSheetContext?
-    /// Non-nil while the Ask-AI sheet is presented. Snapshot of selection +
-    /// chapter context captured when the user picks "Ask AI" from the
-    /// text-selection edit menu.
-    @State private var askSheet: AskSheetContext?
-    /// Lazily created on the first "Ask AI" request — needs the per-reader
-    /// `Publication` to construct the text extractor. Cleared on reader close.
-    @State private var summaryService: AISummaryService?
     @State private var fontHUD: Int? = nil
     /// Percent shown in the brightness HUD (0...100). Driven by the
     /// `onBrightnessUpdate` callback from `ReaderInputHandlers`' UIKit pan
@@ -126,41 +114,6 @@ struct ReaderView: View {
         let server: CanonicalProgress
         let serverHref: String?
     }
-
-    /// Snapshot of context captured when the user opens the Insights sheet.
-    /// `Identifiable` so `.sheet(item:)` can present it. The
-    /// `BookAnalysisService` is bundled into the context (rather than read
-    /// from sibling state) so SwiftUI's sheet-content closure sees a stable
-    /// instance — sibling `@State` can present a stale snapshot.
-    struct InsightsSheetContext: Identifiable {
-        let id = UUID()
-        let bookID: UUID
-        let chapterHref: String?
-        let service: BookAnalysisService
-    }
-
-    /// Snapshot of selection + chapter context captured when the user picks
-    /// "Ask AI" from the navigator's text-selection edit menu. Identifiable
-    /// so `.sheet(item:)` can present `AskAboutSelectionSheet` against it.
-    /// Bundles the service for the same reason as `InsightsSheetContext`.
-    struct AskSheetContext: Identifiable {
-        let id = UUID()
-        let selection: String
-        let bookID: UUID
-        let bookTitle: String
-        let chapterTitle: String?
-        let engine: AIEngine
-        let service: AISummaryService
-    }
-
-    /// Populated when the user taps an AI affordance but neither engine is
-    /// currently usable. Drives the `.alert(item:)` below — the user sees
-    /// *why* the action didn't proceed instead of a silent no-op.
-    struct AIUnavailableAlert: Identifiable {
-        let id = UUID()
-        let message: String
-    }
-    @State private var aiUnavailableAlert: AIUnavailableAlert?
 
     var body: some View {
         ZStack {
@@ -259,46 +212,6 @@ struct ReaderView: View {
                 onDismiss: { showContents = false }
             )
         }
-        .sheet(item: $insightsSheet) { context in
-            if let book = book {
-                InsightsSheet(
-                    bookID: context.bookID,
-                    book: book,
-                    currentChapterHref: context.chapterHref,
-                    makeService: { context.service },
-                    onJumpRequest: { href, quote in
-                        insightsSheet = nil
-                        pendingJumpSource = .aiQuoteJump
-                        jumpAndSearch(href: href, quote: quote)
-                    },
-                    onDismiss: { insightsSheet = nil }
-                )
-            }
-        }
-        .sheet(item: $askSheet) { context in
-            AskAboutSelectionSheet(
-                selection: context.selection,
-                bookID: context.bookID,
-                bookTitle: context.bookTitle,
-                chapterTitle: context.chapterTitle,
-                engine: context.engine,
-                onClose: { askSheet = nil },
-                service: context.service
-            )
-        }
-        .alert(item: $aiUnavailableAlert) { ctx in
-            Alert(
-                title: Text("AI engine unavailable"),
-                message: Text(ctx.message),
-                dismissButton: .default(Text("OK"))
-            )
-        }
-        // NB: do NOT clear `summaryService` in `.onDisappear` — SwiftUI fires
-        // onDisappear on this view when the AI sheet (`.sheet(item:)`) covers
-        // it, which clears the service before the sheet body reads it and
-        // renders the sheet blank. ReaderView is recreated on each
-        // fullScreenCover presentation, so per-book `@State` is naturally
-        // fresh without this cleanup.
     }
 
     // MARK: - Contents/Bookmarks/Notes data
@@ -423,7 +336,6 @@ struct ReaderView: View {
                     pendingJump: pendingJump,
                     fontSizePct: fontSizePct,
                     fontFamilyRaw: fontFamilyRaw,
-                    canAskAI: env.aiSettings.featuresEnabled,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in
                             currentLocator = locator
@@ -461,7 +373,6 @@ struct ReaderView: View {
                         }
                     },
                     onDismissRequested: { dismiss() },
-                    onAskAIRequested: { selection in presentAskSheet(selection: selection) },
                     selectionProbe: selectionProbe
                 )
                 .alert(item: $pendingPrompt) { info in
@@ -505,7 +416,6 @@ struct ReaderView: View {
                 Spacer()
 
                 EditorialReaderBottomBar(
-                    chapterEyebrow: chapterEyebrow,
                     chapterTitle: chapterTitleForCurrent,
                     pageLabel: pageLabel,
                     timeLeftLabel: timeLeftLabel,
@@ -524,18 +434,7 @@ struct ReaderView: View {
                         scrubCommitPending = false
                         scrubProgress = nil
                     },
-                    onContents: { showContents = true },
-                    onInsights: { presentInsightsSheet() },
-                    canShowInsights: env.aiSettings.featuresEnabled,
-                    engineLabel: {
-                        // When no engine resolves, label with the user's
-                        // *preferred* engine so the eyebrow doesn't read
-                        // empty. Tapping surfaces the explainer alert.
-                        switch resolvedAIEngine ?? env.aiSettings.preferredEngine {
-                        case .foundationModels: return "Built-in (Apple Intelligence)"
-                        case .gemma4_e4b: return "Gemma 4 E4B (on-device)"
-                        }
-                    }()
+                    onContents: { showContents = true }
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
@@ -568,25 +467,19 @@ struct ReaderView: View {
         return idx.map { $0 + 1 }   // 1-based
     }
 
-    /// "CHAPTER IV" — Roman numeral, falling back to an arabic numeral past
-    /// the supported range or to a generic eyebrow when no chapter is known.
-    private var chapterEyebrow: String {
-        guard let i = currentChapterIndex else { return "READING" }
-        return "CHAPTER \(romanNumeral(i))"
-    }
-
     /// Chapter title (from TOC) for the current progression, or "—" when
     /// the TOC hasn't loaded yet.
     private var chapterTitleForCurrent: String {
         chapterTitle(at: currentLocator?.locations.totalProgression ?? 0)
     }
 
-    /// "p. 142 / 316" — index of the current locator within the flat positions
-    /// list, plus the total. Falls back to "—" before positions are loaded.
+    /// "p. 142" — 1-based index of the current locator within the flat
+    /// positions list. The total is implicit in the progress percent shown
+    /// alongside it in the chrome's meta line. Falls back to "—" before
+    /// positions are loaded.
     private var pageLabel: String {
         guard !positions.isEmpty else { return "—" }
-        let idx = currentPageIndex
-        return "p. \(idx + 1) / \(positions.count)"
+        return "p. \(currentPageIndex + 1)"
     }
 
     private var currentPageIndex: Int {
@@ -678,159 +571,6 @@ struct ReaderView: View {
         }
     }
 
-
-    // MARK: - AI summary
-
-    /// The engine `AIAvailability` resolved against the user's preference, or
-    /// `nil` when AI is disabled / no engine is usable. Recomputed on every
-    /// access — `installationStatus(for:)` is a stat call, cheap enough for a
-    /// chrome-render cadence.
-    private var resolvedAIEngine: AIEngine? {
-        let availability = AIAvailability.resolve(
-            userEnabled: env.aiSettings.featuresEnabled,
-            preferredEngine: env.aiSettings.preferredEngine,
-            capability: .current,
-            assetStore: env.aiAssetStore,
-            downloads: env.aiDownloadService
-        )
-        return availability.resolved(
-            preferred: env.aiSettings.preferredEngine,
-            userEnabled: env.aiSettings.featuresEnabled
-        )
-    }
-
-    /// Builds a human-readable explanation for `aiUnavailableAlert` from the
-    /// current per-engine availability. Reads the user's preferred engine
-    /// first (because that's what they expect to work) and falls back to
-    /// describing the other engine's state so the message points to whatever
-    /// fix is closest at hand.
-    private func aiUnavailableMessage() -> String {
-        let availability = AIAvailability.resolve(
-            userEnabled: env.aiSettings.featuresEnabled,
-            preferredEngine: env.aiSettings.preferredEngine,
-            capability: .current,
-            assetStore: env.aiAssetStore,
-            downloads: env.aiDownloadService
-        )
-        let preferred = env.aiSettings.preferredEngine
-        return Self.explanation(
-            for: preferred == .foundationModels ? availability.fm : availability.gemma,
-            engine: preferred
-        )
-    }
-
-    private static func explanation(for state: EngineAvailability, engine: AIEngine) -> String {
-        let prefix: String = {
-            switch engine {
-            case .foundationModels: return "Built-in (Apple Intelligence)"
-            case .gemma4_e4b:       return "Bigger context (Gemma 4 E4B)"
-            }
-        }()
-        switch state {
-        case .available:
-            return "\(prefix) is available, but the request couldn't complete. Try again."
-        case .userDisabled:
-            return "Enable AI in Settings → AI to use \(prefix)."
-        case .unsupportedOS:
-            return "\(prefix) requires iOS 26 or later. Update your device or switch engine in Settings → AI."
-        case .unsupportedDevice:
-            switch engine {
-            case .foundationModels:
-                return "Apple Intelligence isn't supported on this device. Switch to Bigger context in Settings → AI."
-            case .gemma4_e4b:
-                return "Bigger context requires roughly 8 GB of RAM. Switch to Built-in in Settings → AI."
-            }
-        case .modelNotReady:
-            return "Apple Intelligence isn't ready yet. Open the iOS Settings app → Apple Intelligence & Siri, make sure it's on, and let it finish downloading."
-        case .modelNotDownloaded:
-            return "The Bigger context model isn't downloaded yet. Open Settings → AI to install it (~5.2 GB)."
-        case .modelDownloading(let p):
-            return "The Bigger context model is still downloading (\(Int(p * 100))%). Try again once it's installed."
-        case .modelCorrupt:
-            return "The Bigger context model files don't match the catalog. Open Settings → AI, delete the model, and re-download."
-        }
-    }
-
-    /// Captures the current chapter context and presents the Insights sheet.
-    /// The sheet itself drives Analyze on demand; this entry only opens it.
-    /// Shows `aiUnavailableAlert` when AI is disabled / no engine resolves,
-    /// so the user understands why nothing happened. No-ops when the
-    /// publication isn't loaded yet.
-    private func presentInsightsSheet() {
-        guard let publication else { return }
-        guard resolvedAIEngine != nil else {
-            aiUnavailableAlert = AIUnavailableAlert(message: aiUnavailableMessage())
-            return
-        }
-        let service = env.makeBookAnalysisService(publication: publication)
-        let href = (currentLocator ?? initialLocator)?.href.string
-        insightsSheet = InsightsSheetContext(
-            bookID: bookID,
-            chapterHref: href,
-            service: service
-        )
-    }
-
-    /// Called when the user taps a character mention in the Insights sheet.
-    /// Navigates to the chapter, then best-effort searches for the verbatim
-    /// quote and jumps to the first match. A miss (or a publication without
-    /// a search service) lands the user at the chapter's start.
-    private func jumpAndSearch(href: String, quote: String) {
-        guard let publication else { return }
-        // Land at the chapter's start first by picking the earliest cached
-        // `Locator` whose href matches the reading-order entry. Falls back to
-        // any positional match if href comparison is anchor-dirty.
-        guard let chapterStart = positions.first(where: { $0.href.string == href })
-            ?? positions.first(where: { $0.href.string.hasSuffix(href) || href.hasSuffix($0.href.string) })
-        else { return }
-        pendingJump = chapterStart
-        Task { @MainActor in
-            // Yield a frame so the navigator can begin the chapter jump
-            // before we drive `pendingJump` to the search hit. Tight without
-            // sleeping; the deduper inside `ReaderHost` ignores the second
-            // jump if `applyPendingJump` hasn't unrolled the first yet, so
-            // this can no-op in the wrong order — silent miss is acceptable.
-            try? await Task.sleep(for: .milliseconds(400))
-            let result = await publication.search(query: quote)
-            guard case .success(let iterator) = result else { return }
-            let pageResult = await iterator.next()
-            if case .success(let collection) = pageResult,
-               let locator = collection?.locators.first {
-                pendingJumpSource = .aiQuoteJump
-                pendingJump = locator
-            }
-        }
-    }
-
-    /// Snapshot the current chapter context for the supplied selection text
-    /// and present `AskAboutSelectionSheet`. Reuses the same lazily-built
-    /// `AISummaryService` as the chapter summary path — both rely on it
-    /// streaming through the resolved engine's `LanguageModel`. Shows the
-    /// `aiUnavailableAlert` when AI is enabled but no engine resolves, so
-    /// the user understands why the action didn't proceed.
-    private func presentAskSheet(selection: String) {
-        guard let publication, !selection.isEmpty else { return }
-        guard let engine = resolvedAIEngine else {
-            aiUnavailableAlert = AIUnavailableAlert(message: aiUnavailableMessage())
-            return
-        }
-        let service = summaryService ?? AISummaryService(
-            modelContext: context,
-            modelProvider: env.aiModelProvider,
-            textExtractor: PublicationChapterTextExtractor(publication: publication)
-        )
-        summaryService = service
-        let href = currentLocator?.href.string ?? initialLocator?.href.string
-        let title: String? = href.flatMap(chapterTitle(forHref:)) ?? chapterTitleForCurrent
-        askSheet = AskSheetContext(
-            selection: selection,
-            bookID: bookID,
-            bookTitle: book?.title ?? "",
-            chapterTitle: title,
-            engine: engine,
-            service: service
-        )
-    }
 
     private func swipeDownDismissGesture() -> some Gesture {
         DragGesture(minimumDistance: 20)

@@ -8,9 +8,9 @@ enum ModelContainerFactory {
     static let watermarkWipeFlagKey = "kios.readingStats.watermarkModelWipeApplied.v1"
 
     /// Idempotent. Drops all `ReadingSession` rows once per device when
-    /// the flag is absent. Leaves Books, ReadingProgresses, BookAnalysis,
-    /// and other entities untouched. Per CLAUDE.md: we have no installed
-    /// users yet, so this is the cheap window for a destructive change.
+    /// the flag is absent. Leaves Books, ReadingProgresses, and other
+    /// entities untouched. Per CLAUDE.md: we have no installed users yet,
+    /// so this is the cheap window for a destructive change.
     @MainActor
     static func applyWatermarkModelWipeIfNeeded(
         context: ModelContext,
@@ -30,8 +30,7 @@ extension ModelContainer {
     static func kios() throws -> ModelContainer {
         try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
-                 ChapterSummary.self, BookAnalysis.self, CharacterMention.self,
-                 CharacterProfile.self, BookSummary.self, Bookmark.self, Source.self
+                 Bookmark.self, Source.self
         )
     }
 
@@ -39,8 +38,7 @@ extension ModelContainer {
     static func kiosInMemory() throws -> ModelContainer {
         try ModelContainer(
             for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
-                 ChapterSummary.self, BookAnalysis.self, CharacterMention.self,
-                 CharacterProfile.self, BookSummary.self, Bookmark.self, Source.self,
+                 Bookmark.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
     }
