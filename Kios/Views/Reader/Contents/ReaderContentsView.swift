@@ -3,8 +3,9 @@ import ReadiumShared
 
 /// Modal screen presented from the reader's contents (`⊟`) button. Hosts
 /// three tabs — Contents · Bookmarks · Notes — in the editorial design
-/// language. Contents is functional (tap a chapter → jump); Bookmarks +
-/// Notes are placeholder empty states until those models exist.
+/// language. Contents and Bookmarks are functional (tap to jump; trash
+/// to delete a bookmark). Notes remains a placeholder until that model
+/// exists.
 struct ReaderContentsView: View {
 
     // MARK: - Public
@@ -185,14 +186,16 @@ struct ReaderContentsView: View {
             .padding(.top, 80)
         } else {
             EditorialList {
-                ForEach(bookmarks.indices, id: \.self) { i in
-                    let bookmark = bookmarks[i]
+                ForEach(bookmarks) { bookmark in
                     BookmarkRow(
                         bookmark: bookmark,
                         onJump: { onJumpToBookmark(bookmark.locator) },
                         onDelete: { onDeleteBookmark(bookmark.id) }
                     )
-                    if i < bookmarks.count - 1 {
+                    // Identity-based hairline so SwiftUI's diff aligns to the
+                    // surviving rows when one gets deleted — otherwise the
+                    // animation flickers the wrong rule.
+                    if bookmark.id != bookmarks.last?.id {
                         EditorialHairline()
                     }
                 }
@@ -333,6 +336,8 @@ private struct BookmarkRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // 4pt nudge keeps the trash glyph off the card edge without
+            // shrinking its 44×44 hit target.
             .padding(.trailing, 4)
         }
     }

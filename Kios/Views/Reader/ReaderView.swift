@@ -223,20 +223,21 @@ struct ReaderView: View {
             env.activeReader = nil
         }
         .fullScreenCover(isPresented: $showContents) {
+            // Chapter and bookmark taps both dispatch via `.tocJump` so the
+            // recovery pill surfaces and the user can land back where they
+            // were. One closure shared between the two so the source tag
+            // can't drift.
+            let jump: (Locator) -> Void = { locator in
+                pendingJumpSource = .tocJump
+                pendingJump = locator
+                showContents = false
+            }
             ReaderContentsView(
                 bookTitle: book?.title ?? "",
                 chapters: chapterEntries,
                 bookmarks: bookmarkEntries,
-                onJump: { locator in
-                    pendingJumpSource = .tocJump
-                    pendingJump = locator
-                    showContents = false
-                },
-                onJumpToBookmark: { locator in
-                    pendingJumpSource = .tocJump
-                    pendingJump = locator
-                    showContents = false
-                },
+                onJump: jump,
+                onJumpToBookmark: jump,
                 onDeleteBookmark: { id in deleteBookmark(id: id) },
                 onDismiss: { showContents = false }
             )
