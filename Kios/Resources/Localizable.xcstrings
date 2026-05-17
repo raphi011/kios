@@ -510,6 +510,16 @@
         }
       }
     },
+    "Clear search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche löschen"
+          }
+        }
+      }
+    },
     "Close" : {
       "localizations" : {
         "de" : {
@@ -770,6 +780,16 @@
         }
       }
     },
+    "Gallery view" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Galerieansicht"
+          }
+        }
+      }
+    },
     "Generate chapter summaries and ask about selected passages — without sending anything to a server." : {
       "localizations" : {
         "de" : {
@@ -816,16 +836,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start"
-          }
-        }
-      }
-    },
-    "Read" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lesen"
           }
         }
       }
@@ -970,6 +980,16 @@
         }
       }
     },
+    "List view" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listenansicht"
+          }
+        }
+      }
+    },
     "Mark as finished" : {
       "localizations" : {
         "de" : {
@@ -1050,6 +1070,16 @@
         }
       }
     },
+    "No matches" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Treffer"
+          }
+        }
+      }
+    },
     "No summary for this chapter — try analyzing again." : {
       "localizations" : {
         "de" : {
@@ -1096,6 +1126,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nichts begonnen"
+          }
+        }
+      }
+    },
+    "Nothing in your library matches “%@”." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts in deiner Bibliothek entspricht „%@“."
           }
         }
       }
@@ -1230,6 +1270,16 @@
         }
       }
     },
+    "Read" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesen"
+          }
+        }
+      }
+    },
     "Read time" : {
       "localizations" : {
         "de" : {
@@ -1290,6 +1340,16 @@
         }
       }
     },
+    "Results" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ergebnisse"
+          }
+        }
+      }
+    },
     "Retry" : {
       "localizations" : {
         "de" : {
@@ -1342,6 +1402,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suchen"
+          }
+        }
+      }
+    },
+    "Search title or author" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Titel oder Autor:in suchen"
           }
         }
       }
