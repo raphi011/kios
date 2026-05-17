@@ -235,44 +235,42 @@ struct ReaderContentsView: View {
 // MARK: - ChapterRow
 
 /// Single chapter row in the contents list. Title on the left,
-/// checkmark + page on the right. Sub-chapters indent by depth and
-/// step down a typographic size so the source TOC's hierarchy reads
-/// visually. The current chapter is signalled quietly: title goes
-/// semibold and the page number flips to accent — no background
-/// fill, no leading bar, no eyebrow.
+/// page on the right. Sub-chapters indent by depth so the source
+/// TOC's hierarchy reads visually; typography size stays uniform
+/// across levels for legibility. The current chapter is signalled
+/// by tinting both the title and page number with the accent
+/// color — no background fill, no leading bar, no eyebrow.
 private struct ChapterRow: View {
     let chapter: ReaderContentsView.Chapter
 
     private var isCurrent: Bool { chapter.status == .current }
     private var isUnread: Bool  { chapter.status == .unread }
-    private var isRead: Bool    { chapter.status == .read }
     private var isSub: Bool     { chapter.depth > 0 }
+
+    private var titleColor: Color {
+        if isCurrent { return EditorialTheme.accent }
+        if isUnread  { return EditorialTheme.inkSoft }
+        return EditorialTheme.ink
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
             Text(chapter.title)
                 .font(EditorialTheme.serif(
-                    size: isSub ? 14 : 16,
+                    size: 16,
                     weight: isCurrent ? .semibold : .medium
                 ))
-                .foregroundStyle(isUnread ? EditorialTheme.inkSoft : EditorialTheme.ink)
+                .foregroundStyle(titleColor)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .padding(.leading, CGFloat(chapter.depth) * 18)
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 6) {
-                if isRead {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(EditorialTheme.muted)
-                }
-                Text(String(chapter.page))
-                    .font(EditorialTheme.mono(size: 11))
-                    .tracking(0.2)
-                    .foregroundStyle(isCurrent ? EditorialTheme.accent : EditorialTheme.muted)
-            }
+            Text(String(chapter.page))
+                .font(EditorialTheme.mono(size: 11))
+                .tracking(0.2)
+                .foregroundStyle(isCurrent ? EditorialTheme.accent : EditorialTheme.muted)
         }
         .padding(.horizontal, EditorialTheme.rowSidePad)
         .padding(.vertical, isSub ? 10 : 14)

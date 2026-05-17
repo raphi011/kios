@@ -230,8 +230,17 @@ struct ReaderView: View {
             // Chapter and bookmark taps both dispatch via `.tocJump` so the
             // recovery pill surfaces and the user can land back where they
             // were. One closure shared between the two so the source tag
-            // can't drift.
+            // can't drift. Same-position taps short-circuit: the navigator
+            // would not emit for an in-place seek, leaving `pendingJumpSource`
+            // stale to be consumed by the next real advance and spuriously
+            // raising the recovery pill.
             let jump: (Locator) -> Void = { locator in
+                if let target = positionIndex(for: locator),
+                   let current = currentPositionIndex,
+                   target == current {
+                    showContents = false
+                    return
+                }
                 pendingJumpSource = .tocJump
                 pendingJump = locator
                 showContents = false
@@ -368,8 +377,18 @@ struct ReaderView: View {
     /// service); fall back to the largest position whose totalProgression
     /// is ≤ the current one — same lookup style as `chapterEntries`.
     private var currentPositionIndex: Int? {
-        if let pos = currentLocator?.locations.position { return pos }
-        guard let prog = currentLocator?.locations.totalProgression,
+        currentLocator.flatMap(positionIndex(for:))
+    }
+
+    /// Same 1-based Readium position lookup as `currentPositionIndex`, but
+    /// applied to an arbitrary locator. Used to detect no-op TOC/bookmark
+    /// taps that target the current page — those must not set
+    /// `pendingJump`/`pendingJumpSource`, because the navigator won't emit a
+    /// locator change for an in-place seek and the stale source tag would
+    /// later be consumed by the next real advance.
+    private func positionIndex(for locator: Locator) -> Int? {
+        if let pos = locator.locations.position { return pos }
+        guard let prog = locator.locations.totalProgression,
               !positions.isEmpty else { return nil }
         let idx = positions.lastIndex { ($0.locations.totalProgression ?? 0) <= prog }
         return idx.map { $0 + 1 }
@@ -472,7 +491,6 @@ struct ReaderView: View {
                 EditorialReaderTopBar(
                     title: book?.title ?? "",
                     onLibrary: { dismiss() },
-                    onContents: { showContents = true },
                     isBookmarked: isCurrentPageBookmarked,
                     onToggleBookmark: { toggleBookmark() }
                 )
@@ -501,6 +519,7 @@ struct ReaderView: View {
                         scrubCommitPending = false
                         scrubProgress = nil
                     },
+                    onContents: { showContents = true },
                     onInsights: { presentInsightsSheet() },
                     canShowInsights: env.aiSettings.featuresEnabled,
                     engineLabel: {
@@ -635,9 +654,22 @@ struct ReaderView: View {
         } else if let pct = brightnessHUD {
             ReaderBrightnessHUD(pct: pct)
                 .transition(.opacity)
-        } else if let progress = scrubProgress {
-            ReaderScrubHUD(progress: progress, chapter: chapterTitle(at: progress))
-                .transition(.opacity)
+        } else if let progress = scrubProgress, !scrubCommitPending {
+            // HUD belongs to the active drag only. `scrubProgress` is also held
+            // post-release to pin the bar at the target position until the
+            // navigator emits — but the HUD itself should vanish the moment
+            // the finger lifts so the reader isn't left staring at an
+            // overlay during the navigator's seek.
+            let ctx = chapterContext(at: progress)
+            ReaderScrubHUD(
+                progress: progress,
+                previousChapter2: ctx.previous2,
+                previousChapter: ctx.previous1,
+                currentChapter: ctx.current,
+                nextChapter: ctx.next1,
+                nextChapter2: ctx.next2
+            )
+            .transition(.opacity)
         }
     }
 
@@ -909,16 +941,31 @@ struct ReaderView: View {
     /// given whole-book progression. Falls back to an em-dash when the TOC
     /// wasn't loaded or the progression precedes the first mapped entry.
     private func chapterTitle(at progression: Double) -> String {
-        guard !tocProgressions.isEmpty else { return "—" }
-        var match: String?
-        for entry in tocProgressions {
+        chapterContext(at: progression).current
+    }
+
+    /// Five-up chapter window for the scrub HUD:
+    /// previous2 · previous1 · current · next1 · next2 at the given
+    /// whole-book progression. `current` matches `chapterTitle(at:)`;
+    /// outer slots are nil near book edges or when the TOC is empty.
+    private func chapterContext(
+        at progression: Double
+    ) -> (previous2: String?, previous1: String?, current: String, next1: String?, next2: String?) {
+        guard !tocProgressions.isEmpty else { return (nil, nil, "—", nil, nil) }
+        var idx = 0
+        for (i, entry) in tocProgressions.enumerated() {
             if entry.progression <= progression {
-                match = entry.title
+                idx = i
             } else {
                 break
             }
         }
-        return match ?? tocProgressions.first?.title ?? "—"
+        func at(_ offset: Int) -> String? {
+            let target = idx + offset
+            guard target >= 0, target < tocProgressions.count else { return nil }
+            return tocProgressions[target].title
+        }
+        return (at(-2), at(-1), tocProgressions[idx].title, at(1), at(2))
     }
 
     /// Translates a whole-book progression into a Readium `Locator` via the

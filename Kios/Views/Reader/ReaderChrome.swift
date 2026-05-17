@@ -8,13 +8,13 @@ import ReadiumShared
 ///
 /// - leading: `‹ Library` back action (accent red)
 /// - center: italic serif book title (truncates to a max width)
-/// - trailing: bookmark (`bookmark`/`bookmark.fill`) and Contents (`list.bullet`), in that order.
+/// - trailing: bookmark toggle (`bookmark`/`bookmark.fill`)
 ///
-/// Contents is wired up; the bookmark toggle accepts `isBookmarked` + `onToggleBookmark`.
+/// Contents access lives on the bottom bar's chapter row — tap there to
+/// open the TOC. The top bar intentionally does not duplicate that.
 struct EditorialReaderTopBar: View {
     let title: String
     var onLibrary: () -> Void
-    var onContents: () -> Void
     var isBookmarked: Bool
     var onToggleBookmark: () -> Void
 
@@ -52,25 +52,14 @@ struct EditorialReaderTopBar: View {
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 0) {
-                Button(action: onToggleBookmark) {
-                    Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(isBookmarked ? EditorialTheme.accent : ink)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onContents) {
-                    Image(systemName: "list.bullet")
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(ink)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+            Button(action: onToggleBookmark) {
+                Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(isBookmarked ? EditorialTheme.accent : ink)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 8)
         .frame(height: 52)
@@ -112,6 +101,7 @@ struct EditorialReaderBottomBar: View {
     var onScrubUpdate: (Double) -> Void
     var onScrubCommit: (Double) -> Void
     var onScrubCancel: () -> Void
+    var onContents: () -> Void
     var onInsights: () -> Void
     /// When `false`, the AI quick-action row (divider + "Insights" button)
     /// is suppressed entirely. Gated by the caller on AI being enabled and
@@ -165,31 +155,43 @@ struct EditorialReaderBottomBar: View {
     // MARK: - Rows
 
     private var chapterRow: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(chapterEyebrow)
-                    .editorialEyebrow(color: muted)
-                Text(displayChapterTitle)
-                    .font(EditorialTheme.serif(size: 16, weight: .medium))
-                    .italic()
-                    .foregroundStyle(ink)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            VStack(alignment: .trailing, spacing: 3) {
-                Text(pageLabel)
-                    .editorialEyebrow(color: muted)
-                if let timeLeftLabel {
-                    Text(timeLeftLabel)
-                        .font(EditorialTheme.serif(size: 13))
+        Button(action: onContents) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(chapterEyebrow)
+                        .editorialEyebrow(color: muted)
+                    Text(displayChapterTitle)
+                        .font(EditorialTheme.serif(size: 16, weight: .medium))
                         .italic()
-                        .foregroundStyle(muted)
+                        .foregroundStyle(ink)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(pageLabel)
+                        .editorialEyebrow(color: muted)
+                    if let timeLeftLabel {
+                        Text(timeLeftLabel)
+                            .font(EditorialTheme.serif(size: 13))
+                            .italic()
+                            .foregroundStyle(muted)
+                            .lineLimit(1)
+                    }
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(muted)
             }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Chapter \(chapterEyebrow), \(displayChapterTitle)")
+        .accessibilityHint("Opens the table of contents")
     }
 
     private var divider: some View {
@@ -288,37 +290,141 @@ struct EditorialReaderBottomBar: View {
 // MARK: - HUDs (overlay state during scrub / pinch)
 
 /// Centered HUD shown during a progress-bar scrub. Translucent rounded
-/// surface stacking the target percentage over the resolved chapter heading,
-/// so the reader can see *what* they're scrubbing toward.
+/// surface showing a five-up chapter window around the scrub target —
+/// two earlier chapters, the current, two later chapters — with the big
+/// percentage anchored on the current row. The reader sees not just
+/// which chapter they'd land in, but where it sits in the book's flow.
+///
+/// Chapter swaps animate as a directional slide: forward scrubs roll the
+/// outgoing title up (out the top) and bring the incoming title in from
+/// the bottom; backward scrubs reverse. Direction is derived from
+/// successive `progress` deltas inside the HUD so the parent doesn't have
+/// to thread it through. The outer neighbour pair (±2) renders smaller
+/// and more faded than the inner pair (±1) so the eye is drawn down a
+/// concentric distance gradient toward the current chapter.
 struct ReaderScrubHUD: View {
     let progress: Double
-    let chapter: String
+    let previousChapter2: String?
+    let previousChapter: String?
+    let currentChapter: String
+    let nextChapter: String?
+    let nextChapter2: String?
+
+    @State private var lastProgress: Double = -1
+    @State private var direction: Direction = .forward
+
+    private enum Direction { case forward, backward }
 
     var body: some View {
-        VStack(spacing: 6) {
-            Text("\(Int(progress * 100))%")
-                .font(EditorialTheme.serif(size: 32, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(EditorialTheme.ink)
-            if !chapter.isEmpty {
-                Text(chapter)
-                    .font(EditorialTheme.serif(size: 14))
-                    .italic()
-                    .foregroundStyle(EditorialTheme.muted)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
+        VStack(spacing: 14) {
+            VStack(spacing: 6) {
+                neighbourLine(deduped(previousChapter2), style: .outer)
+                neighbourLine(deduped(previousChapter), style: .inner)
+            }
+
+            VStack(spacing: 6) {
+                Text("\(Int(progress * 100))%")
+                    .font(EditorialTheme.serif(size: 32, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(EditorialTheme.ink)
+                currentLine
+            }
+
+            VStack(spacing: 6) {
+                neighbourLine(deduped(nextChapter), style: .inner)
+                neighbourLine(deduped(nextChapter2), style: .outer)
             }
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 18)
-        .frame(minWidth: 160)
+        .frame(minWidth: 240, maxWidth: 320)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(EditorialTheme.rule, lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
-        .accessibilityLabel("Scrubbing to \(Int(progress * 100)) percent, \(chapter)")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+        .onChange(of: progress) { _, new in
+            // Skip the first-frame sentinel so the initial HUD render doesn't
+            // pin a stale direction. Subsequent deltas set the slide axis
+            // for the next chapter swap.
+            if lastProgress >= 0 {
+                direction = new >= lastProgress ? .forward : .backward
+            }
+            lastProgress = new
+        }
+    }
+
+    private enum NeighbourStyle { case inner, outer }
+
+    @ViewBuilder
+    private var currentLine: some View {
+        if !currentChapter.isEmpty {
+            Text(currentChapter)
+                .font(EditorialTheme.serif(size: 16, weight: .medium))
+                .italic()
+                .foregroundStyle(EditorialTheme.ink)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .id("current-\(currentChapter)")
+                .transition(slideTransition)
+                .animation(.snappy(duration: 0.28), value: currentChapter)
+        }
+    }
+
+    /// One neighbour row in the five-up window. Outer rows (±2 from
+    /// current) render smaller and more faded than inner rows (±1) so the
+    /// eye reads a clear distance gradient. Missing/duplicate neighbours
+    /// collapse so the HUD shrinks gracefully near book edges instead of
+    /// holding empty vertical space, which would read as a layout glitch.
+    @ViewBuilder
+    private func neighbourLine(_ title: String?, style: NeighbourStyle) -> some View {
+        if let title, !title.isEmpty {
+            Text(title)
+                .font(EditorialTheme.serif(size: style == .inner ? 13 : 12))
+                .italic()
+                .foregroundStyle(EditorialTheme.muted.opacity(style == .inner ? 1.0 : 0.55))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.center)
+                .id("\(style == .inner ? "inner" : "outer")-\(title)")
+                .transition(slideTransition)
+                .animation(.snappy(duration: 0.28), value: title)
+        }
+    }
+
+    /// Drops a neighbour title that matches the current chapter — repeated
+    /// TOC entries (which do happen — sub-chapters that share the parent's
+    /// title near boundaries) would otherwise render the same string twice
+    /// in adjacent rows.
+    private func deduped(_ title: String?) -> String? {
+        guard let title, title != currentChapter else { return nil }
+        return title
+    }
+
+    /// Direction-aware slide+fade. Forward scrubs read top→bottom in
+    /// physical reading order, so the *outgoing* title should exit toward
+    /// the top (as if the page rolled past) and the *incoming* title
+    /// should arrive from the bottom. Backward scrubs invert both edges.
+    private var slideTransition: AnyTransition {
+        .asymmetric(
+            insertion: .move(edge: direction == .forward ? .bottom : .top).combined(with: .opacity),
+            removal: .move(edge: direction == .forward ? .top : .bottom).combined(with: .opacity)
+        )
+    }
+
+    private var accessibilityText: String {
+        var parts: [String] = ["Scrubbing to \(Int(progress * 100)) percent"]
+        if !currentChapter.isEmpty { parts.append(currentChapter) }
+        for prev in [previousChapter, previousChapter2].compactMap({ $0 }) where prev != currentChapter {
+            parts.append("after \(prev)")
+        }
+        for next in [nextChapter, nextChapter2].compactMap({ $0 }) where next != currentChapter {
+            parts.append("before \(next)")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
