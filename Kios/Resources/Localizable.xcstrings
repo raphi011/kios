@@ -304,12 +304,12 @@
         }
       }
     },
-    "Bookmarks · 0" : {
+    "Bookmarks · %lld" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lesezeichen · 0"
+            "value" : "Lesezeichen · %lld"
           }
         }
       }
@@ -1426,6 +1426,16 @@
         }
       }
     },
+    "Subtle tap when finishing a chapter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leichte Vibration am Ende eines Kapitels"
+          }
+        }
+      }
+    },
     "Summarize chapters and ask about selected text — entirely on-device. Disable the master switch to make no AI calls at all." : {
       "localizations" : {
         "de" : {
@@ -1472,16 +1482,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sync-URL"
-          }
-        }
-      }
-    },
-    "Subtle tap when finishing a chapter" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leichte Vibration am Ende eines Kapitels"
           }
         }
       }

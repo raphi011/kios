@@ -52,7 +52,6 @@ struct SettingsView: View {
                 EditorialNavBar(title: "Settings")
 
                 readingSection
-                LanguagePicker()
                 librarySyncSection
                 aiSection
                 cacheSection

@@ -79,6 +79,7 @@ final class AppEnvironment {
         // stale view of the same row.
         self.modelContext = self.modelContainer.mainContext
         ModelContainerFactory.applyWatermarkModelWipeIfNeeded(context: self.modelContext)
+        Self.clearLanguagePreferenceIfNeeded()
         self.authStore = AuthStore()
         self.library = LibraryService(context: self.modelContext)
         self.stats = ReadingStatsService(context: self.modelContext)
@@ -400,5 +401,21 @@ final class AppEnvironment {
             summaryHelper: summaryHelper,
             chaptersFor: { _ in chapterRefs }
         )
+    }
+
+    /// One-shot revert to system language. Drops any persisted
+    /// `AppleLanguages` override (was written by the now-removed
+    /// LanguagePicker) plus the stored picker selection. iOS reads
+    /// `AppleLanguages` at process start, so the clear only takes effect
+    /// on the NEXT launch — same constraint the picker had. Idempotent
+    /// via the per-install flag; bumping the suffix re-runs the wipe.
+    private static func clearLanguagePreferenceIfNeeded(
+        defaults: UserDefaults = .standard
+    ) {
+        let flagKey = "kios.languagePickerRemoved.v1"
+        guard !defaults.bool(forKey: flagKey) else { return }
+        defaults.removeObject(forKey: "AppleLanguages")
+        defaults.removeObject(forKey: "kios.languagePreference")
+        defaults.set(true, forKey: flagKey)
     }
 }
