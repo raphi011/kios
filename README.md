@@ -1,21 +1,25 @@
 # Kios
 
 Native SwiftUI reader for iPhone and iPad that browses, downloads, and reads
-EPUB books from a self-hosted Calibre-Web-Automated (CWA) server, syncing
-reading progress via the KOReader sync ("kosync") protocol or
-the Kobo sync protocol — pick one in Settings.
+EPUB books from one or more self-hosted servers. Each configured **source**
+is a server + protocol pair (KOReader sync, Kobo sync, or read-only OPDS)
+or the local imports pseudo-source. The Library tab is scoped to one source
+at a time via a dropdown that doubles as the tab title; the Read tab shows
+downloaded books across all sources with a per-row source chip.
 
 iOS 17+ / iPadOS 17+. macOS deferred. Built with Swift 5.10, Xcode 26+.
 
 ## Status
 
-v1 feature-complete on `main`. Unit-tested end-to-end
-(104 Core tests + 91 iOS tests passing as of last `make test`).
+Multi-source rewrite landed on `main`. Unit-tested end-to-end
+(124 Core tests + 236 iOS tests passing as of last `make test`).
 Manual smoke test against a live CWA pending; not yet on TestFlight.
 
-## Server requirements
+## Sources
 
-The app supports two sync protocols; pick one per server config in Settings.
+A source has one of four kinds; each is configured independently in
+Settings → Sources → Add source. Multiple sources of the same kind are
+allowed (e.g. two CWA instances with different credentials).
 
 - **KOReader Sync (kosync)** — requires Calibre-Web-Automated (CWA).
   Upstream janeczku/calibre-web does NOT ship a `/kosync` endpoint.
@@ -23,8 +27,12 @@ The app supports two sync protocols; pick one per server config in Settings.
   `/kosync` (progress sync).
 - **Kobo Sync** — works on either CWA or vanilla calibre-web; both ship
   a Kobo sync endpoint at `/kobo/{token}/`. The sync URL is generated
-  via the server's admin panel and pasted into the app's Settings —
-  the token in the URL path is the only credential.
+  via the server's admin panel and pasted into the app — the token in
+  the URL path is the only credential.
+- **OPDS (read-only)** — any public OPDS catalog (Standard Ebooks,
+  Project Gutenberg, etc.). Browse and download; no progress sync.
+- **Local** — a singleton pseudo-source for EPUBs imported from Files,
+  AirDrop, or the share sheet. Always present in the picker.
 
 HTTPS strongly recommended either way. Plain HTTP requires an
 `NSAppTransportSecurity` exception in `Info.plist` for the specific host.
@@ -95,27 +103,24 @@ JSON + timestamp + device tag) to and from the protocol's wire format.
   to set up (just URL + username + password), Kobo gives finer-grained
   position recovery.
 
-### Switching protocols
+### Switching a server's protocol
 
-Settings → Sync protocol picker → enter the new protocol's credentials →
-Test & Save. The app shows a confirmation dialog before persisting,
-warning that the library will be refreshed against the new server.
-Books not present on the new server become **archived** (hidden from the
-main shelf but kept on disk with reading progress intact); books that
-re-appear in a later refresh come back automatically.
+Each source has an immutable kind. To "switch protocols" on the same
+server (e.g. from kosync to Kobo against the same CWA host), delete the
+source and re-add it with the new kind. Reading progress on books from
+the deleted source is discarded; the new source starts fresh.
 
-Sync writes already buffered under the previous protocol still flush to
-the OLD protocol's backend — the protocol is pinned at buffer time
-(see `SyncService.bufferLocator` → `pendingProtocol` in `ReadingProgress`).
-This prevents a mid-buffer protocol switch from misrouting writes.
+### Cross-source duplicates
 
-### Known v1 limitations
+The Library tab is scoped to one source at a time, so a duplicate book
+across sources is invisible there. On the Read tab, the same EPUB
+downloaded from two sources renders as two rows with distinct source
+chips — by design. There is no automatic cross-source merge.
 
-- Cross-protocol identity merge happens by **normalized title + authors**
-  (lowercase, alphanumeric-only) when neither a `koboBookUUID` nor a
-  `partialMD5` is shared. Edge cases (typo'd titles, missing authors)
-  may produce a duplicate row that the user can manually merge by
-  re-running Refresh after the metadata is corrected on the server.
+Within a single source, identity matching still happens by exact
+`koboBookUUID` or `partialMD5` and falls back to normalized title +
+authors, so a local import is promoted to a server's catalog row when
+both refer to the same file.
 
 ## Formats supported in v1
 
@@ -141,28 +146,39 @@ This prevents a mid-buffer protocol switch from misrouting writes.
 - Highlights, notes, bookmarks (kosync doesn't carry them anyway).
 - PDF / CBZ reading (downloads work; reader is EPUB-only).
 - Search-in-book UI (Readium supports the API; UI deferred).
-- Multiple library servers.
 - Audiobooks.
 - LCP DRM.
-- iCloud sync of app state — the selected sync protocol IS the cross-device
-  sync, no parallel mechanism by design.
+- iCloud sync of app state — each source's sync protocol IS the cross-device
+  sync for that source, no parallel mechanism by design.
+- Cross-source progress merge — same EPUB downloaded from two sources gets
+  two independent rows with independent progress.
 
 ## Manual smoke test
 
 Required before tagging a release. In short:
 
-1. Have a reachable CWA instance available over HTTPS with at least one
-   EPUB in its library.
-2. Launch the app in the simulator. In Settings, pick a protocol:
-   - **kosync**: enter URL + username + password.
-   - **kobo**: paste the sync URL from CWA admin → enable Kobo sync.
-3. Verify the library populates, download a book, page through it.
-4. For kosync, verify cross-device pull by pushing new progress via curl
+1. Have a reachable CWA / calibre-web instance available over HTTPS with
+   at least one EPUB in its library.
+2. Launch the app in the simulator. In Settings → Sources → Add source,
+   add a kosync source (URL + username + password) AND a Kobo source
+   (paste the sync URL from CWA admin → enable Kobo sync). Both sources
+   appear in the Library tab's picker dropdown.
+3. Switch the picker between the two server sources; confirm each tab
+   shows only its own books. Download one book from each.
+4. Open the Read tab; confirm both downloaded books appear with distinct
+   source chips under the title.
+5. For kosync, verify cross-device pull by pushing new progress via curl
    to `/kosync/{document_md5}`. For Kobo, verify cross-device pull from
    a real Kobo against the same server. Reopen the book in the app,
    confirm the "Continue from another device?" prompt appears.
-5. Switch protocols in Settings, confirm the library refreshes and books
-   only on the previous server become archived (hidden, not deleted).
+6. Kill one server (or block its hostname). Pull-to-refresh on its
+   Library tab shows the source-scoped error banner; the other source
+   and Local remain fully functional.
+7. Delete a source from Settings → Sources → tap row → Delete. Confirm
+   its books and progress are gone, other sources are untouched, and
+   the Library picker falls back to the next source.
+8. Import a Local EPUB from Files; confirm it appears under the Local
+   picker entry and on the Read tab with a "Local" chip.
 
 ## Known limitations
 
