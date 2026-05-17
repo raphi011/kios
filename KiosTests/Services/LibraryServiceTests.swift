@@ -25,7 +25,7 @@ struct MockCatalogBackend: CatalogBackend {
 @MainActor
 private func makeContext() throws -> ModelContext {
     let container = try ModelContainer(
-        for: Book.self, ReadingProgress.self, Download.self,
+        for: Book.self, Source.self, ReadingProgress.self, Download.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     return ModelContext(container)
@@ -51,7 +51,9 @@ private func makeEntry(
     )
 }
 
+@MainActor
 private func makeBook(
+    source: Source,
     serverID: String = "srv-local",
     serverIDProtocol: String = "kosync",
     title: String = "T",
@@ -62,6 +64,7 @@ private func makeBook(
     format: BookFormat = .epub
 ) -> Book {
     Book(
+        source: source,
         serverID: serverID,
         serverIDProtocol: serverIDProtocol,
         title: title,
@@ -84,6 +87,9 @@ struct LibraryServiceRefreshTests {
     @Test func refreshInsertsNewBookFromCatalog() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kosync, displayName: "KoSync",
+                                serverURL: URL(string: "https://sync.example.com"),
+                                sortOrder: 0, into: context)
         let entry = makeEntry(
             serverID: "srv-new",
             title: "New Book",
@@ -92,7 +98,7 @@ struct LibraryServiceRefreshTests {
         )
         let backend = MockCatalogBackend(entries: [entry])
 
-        try await service.refresh(using: backend, activeProtocol: .kosync)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -101,17 +107,21 @@ struct LibraryServiceRefreshTests {
         #expect(books[0].authors == ["Alice"])
         #expect(books[0].partialMD5 == "md5-1")
         #expect(books[0].archived == false)
+        #expect(books[0].serverIDProtocol == "kosync")
     }
 
     @Test func refreshArchivesMissingBooks() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
-        let local = makeBook(title: "Gone", partialMD5: "stale")
+        let source = testSource(kind: .kosync, displayName: "KoSync",
+                                serverURL: URL(string: "https://sync.example.com"),
+                                sortOrder: 0, into: context)
+        let local = makeBook(source: source, title: "Gone", partialMD5: "stale")
         context.insert(local)
         try context.save()
 
         let backend = MockCatalogBackend(entries: [])
-        try await service.refresh(using: backend, activeProtocol: .kosync)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -121,7 +131,11 @@ struct LibraryServiceRefreshTests {
     @Test func refreshUnarchivesReappearingBook() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kosync, displayName: "KoSync",
+                                serverURL: URL(string: "https://sync.example.com"),
+                                sortOrder: 0, into: context)
         let local = makeBook(
+            source: source,
             title: "Returned",
             authors: ["Alice"],
             partialMD5: "md5-r",
@@ -134,7 +148,7 @@ struct LibraryServiceRefreshTests {
             title: "Returned", authors: ["Alice"], partialMD5: "md5-r"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kosync)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -144,7 +158,11 @@ struct LibraryServiceRefreshTests {
     @Test func refreshMatchesByExactKoboUUID() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kobo, displayName: "Kobo",
+                                serverURL: URL(string: "https://kobo.example.com"),
+                                sortOrder: 0, into: context)
         let local = makeBook(
+            source: source,
             serverIDProtocol: "kobo",
             title: "Different Title",
             authors: ["Different Author"],
@@ -161,7 +179,7 @@ struct LibraryServiceRefreshTests {
             koboBookUUID: "kobo-uuid-1"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kobo)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -171,7 +189,11 @@ struct LibraryServiceRefreshTests {
     @Test func refreshMatchesByExactPartialMD5() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kosync, displayName: "KoSync",
+                                serverURL: URL(string: "https://sync.example.com"),
+                                sortOrder: 0, into: context)
         let local = makeBook(
+            source: source,
             title: "Different",
             authors: ["Other"],
             partialMD5: "md5-match"
@@ -185,7 +207,7 @@ struct LibraryServiceRefreshTests {
             partialMD5: "md5-match"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kosync)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -195,7 +217,14 @@ struct LibraryServiceRefreshTests {
     @Test func refreshMatchesByNormalizedTitleAndAuthors() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let kosyncSource = testSource(kind: .kosync, displayName: "KoSync",
+                                     serverURL: URL(string: "https://sync.example.com"),
+                                     sortOrder: 0, into: context)
+        let koboSource = testSource(kind: .kobo, displayName: "Kobo",
+                                    serverURL: URL(string: "https://kobo.example.com"),
+                                    sortOrder: 1, into: context)
         let local = makeBook(
+            source: kosyncSource,
             serverIDProtocol: "kosync",
             title: "The Adventure!",
             authors: ["Alice  Smith"],
@@ -211,7 +240,7 @@ struct LibraryServiceRefreshTests {
             koboBookUUID: "kobo-uuid-merge"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kobo)
+        try await service.refresh(using: backend, source: koboSource)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -222,7 +251,11 @@ struct LibraryServiceRefreshTests {
     @Test func refreshFillsMissingPartialMD5WithoutOverwrite() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kosync, displayName: "KoSync",
+                                serverURL: URL(string: "https://sync.example.com"),
+                                sortOrder: 0, into: context)
         let local = makeBook(
+            source: source,
             title: "Same", authors: ["Same"], partialMD5: "local-md5"
         )
         context.insert(local)
@@ -233,7 +266,7 @@ struct LibraryServiceRefreshTests {
             title: "Same", authors: ["Same"], partialMD5: "remote-md5"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kosync)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -243,7 +276,11 @@ struct LibraryServiceRefreshTests {
     @Test func refreshFillsMissingKoboUUIDWithoutOverwrite() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kobo, displayName: "Kobo",
+                                serverURL: URL(string: "https://kobo.example.com"),
+                                sortOrder: 0, into: context)
         let local = makeBook(
+            source: source,
             title: "Same",
             authors: ["Same"],
             koboBookUUID: "local-uuid"
@@ -255,7 +292,7 @@ struct LibraryServiceRefreshTests {
             title: "Same", authors: ["Same"], koboBookUUID: "remote-uuid"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kobo)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -265,7 +302,14 @@ struct LibraryServiceRefreshTests {
     @Test func refreshPreservesServerIDProtocolOnMatchedBook() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let kosyncSource = testSource(kind: .kosync, displayName: "KoSync",
+                                     serverURL: URL(string: "https://sync.example.com"),
+                                     sortOrder: 0, into: context)
+        let koboSource = testSource(kind: .kobo, displayName: "Kobo",
+                                    serverURL: URL(string: "https://kobo.example.com"),
+                                    sortOrder: 1, into: context)
         let local = makeBook(
+            source: kosyncSource,
             serverIDProtocol: "kosync",
             title: "Same",
             authors: ["Same"],
@@ -274,7 +318,7 @@ struct LibraryServiceRefreshTests {
         context.insert(local)
         try context.save()
 
-        // Refresh under .kobo — but the matched book keeps "kosync".
+        // Refresh under kobo source — but the matched book keeps "kosync".
         let entry = makeEntry(
             title: "Same",
             authors: ["Same"],
@@ -282,7 +326,7 @@ struct LibraryServiceRefreshTests {
             koboBookUUID: "kobo-uuid"
         )
         let backend = MockCatalogBackend(entries: [entry])
-        try await service.refresh(using: backend, activeProtocol: .kobo)
+        try await service.refresh(using: backend, source: koboSource)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -290,9 +334,12 @@ struct LibraryServiceRefreshTests {
         #expect(books[0].koboBookUUID == "kobo-uuid")
     }
 
-    @Test func refreshSetsServerIDProtocolFromActiveProtocolOnNewBook() async throws {
+    @Test func refreshSetsServerIDProtocolFromSourceKindOnNewBook() async throws {
         let context = try makeContext()
         let service = LibraryService(context: context)
+        let source = testSource(kind: .kobo, displayName: "Kobo",
+                                serverURL: URL(string: "https://kobo.example.com"),
+                                sortOrder: 0, into: context)
         let entry = makeEntry(
             title: "Brand New",
             authors: ["Author"],
@@ -300,7 +347,7 @@ struct LibraryServiceRefreshTests {
         )
         let backend = MockCatalogBackend(entries: [entry])
 
-        try await service.refresh(using: backend, activeProtocol: .kobo)
+        try await service.refresh(using: backend, source: source)
 
         let books = try context.fetch(FetchDescriptor<Book>())
         #expect(books.count == 1)
@@ -314,10 +361,13 @@ struct LibraryServiceRefreshTests {
 private func makeLocalBook(
     title: String = "Local",
     partialMD5: String? = nil,
-    addedAt: Date = .now
+    addedAt: Date = .now,
+    into ctx: ModelContext
 ) -> Book {
-    Book(
-        source: .local,
+    let localSource = testSource(kind: .local, displayName: "Local",
+                                 serverURL: nil, sortOrder: 999, into: ctx)
+    return Book(
+        source: localSource,
         title: title,
         authors: ["A"],
         format: .epub,
@@ -335,8 +385,11 @@ struct LibraryServiceLocalTests {
 
     @Test func refreshDoesNotArchiveLocalBooks() async throws {
         let ctx = try makeContext()
-        let local = makeLocalBook(title: "Just-imported")
-        let synced = makeBook(serverID: "srv-1", partialMD5: "hash-synced")
+        let kosyncSource = testSource(kind: .kosync, displayName: "KoSync",
+                                     serverURL: URL(string: "https://sync.example.com"),
+                                     sortOrder: 0, into: ctx)
+        let local = makeLocalBook(title: "Just-imported", into: ctx)
+        let synced = makeBook(source: kosyncSource, serverID: "srv-1", partialMD5: "hash-synced")
         ctx.insert(local)
         ctx.insert(synced)
         try ctx.save()
@@ -345,20 +398,23 @@ struct LibraryServiceLocalTests {
         // Catalog has neither book: synced should be archived, local untouched.
         try await svc.refresh(
             using: MockCatalogBackend(entries: []),
-            activeProtocol: .kosync
+            source: kosyncSource
         )
 
         let rows = try ctx.fetch(FetchDescriptor<Book>())
         let localRow = try #require(rows.first { $0.title == "Just-imported" })
         let syncedRow = try #require(rows.first { $0.serverID == "srv-1" })
         #expect(localRow.archived == false)
-        #expect(localRow.source == .local)
+        #expect(localRow.source.kind == .local)
         #expect(syncedRow.archived == true)
     }
 
     @Test func refreshPromotesLocalToSyncedOnPartialMD5Match() async throws {
         let ctx = try makeContext()
-        let local = makeLocalBook(title: "T", partialMD5: "deadbeef")
+        let kosyncSource = testSource(kind: .kosync, displayName: "KoSync",
+                                     serverURL: URL(string: "https://sync.example.com"),
+                                     sortOrder: 0, into: ctx)
+        let local = makeLocalBook(title: "T", partialMD5: "deadbeef", into: ctx)
         ctx.insert(local)
         try ctx.save()
 
@@ -371,17 +427,44 @@ struct LibraryServiceLocalTests {
         )
         try await svc.refresh(
             using: MockCatalogBackend(entries: [entry]),
-            activeProtocol: .kosync
+            source: kosyncSource
         )
 
         let rows = try ctx.fetch(FetchDescriptor<Book>())
         #expect(rows.count == 1)
         let promoted = try #require(rows.first)
-        #expect(promoted.source == .synced)
+        #expect(promoted.source.kind == .kosync)
         #expect(promoted.serverID == "srv-promoted")
         #expect(promoted.serverIDProtocol == "kosync")
         #expect(promoted.acquisitionURL?.absoluteString == "https://x")
         #expect(promoted.archived == false)
+    }
+
+    @Test
+    func refreshSourceALeavesSourceBUntouched() async throws {
+        let ctx = try makeContext()
+        let a = testSource(kind: .kosync, displayName: "A",
+                           serverURL: URL(string: "https://a.example.com"),
+                           sortOrder: 0, into: ctx)
+        let b = testSource(kind: .kobo, displayName: "B",
+                           serverURL: URL(string: "https://b.example.com"),
+                           sortOrder: 1, into: ctx)
+        let bOnly = Book(source: b, title: "B-only", authors: ["x"],
+                         format: .epub)
+        ctx.insert(bOnly)
+        try ctx.save()
+
+        let svc = LibraryService(context: ctx)
+        let catalogA = MockCatalogBackend(entries: [
+            makeEntry(serverID: "a1", title: "A-new", authors: ["y"])
+        ])
+        try await svc.refresh(using: catalogA, source: a)
+
+        let allBooks = try ctx.fetch(FetchDescriptor<Book>())
+        let bBooks = allBooks.filter { $0.source.id == b.id }
+        #expect(bBooks.count == 1)
+        #expect(bBooks.first?.title == "B-only")
+        #expect(bBooks.first?.archived == false)
     }
 }
 

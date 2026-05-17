@@ -20,16 +20,13 @@ final class LibraryService {
     /// are archived (soft-deleted) rather than removed so future re-appearances
     /// can un-archive and preserve user state like ReadingProgress rows.
     ///
-    /// `activeProtocol` stamps `serverIDProtocol` only on newly-inserted rows.
-    /// Matched books keep their original protocol — identity is merged across
-    /// protocols, not flipped.
+    /// `source.kind.rawValue` stamps `serverIDProtocol` on newly-inserted rows.
     ///
     /// `source` is the catalog's `Source` row (kind != `.local`). New books are
     /// attached to it; any local book whose identity matches a catalog entry is
     /// promoted by re-pointing its `source` relationship.
     func refresh(
         using catalog: any CatalogBackend,
-        activeProtocol: SyncProtocol,
         source: Source
     ) async throws {
         let entries = try await catalog.listLibrary()
@@ -51,7 +48,7 @@ final class LibraryService {
                     book.serverID = entry.serverID
                 }
                 if book.serverIDProtocol == nil {
-                    book.serverIDProtocol = activeProtocol.rawValue
+                    book.serverIDProtocol = source.kind.rawValue
                 }
                 if book.acquisitionURL == nil {
                     book.acquisitionURL = entry.downloadURL
@@ -68,7 +65,7 @@ final class LibraryService {
                 let new = Book(
                     source: source,
                     serverID: entry.serverID,
-                    serverIDProtocol: activeProtocol.rawValue,
+                    serverIDProtocol: source.kind.rawValue,
                     title: entry.title,
                     authors: entry.authors,
                     opdsHref: nil,
@@ -84,11 +81,21 @@ final class LibraryService {
             }
         }
 
-        for book in existing where !matchedIDs.contains(book.id) && book.source.kind != .local {
+        for book in existing where !matchedIDs.contains(book.id) && book.source.id == source.id {
             book.archived = true
         }
 
         try context.save()
+    }
+
+    /// Convenience builder for "all non-archived books in `source`",
+    /// sorted by `addedAt` desc. Used by the Library tab's per-source `@Query`.
+    func books(in source: Source) -> FetchDescriptor<Book> {
+        let id = source.id
+        return FetchDescriptor<Book>(
+            predicate: #Predicate { $0.source.id == id && !$0.archived },
+            sortBy: [SortDescriptor(\.addedAt, order: .reverse)]
+        )
     }
 
     /// Match priority: exact koboBookUUID, then exact partialMD5, then
