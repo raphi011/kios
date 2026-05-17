@@ -28,6 +28,12 @@ final class ReaderContainerVC: UIViewController {
     // MARK: - Inputs (set via update())
 
     private(set) var fontSizePct: Int = 100
+    /// Empty string = publisher default (no `fontFamily` override on
+    /// `EPUBPreferences`). Non-empty strings are passed through as the
+    /// `FontFamily` raw value — Readium maps them onto its iOS-bundled
+    /// face when one matches, otherwise the system honours the CSS
+    /// family name verbatim.
+    private(set) var fontFamilyRaw: String = ""
 
     // MARK: - Internals
 
@@ -81,11 +87,15 @@ final class ReaderContainerVC: UIViewController {
     // MARK: - Updates from SwiftUI
 
     /// Called from `ReaderHost.updateUIViewController` whenever SwiftUI re-renders.
-    func update(fontSizePct: Int) {
-        if self.fontSizePct != fontSizePct {
-            self.fontSizePct = fontSizePct
-            applyFontSize()
-        }
+    /// Submits a fresh `EPUBPreferences` if either input changed — Readium
+    /// dedupes idempotent submissions, but cheap to avoid the WKWebView
+    /// CSS bridge round-trip on no-op updates.
+    func update(fontSizePct: Int, fontFamilyRaw: String) {
+        let sizeChanged = self.fontSizePct != fontSizePct
+        let familyChanged = self.fontFamilyRaw != fontFamilyRaw
+        if sizeChanged { self.fontSizePct = fontSizePct }
+        if familyChanged { self.fontFamilyRaw = fontFamilyRaw }
+        if sizeChanged || familyChanged { applyPreferences() }
     }
 
     /// Navigates to `locator` if it differs from the last jump applied. Pass
@@ -106,7 +116,7 @@ final class ReaderContainerVC: UIViewController {
     // MARK: - Navigator setup
 
     private func installNavigator() {
-        let prefs = EPUBPreferences(fontSize: Double(fontSizePct) / 100.0)
+        let prefs = makePreferences()
         // Append the custom "Ask AI" action only when AI is available — the
         // edit menu should not advertise a feature that's gated off. Readium's
         // `EditingActionsController` consults the responder chain for the
@@ -197,7 +207,7 @@ final class ReaderContainerVC: UIViewController {
             // which round-trips back via `update(fontSizePct:)` — that path
             // is a no-op because `fontSizePct` will already equal `pct`.
             self?.fontSizePct = pct
-            self?.applyFontSize()
+            self?.applyPreferences()
             self?.onPinchUpdate?(nil)  // dismiss HUD
             self?.onPinchCommitToSwiftUI?(pct)
         }
@@ -208,12 +218,26 @@ final class ReaderContainerVC: UIViewController {
     /// Bridges pinch commit out to SwiftUI so it can persist via @AppStorage.
     var onPinchCommitToSwiftUI: ((Int) -> Void)?
 
-    // MARK: - Font size
+    // MARK: - Typography preferences
 
-    private func applyFontSize() {
+    private func applyPreferences() {
         guard let nav = navigator else { return }
-        let prefs = EPUBPreferences(fontSize: Double(fontSizePct) / 100.0)
-        nav.submitPreferences(prefs)
+        nav.submitPreferences(makePreferences())
+    }
+
+    /// Builds the `EPUBPreferences` from current inputs. An empty
+    /// `fontFamilyRaw` maps to `nil` so Readium leaves the publication's
+    /// own CSS untouched (Apple Books-style "Publisher default"); a
+    /// non-empty raw value is fed in verbatim because Readium accepts any
+    /// CSS family name, not just its vetted enum cases.
+    private func makePreferences() -> EPUBPreferences {
+        let family: FontFamily? = fontFamilyRaw.isEmpty
+            ? nil
+            : FontFamily(rawValue: fontFamilyRaw)
+        return EPUBPreferences(
+            fontFamily: family,
+            fontSize: Double(fontSizePct) / 100.0
+        )
     }
 
     // MARK: - Ask AI edit-menu action

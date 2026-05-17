@@ -13,11 +13,16 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var modelContext
 
-    // Reading — display-only stubs until the reader settings model lands.
-    @State private var defaultTheme = "Paper"
-    @State private var defaultFont = "Newsreader"
-    @State private var pageTransition = "Slide"
-    @State private var tapZones = "Edges"
+    /// Mirrors the AppStorage key the reader reads to override Readium's
+    /// `EPUBPreferences.fontFamily`. Empty string = "Publisher default"
+    /// (no override). Selection happens on `FontFamilyPickerView`.
+    @AppStorage("reader.fontFamily") private var fontFamily: String = ""
+
+    /// Same AppStorage key the reader's pinch gesture writes — this is
+    /// the second entry point onto the same value, exposed for users
+    /// who don't discover pinch. Steps in 10% increments to stay aligned
+    /// with `FontSizeStep` so pinch and stepper never disagree.
+    @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
 
     /// Mirrors the AppStorage flag read by ReaderView. Default-on so first
     /// launch matches the reader's behaviour without the user having to opt
@@ -76,13 +81,18 @@ struct SettingsView: View {
 
     private var readingSection: some View {
         EditorialList("Reading") {
-            stubRow(label: "Default theme", value: defaultTheme)
+            NavigationLink {
+                FontFamilyPickerView()
+            } label: {
+                EditorialRow(
+                    label: "Default font",
+                    value: ReaderFontFamily.from(rawValue: fontFamily).displayName,
+                    chevron: true
+                )
+            }
+            .buttonStyle(.plain)
             EditorialHairline()
-            stubRow(label: "Default font", value: defaultFont)
-            EditorialHairline()
-            stubRow(label: "Page transition", value: pageTransition)
-            EditorialHairline()
-            stubRow(label: "Tap zones", value: tapZones)
+            fontSizeRow
             EditorialHairline()
             EditorialRow(
                 label: "Chapter haptics",
@@ -90,6 +100,32 @@ struct SettingsView: View {
                 toggle: $hapticChapterEnabled
             )
         }
+    }
+
+    /// Inline stepper that walks `fontSizePct` along the same 10% grid
+    /// that pinch snaps onto (`FontSizeStep.min...max`, step 10). The
+    /// displayed value is point-converted via `ReaderFontSize` so the
+    /// number reads as type, not as a multiplier.
+    private var fontSizeRow: some View {
+        Stepper(
+            value: $fontSizePct,
+            in: FontSizeStep.min...FontSizeStep.max,
+            step: FontSizeStep.step
+        ) {
+            HStack(spacing: 12) {
+                Text("Font size")
+                    .font(EditorialTheme.sans(size: 17))
+                    .foregroundStyle(EditorialTheme.ink)
+                Spacer(minLength: 8)
+                Text("\(ReaderFontSize.pt(forPct: fontSizePct))pt")
+                    .font(EditorialTheme.mono(size: 13))
+                    .foregroundStyle(EditorialTheme.muted)
+                    .monospacedDigit()
+            }
+        }
+        .padding(.horizontal, EditorialTheme.rowSidePad)
+        .padding(.vertical, 8)
+        .frame(minHeight: EditorialTheme.cellMin)
     }
 
     // MARK: - Library & sync
@@ -257,14 +293,6 @@ struct SettingsView: View {
     }
 
     // MARK: - Helpers
-
-    /// Display-only row for an unimplemented setting. Renders the editorial
-    /// chevron row but does nothing when tapped — once the underlying feature
-    /// exists, swap this for a `NavigationLink` to its detail screen without
-    /// touching call sites.
-    private func stubRow(label: LocalizedStringKey, value: String) -> some View {
-        EditorialRow(label: label, value: value, chevron: true)
-    }
 
     private var versionLine: String {
         let info = Bundle.main.infoDictionary

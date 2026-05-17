@@ -22,6 +22,10 @@ struct ReaderView: View {
     @Query private var bookmarksForBook: [Bookmark]
 
     @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
+    /// Persisted by `FontFamilyPickerView`. Empty string = publisher
+    /// default (no `EPUBPreferences.fontFamily` override); non-empty =
+    /// CSS family name passed through to Readium verbatim.
+    @AppStorage("reader.fontFamily") private var fontFamilyRaw: String = ""
     /// On by default. Plays a subtle haptic when a normal swipe/tap crosses
     /// into a new chapter. Silent for TOC jumps, scrubs, AI quote jumps, and
     /// sync-resume — the toggle gates only linear chapter transitions.
@@ -418,6 +422,7 @@ struct ReaderView: View {
                     initialLocator: initialLocator,
                     pendingJump: pendingJump,
                     fontSizePct: fontSizePct,
+                    fontFamilyRaw: fontFamilyRaw,
                     canAskAI: env.aiSettings.featuresEnabled,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in

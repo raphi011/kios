@@ -456,12 +456,17 @@ struct ReaderBrightnessHUD: View {
     }
 }
 
-/// Centered HUD shown during a pinch. Serif percentage in a rounded glass card.
+/// Centered HUD shown during a pinch. Serif point size in a rounded glass
+/// card. The input is still pct (Readium's native unit, also what
+/// `FontSizeStep` and `@AppStorage` traffic in); `ReaderFontSize.pt(forPct:)`
+/// converts to the displayed point value at a 16pt = 100% baseline.
 struct ReaderFontHUD: View {
     let pct: Int
 
+    private var pt: Int { ReaderFontSize.pt(forPct: pct) }
+
     var body: some View {
-        Text("\(pct)%")
+        Text("\(pt)pt")
             .font(EditorialTheme.serif(size: 32, weight: .semibold))
             .monospacedDigit()
             .foregroundStyle(EditorialTheme.ink)
@@ -473,6 +478,6 @@ struct ReaderFontHUD: View {
                     .stroke(EditorialTheme.rule, lineWidth: 0.5)
             )
             .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
-            .accessibilityLabel("Font size \(pct) percent")
+            .accessibilityLabel("Font size \(pt) points")
     }
 }
