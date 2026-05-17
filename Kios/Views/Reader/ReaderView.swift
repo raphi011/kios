@@ -340,6 +340,9 @@ struct ReaderView: View {
             }
     }
 
+    /// Removes the bookmark row with the given id from this book's set.
+    /// No-op when not found (e.g. the row was deleted on another device
+    /// once sync lands, or the modal raced a toggle in the chrome).
     private func deleteBookmark(id: UUID) {
         guard let target = bookmarksForBook.first(where: { $0.id == id }) else { return }
         context.delete(target)
@@ -1116,8 +1119,7 @@ struct ReaderView: View {
     /// later TOC reload. Plays a selection haptic. No-op when we don't
     /// have a current locator yet.
     private func toggleBookmark() {
-        guard let bookID = book?.id,
-              let position = currentPositionIndex,
+        guard let position = currentPositionIndex,
               let locator = currentLocator,
               let json = try? locator.jsonString() else { return }
         BookmarkToggle.toggle(

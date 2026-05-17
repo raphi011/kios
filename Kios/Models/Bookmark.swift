@@ -17,7 +17,9 @@ final class Bookmark {
     /// Chapter title snapshotted at creation. Lets the list render
     /// even if the TOC fails to load later.
     var chapterTitle: String
-    /// Capture time. Tie-break when two bookmarks share the same position (rare; would only happen across schema-version churn).
+    /// Wall-clock capture time. Not load-bearing for ordering (the list
+    /// sorts by `position`) — kept so future surfaces can show a
+    /// "saved Tuesday" affordance without a schema bump.
     var createdAt: Date
 
     init(
