@@ -13,22 +13,21 @@ iOS 17+ / iPadOS 17+. macOS deferred. Built with Swift 5.10, Xcode 26+.
 
 Multi-source rewrite landed on `main`. Unit-tested end-to-end
 (124 Core tests + 236 iOS tests passing as of last `make test`).
-Manual smoke test against a live CWA pending; not yet on TestFlight.
+Manual smoke test against a live server pending; not yet on TestFlight.
 
 ## Sources
 
 A source has one of four kinds; each is configured independently in
 Settings → Sources → Add source. Multiple sources of the same kind are
-allowed (e.g. two CWA instances with different credentials).
+allowed (e.g. two server instances with different credentials).
 
-- **KOReader Sync (kosync)** — requires Calibre-Web-Automated (CWA).
-  Upstream janeczku/calibre-web does NOT ship a `/kosync` endpoint.
-  The same credentials are used for `/opds/` (catalog + downloads) and
-  `/kosync` (progress sync).
-- **Kobo Sync** — works on either CWA or vanilla calibre-web; both ship
-  a Kobo sync endpoint at `/kobo/{token}/`. The sync URL is generated
-  via the server's admin panel and pasted into the app — the token in
-  the URL path is the only credential.
+- **KOReader Sync (kosync)** — requires a server that exposes both an
+  OPDS catalogue and a `/kosync` endpoint. The same credentials are
+  used for `/opds/` (catalog + downloads) and `/kosync` (progress sync).
+- **Kobo Sync** — requires a server that exposes a Kobo sync endpoint
+  at `/kobo/{token}/`. The sync URL is generated via the server's
+  admin panel and pasted into the app — the token in the URL path is
+  the only credential.
 - **OPDS (read-only)** — any public OPDS catalog (Standard Ebooks,
   Project Gutenberg, etc.). Browse and download; no progress sync.
 - **Local** — a singleton pseudo-source for EPUBs imported from Files,
@@ -90,15 +89,15 @@ JSON + timestamp + device tag) to and from the protocol's wire format.
 | Locator precision | ~2% (percentage-based) | within 1 sentence (KEPUB) |
 | Multi-device | KOReader + ko-reader + this app | Real Kobo + this app |
 | Auth | Basic credentials | URL-path token |
-| Server requirement | CWA (kosync sidecar) | CWA or vanilla calibre-web |
+| Server requirement | OPDS + `/kosync` endpoint | Server with Kobo sync endpoint |
 
 ### Picking a protocol
 
 - **If you also use a real Kobo e-reader**: pick Kobo. Reading progress
-  syncs both ways with the physical device through the same CWA/calibre-web.
+  syncs both ways with the physical device through the same server.
 - **If you use KOReader on other devices** (Linux, Android, KOReader's
   Kindle build): pick kosync. Cross-app sync works between this app
-  and any KOReader instance pointed at the same CWA.
+  and any KOReader instance pointed at the same kosync server.
 - **If you use neither**: either works; kosync is fractionally simpler
   to set up (just URL + username + password), Kobo gives finer-grained
   position recovery.
@@ -106,7 +105,7 @@ JSON + timestamp + device tag) to and from the protocol's wire format.
 ### Switching a server's protocol
 
 Each source has an immutable kind. To "switch protocols" on the same
-server (e.g. from kosync to Kobo against the same CWA host), delete the
+server (e.g. from kosync to Kobo against the same host), delete the
 source and re-add it with the new kind. Reading progress on books from
 the deleted source is discarded; the new source starts fresh.
 
@@ -157,11 +156,12 @@ both refer to the same file.
 
 Required before tagging a release. In short:
 
-1. Have a reachable CWA / calibre-web instance available over HTTPS with
-   at least one EPUB in its library.
+1. Have a reachable server available over HTTPS that exposes OPDS,
+   `/kosync`, and Kobo sync endpoints, with at least one EPUB in its
+   library.
 2. Launch the app in the simulator. In Settings → Sources → Add source,
    add a kosync source (URL + username + password) AND a Kobo source
-   (paste the sync URL from CWA admin → enable Kobo sync). Both sources
+   (paste the sync URL from your server's admin panel). Both sources
    appear in the Library tab's picker dropdown.
 3. Switch the picker between the two server sources; confirm each tab
    shows only its own books. Download one book from each.
@@ -183,7 +183,7 @@ Required before tagging a release. In short:
 ## Known limitations
 
 - Background-relaunched downloads may use stale credentials if the user
-  changed their CWA password mid-session. Foreground retry recovers.
+  changed their server password mid-session. Foreground retry recovers.
 
 ## Known follow-ups
 

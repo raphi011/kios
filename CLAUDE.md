@@ -1,6 +1,6 @@
 # Kios
 
-iOS EPUB reader app backed by Calibre-Web-Automated. Two sync protocols: kosync and Kobo.
+iOS EPUB reader app. Talks to self-hosted servers over OPDS, KOSync, and Kobo sync protocols.
 
 ## Commands
 
