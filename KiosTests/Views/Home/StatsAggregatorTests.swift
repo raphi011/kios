@@ -43,6 +43,10 @@ struct StatsAggregatorTests {
         )
     }
 
+    private static let sharedSource = Source(
+        displayName: "Test", kind: .local, serverURL: nil, sortOrder: 0
+    )
+
     private static func book(
         id: UUID = UUID(),
         filename: String? = "x.epub",
@@ -51,6 +55,7 @@ struct StatsAggregatorTests {
         addedAt: Date = Date(timeIntervalSince1970: 0)
     ) -> Book {
         let b = Book(
+            source: sharedSource,
             serverID: id.uuidString,
             serverIDProtocol: "kosync",
             title: "T",
@@ -265,8 +270,13 @@ struct StatsAggregatorTests {
 @Suite("StatsAggregator.paceEstimate")
 struct PaceEstimateTests {
 
+    private static let sharedSource = Source(
+        displayName: "Test", kind: .local, serverURL: nil, sortOrder: 0
+    )
+
     private static func makeBook(furthestLinearPosition: Int, totalPositions: Int) -> Book {
         let book = Book(
+            source: sharedSource,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,

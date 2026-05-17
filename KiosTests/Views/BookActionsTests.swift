@@ -9,11 +9,13 @@ struct BookActionsTests {
 
     @Test func findsExistingBookByServerIDAndFormat() throws {
         let container = try ModelContainer(
-            for: Book.self,
+            for: Book.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let ctx = ModelContext(container)
+        let src = testSource(into: ctx)
         let book = Book(
+            source: src,
             serverID: "urn:cwa:book:42",
             serverIDProtocol: "kosync",
             title: "Persistent",
@@ -37,7 +39,7 @@ struct BookActionsTests {
 
     @Test func returnsNilWhenNoMatch() throws {
         let container = try ModelContainer(
-            for: Book.self,
+            for: Book.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let ctx = ModelContext(container)
@@ -47,11 +49,13 @@ struct BookActionsTests {
 
     @Test func doesNotFindWrongFormat() throws {
         let container = try ModelContainer(
-            for: Book.self,
+            for: Book.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let ctx = ModelContext(container)
+        let src = testSource(into: ctx)
         let book = Book(
+            source: src,
             serverID: "urn:cwa:book:99",
             serverIDProtocol: "kosync",
             title: "PDF Book",
@@ -73,11 +77,13 @@ struct BookActionsTests {
 
     @Test func findAllBooksReturnsBothFormats() throws {
         let container = try ModelContainer(
-            for: Book.self,
+            for: Book.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let ctx = ModelContext(container)
+        let src = testSource(into: ctx)
         let epubBook = Book(
+            source: src,
             serverID: "urn:cwa:book:7",
             serverIDProtocol: "kosync",
             title: "Dual Format",
@@ -90,6 +96,7 @@ struct BookActionsTests {
             filename: "x.epub"
         )
         let pdfBook = Book(
+            source: src,
             serverID: "urn:cwa:book:7",
             serverIDProtocol: "kosync",
             title: "Dual Format",
@@ -113,10 +120,11 @@ struct BookActionsTests {
 
     @Test func upsertCreatesNewRowPerFormat() throws {
         let container = try ModelContainer(
-            for: Book.self,
+            for: Book.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let ctx = ModelContext(container)
+        let src = testSource(kind: .kosync, serverURL: URL(string: "https://e")!, into: ctx)
         let serverID = "urn:cwa:book:100"
         let entry = AcquisitionEntry(
             serverID: serverID,
@@ -135,8 +143,8 @@ struct BookActionsTests {
         let epubAcq = entry.acquisitions[0]
         let pdfAcq  = entry.acquisitions[1]
 
-        _ = BookActions.upsertBook(entry: entry, chosen: epubAcq, context: ctx)
-        _ = BookActions.upsertBook(entry: entry, chosen: pdfAcq,  context: ctx)
+        _ = BookActions.upsertBook(entry: entry, chosen: epubAcq, source: src, context: ctx)
+        _ = BookActions.upsertBook(entry: entry, chosen: pdfAcq,  source: src, context: ctx)
 
         let all = BookActions.findAllBooks(serverID: serverID, context: ctx)
         #expect(all.count == 2)

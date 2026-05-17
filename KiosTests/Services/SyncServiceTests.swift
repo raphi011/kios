@@ -241,7 +241,7 @@ struct SyncServiceTests {
             bookHasHash: Bool = true
         ) throws -> Env {
             let container = try ModelContainer(
-                for: Book.self, ReadingProgress.self, Download.self,
+                for: Book.self, ReadingProgress.self, Download.self, Source.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
             let context = ModelContext(container)
@@ -254,7 +254,9 @@ struct SyncServiceTests {
                 deviceName: "iPhone"
             )
 
+            let src = testSource(into: context)
             let book = Book(
+                source: src,
                 serverID: "id",
                 serverIDProtocol: "kosync",
                 title: "T",
@@ -292,8 +294,9 @@ struct SyncServiceTests {
 @MainActor
 struct SyncServiceBufferFlushTests {
 
-    private static func makeBook(withHash: Bool = true) -> Book {
+    private static func makeBook(source: Source, withHash: Bool = true) -> Book {
         Book(
+            source: source,
             serverID: "id",
             serverIDProtocol: "kosync",
             title: "T",
@@ -310,7 +313,7 @@ struct SyncServiceBufferFlushTests {
     @MainActor
     private static func makeEnv() throws -> (sync: SyncService, book: Book, context: ModelContext, backend: RecordingSyncBackend) {
         let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self,
+            for: Book.self, ReadingProgress.self, Download.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
@@ -321,7 +324,8 @@ struct SyncServiceBufferFlushTests {
             deviceID: "us",
             deviceName: "iPhone"
         )
-        let book = makeBook()
+        let src = testSource(into: context)
+        let book = makeBook(source: src)
         context.insert(book)
         try context.save()
         return (sync, book, context, backend)
@@ -383,7 +387,7 @@ struct SyncServiceBufferFlushTests {
 
     @Test func flushAllPendingRetriesAllPendingRows() async throws {
         let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self,
+            for: Book.self, ReadingProgress.self, Download.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
@@ -395,8 +399,10 @@ struct SyncServiceBufferFlushTests {
             deviceName: "iPhone"
         )
 
+        let src = testSource(into: context)
         // Two separate books, each with a pending row.
         let book1 = Book(
+            source: src,
             serverID: "id1", serverIDProtocol: "kosync",
             title: "T1", authors: [],
             opdsHref: URL(string: "https://x")!,
@@ -405,6 +411,7 @@ struct SyncServiceBufferFlushTests {
             partialMD5: "hash1"
         )
         let book2 = Book(
+            source: src,
             serverID: "id2", serverIDProtocol: "kosync",
             title: "T2", authors: [],
             opdsHref: URL(string: "https://x")!,
@@ -445,7 +452,7 @@ struct SyncServiceBufferFlushTests {
         resolver: any KoboSpanResolving
     ) throws -> (sync: SyncService, book: Book, context: ModelContext, backend: RecordingSyncBackend) {
         let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self,
+            for: Book.self, ReadingProgress.self, Download.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
@@ -457,9 +464,11 @@ struct SyncServiceBufferFlushTests {
             deviceName: "iPhone",
             spanResolver: resolver
         )
+        let src = testSource(kind: .kobo, into: context)
         // filename non-nil so Book.fileURL is non-nil; resolver is stubbed
         // and never opens the file, so no disk I/O needed.
         let book = Book(
+            source: src,
             serverID: "id",
             serverIDProtocol: "kobo",
             title: "T",

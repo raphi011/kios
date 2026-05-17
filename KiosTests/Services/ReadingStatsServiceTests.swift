@@ -38,7 +38,9 @@ struct ReadingStatsServiceBasicTests {
     ) {
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,
@@ -171,7 +173,9 @@ struct ReadingStatsServiceIdleTests {
     @Test func idleFireEndsSessionWithIdleReason() async throws {
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,
@@ -229,7 +233,9 @@ struct ReadingStatsServiceAutoFinishTests {
     ) throws -> (service: ReadingStatsService, context: ModelContext, book: Book, clock: FixedClock) {
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,
@@ -306,7 +312,9 @@ struct ReadingStatsServiceWatermarkTests {
     ) {
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,

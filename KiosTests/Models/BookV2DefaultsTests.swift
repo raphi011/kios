@@ -9,15 +9,17 @@ import SwiftData
 struct BookV2DefaultsTests {
     private func makeContext() throws -> ModelContext {
         let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self,
+            for: Book.self, ReadingProgress.self, Download.self, ReadingSession.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return ModelContext(container)
     }
 
-    @Test func newBookDefaultsToSyncedSource() throws {
+    @Test func newBookHasSource() throws {
         let ctx = try makeContext()
+        let src = testSource(into: ctx)
         let book = Book(
+            source: src,
             serverID: "srv-1",
             serverIDProtocol: "kosync",
             title: "T",
@@ -29,14 +31,16 @@ struct BookV2DefaultsTests {
             archived: false
         )
         ctx.insert(book)
-        #expect(book.source == .synced)
+        #expect(book.source === src)
         #expect(book.coverFilename == nil)
     }
 
     @Test("freshly-initialized Book has furthestLinearPosition == 0")
     func furthestLinearPositionDefaultsToZero() throws {
         let ctx = try makeContext()
+        let src = testSource(into: ctx)
         let book = Book(
+            source: src,
             serverID: "s",
             serverIDProtocol: "kosync",
             title: "t",
@@ -55,7 +59,9 @@ struct BookV2DefaultsTests {
     @Test("freshly-initialized Book has totalPositions == 0")
     func totalPositionsDefaultsToZero() throws {
         let ctx = try makeContext()
+        let src = testSource(into: ctx)
         let book = Book(
+            source: src,
             serverID: "s",
             serverIDProtocol: "kosync",
             title: "t",
@@ -73,14 +79,15 @@ struct BookV2DefaultsTests {
 
     @Test func localBookHasNilCatalogFields() throws {
         let ctx = try makeContext()
+        let localSrc = testSource(kind: .local, into: ctx)
         let book = Book(
-            source: .local,
+            source: localSrc,
             title: "T",
             authors: ["A"],
             format: .epub
         )
         ctx.insert(book)
-        #expect(book.source == .local)
+        #expect(book.source.kind == .local)
         #expect(book.serverID == nil)
         #expect(book.serverIDProtocol == nil)
         #expect(book.acquisitionURL == nil)

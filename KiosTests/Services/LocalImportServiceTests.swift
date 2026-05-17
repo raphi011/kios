@@ -16,6 +16,7 @@ struct LocalImportServiceTests {
         let service: LocalImportService
         let context: ModelContext
         let booksDir: URL
+        let localSource: Source
     }
 
     private func makeHarness() throws -> Harness {
@@ -26,8 +27,9 @@ struct LocalImportServiceTests {
         try FileManager.default.createDirectory(
             at: booksDir, withIntermediateDirectories: true
         )
+        let localSrc = testSource(kind: .local, into: ctx)
         let svc = LocalImportService(context: ctx, booksDirectory: booksDir)
-        return Harness(service: svc, context: ctx, booksDir: booksDir)
+        return Harness(service: svc, context: ctx, booksDir: booksDir, localSource: localSrc)
     }
 
     private func fixture(_ name: String) throws -> URL {
@@ -40,13 +42,13 @@ struct LocalImportServiceTests {
         let h = try makeHarness()
         let src = try fixture("sample.epub")
 
-        let result = try await h.service.import(from: src)
+        let result = try await h.service.import(from: src, localSource: h.localSource)
         guard case .imported(let book) = result else {
             Issue.record("expected .imported, got \(result)")
             return
         }
 
-        #expect(book.source == .local)
+        #expect(book.source.kind == .local)
         #expect(book.title == "Sample Book")
         #expect(book.authors == ["Test Author"])
         #expect(book.format == .epub)
@@ -66,7 +68,7 @@ struct LocalImportServiceTests {
         let src = try fixture("sample.epub")
 
         // First import lands a row.
-        let first = try await h.service.import(from: src)
+        let first = try await h.service.import(from: src, localSource: h.localSource)
         guard case .imported(let firstBook) = first else {
             Issue.record("first import should be .imported"); return
         }
@@ -74,7 +76,7 @@ struct LocalImportServiceTests {
         let knownHash = try #require(firstBook.partialMD5)
 
         // Second import of the same file hits dedup.
-        let second = try await h.service.import(from: src)
+        let second = try await h.service.import(from: src, localSource: h.localSource)
         guard case .existing(let existing) = second else {
             Issue.record("second import should be .existing, got \(second)")
             return
@@ -96,14 +98,18 @@ struct LocalImportServiceTests {
         let h = try makeHarness()
         let src = try fixture("sample.epub")
 
-        // Pre-compute the hash and pre-insert a .synced Book with that hash.
+        // Pre-compute the hash and pre-insert a synced Book with that hash.
         let tempCopy = FileManager.default.temporaryDirectory
             .appendingPathComponent("hash-probe-\(UUID().uuidString).epub")
         try FileManager.default.copyItem(at: src, to: tempCopy)
         defer { try? FileManager.default.removeItem(at: tempCopy) }
         let knownHash = try DocumentHasher.partialMD5(of: tempCopy)
 
+        let syncedSrc = testSource(kind: .kosync, displayName: "KoSync",
+                                   serverURL: URL(string: "https://sync.example.com")!,
+                                   sortOrder: 0, into: h.context)
         let syncedBook = Book(
+            source: syncedSrc,
             serverID: "srv-existing",
             serverIDProtocol: "kosync",
             title: "Already Synced",
@@ -120,13 +126,13 @@ struct LocalImportServiceTests {
 
         // Import the same content locally — should dedupe to the synced row,
         // not create a .local copy or flip the source.
-        let result = try await h.service.import(from: src)
+        let result = try await h.service.import(from: src, localSource: h.localSource)
         guard case .existing(let hit) = result else {
             Issue.record("expected .existing, got \(result)")
             return
         }
         #expect(hit.id == syncedBook.id)
-        #expect(hit.source == .synced)  // no flip!
+        #expect(hit.source.kind == .kosync)  // no flip!
         #expect(hit.title == "Already Synced")
 
         let rows = try h.context.fetch(FetchDescriptor<Book>())
@@ -138,7 +144,7 @@ struct LocalImportServiceTests {
         let src = try fixture("no-title.epub")
 
         await #expect(throws: LocalImportError.noTitle) {
-            _ = try await h.service.import(from: src)
+            _ = try await h.service.import(from: src, localSource: h.localSource)
         }
 
         // No row inserted.
@@ -156,7 +162,7 @@ struct LocalImportServiceTests {
         let src = try fixture("corrupt.epub")
 
         do {
-            _ = try await h.service.import(from: src)
+            _ = try await h.service.import(from: src, localSource: h.localSource)
             Issue.record("expected throw, got success")
         } catch is LocalImportError {
             // expected

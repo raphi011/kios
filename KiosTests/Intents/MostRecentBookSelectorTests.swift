@@ -10,8 +10,9 @@ struct MostRecentBookSelectorTests {
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
 
-        let older = makeBook(filename: "old.epub", addedAt: Date(timeIntervalSince1970: 100))
-        let newer = makeBook(filename: "new.epub", addedAt: Date(timeIntervalSince1970: 200))
+        let src = testSource(into: context)
+        let older = makeBook(source: src, filename: "old.epub", addedAt: Date(timeIntervalSince1970: 100))
+        let newer = makeBook(source: src, filename: "new.epub", addedAt: Date(timeIntervalSince1970: 200))
         context.insert(older)
         context.insert(newer)
 
@@ -20,13 +21,13 @@ struct MostRecentBookSelectorTests {
             bookID: older.id, locatorJSON: "{}", koSyncProgressString: nil,
             koboLocationSource: nil, koboLocationValue: nil,
             percentage: 0.3, updatedAt: .now, deviceID: "d",
-            pendingUpload: false, pendingProtocol: nil
+            pendingUpload: false
         )
         let p2 = ReadingProgress(
             bookID: newer.id, locatorJSON: "{}", koSyncProgressString: nil,
             koboLocationSource: nil, koboLocationValue: nil,
             percentage: 0.3, updatedAt: .now, deviceID: "d",
-            pendingUpload: false, pendingProtocol: nil
+            pendingUpload: false
         )
         context.insert(p1)
         context.insert(p2)
@@ -59,8 +60,9 @@ struct MostRecentBookSelectorTests {
         #expect(MostRecentBookSelector.pick(in: context) == nil)
     }
 
-    private func makeBook(filename: String, addedAt: Date) -> Book {
+    private func makeBook(source: Source, filename: String, addedAt: Date) -> Book {
         Book(
+            source: source,
             serverID: UUID().uuidString,
             serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,

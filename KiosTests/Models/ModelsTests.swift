@@ -4,16 +4,19 @@ import SwiftData
 @testable import Kios
 
 @Suite("SwiftData models")
+@MainActor
 struct ModelsTests {
 
     @Test func roundTripsBook() throws {
         let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self,
+            for: Book.self, ReadingProgress.self, Download.self, Source.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
 
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "urn:uuid:abc",
             serverIDProtocol: "kosync",
             title: "Dune",
@@ -33,7 +36,14 @@ struct ModelsTests {
     }
 
     @Test func bookDefaultsToUnfinished() throws {
+        let container = try ModelContainer(
+            for: Book.self, Source.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "s1",
             serverIDProtocol: "kosync",
             title: "t",

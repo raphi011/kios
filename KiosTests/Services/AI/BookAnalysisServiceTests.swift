@@ -179,7 +179,8 @@ struct BookAnalysisServiceCancellationTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        let src = testSource(into: ctx)
+        ctx.insert(Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub))
         try ctx.save()
 
         let mock = MockLanguageModel()
@@ -234,7 +235,8 @@ struct BookAnalysisServiceCancellationTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        let src2 = testSource(into: ctx)
+        ctx.insert(Book(id: bookID, source: src2, title: "T", authors: ["A"], format: .epub))
         let row = BookAnalysis(bookID: bookID, engine: "gemma4_e4b", chaptersTotal: 3,
                                status: "failed", chaptersCompleted: 1,
                                failureReason: "Canceled")
@@ -292,7 +294,8 @@ struct BookAnalysisServiceBookSummaryTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        let src = testSource(into: ctx)
+        ctx.insert(Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub))
         try ctx.save()
 
         let mock = MockLanguageModel(responses: [

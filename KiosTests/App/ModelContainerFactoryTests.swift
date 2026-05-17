@@ -12,7 +12,9 @@ struct ModelContainerFactoryTests {
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
 
+        let src = testSource(into: context)
         let book = Book(
+            source: src,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,
@@ -39,7 +41,9 @@ struct ModelContainerFactoryTests {
 
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
+        let src1 = testSource(into: context)
         let book = Book(
+            source: src1,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,
@@ -70,7 +74,9 @@ struct ModelContainerFactoryTests {
 
         let container = try ModelContainer.kiosInMemory()
         let context = ModelContext(container)
+        let src2 = testSource(into: context)
         let book = Book(
+            source: src2,
             serverID: "s", serverIDProtocol: "kosync",
             title: "t", authors: [], opdsHref: nil,
             acquisitionURL: URL(string: "https://e.com/a")!,
