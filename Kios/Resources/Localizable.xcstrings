@@ -820,6 +820,16 @@
         }
       }
     },
+    "Read" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesen"
+          }
+        }
+      }
+    },
     "Import EPUB" : {
       "localizations" : {
         "de" : {

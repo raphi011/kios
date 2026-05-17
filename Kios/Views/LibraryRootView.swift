@@ -34,6 +34,10 @@ struct LibraryRootView: View {
     @State private var showURLImportComingSoon: Bool = false
     @State private var importError: String?
 
+    /// Persists the user's preferred presentation across launches.
+    /// `false` = the editorial row list; `true` = a covers-only grid.
+    @AppStorage("library.galleryMode") private var galleryMode: Bool = false
+
     private var progressByBookID: [UUID: Double] {
         Dictionary(uniqueKeysWithValues: progresses.map { ($0.bookID, $0.percentage) })
     }
@@ -127,6 +131,12 @@ struct LibraryRootView: View {
             VStack(spacing: 0) {
                 EditorialNavBar(title: "Library") {
                     EditorialNavIconButton(
+                        systemName: galleryMode ? "list.bullet" : "square.grid.2x2",
+                        accessibilityLabel: galleryMode ? "List view" : "Gallery view"
+                    ) {
+                        galleryMode.toggle()
+                    }
+                    EditorialNavIconButton(
                         systemName: "magnifyingglass",
                         accessibilityLabel: "Search"
                     ) {
@@ -153,6 +163,8 @@ struct LibraryRootView: View {
 
                 if isFilteredEmpty {
                     filteredEmptyState
+                } else if galleryMode {
+                    galleryBody
                 } else {
                     if filter == .all || filter == .reading, !readingBooks.isEmpty {
                         section("Reading", books: readingBooks, kind: .reading)
@@ -175,6 +187,61 @@ struct LibraryRootView: View {
             try? await env.refreshLibrary()
         }
     }
+
+    // MARK: - Gallery
+
+    /// Three-column grid of just the cover art. Reuses the same filter-aware
+    /// section split as the list view (Reading / Unread / Finished) so the
+    /// header counts and grouping stay consistent across modes.
+    @ViewBuilder
+    private var galleryBody: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            if filter == .all || filter == .reading, !readingBooks.isEmpty {
+                gallerySection("Reading", books: readingBooks)
+            }
+            if filter == .all || filter == .unread, !unreadBooks.isEmpty {
+                gallerySection("Unread", books: unreadBooks)
+            }
+            if filter == .all || filter == .finished, !finishedBooks.isEmpty {
+                gallerySection("Finished", books: finishedBooks)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func gallerySection(
+        _ name: String.LocalizationValue,
+        books: [Book]
+    ) -> some View {
+        let localizedName = String(localized: name)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("\(localizedName) · \(books.count)")
+                .editorialEyebrow()
+                .padding(.horizontal, EditorialTheme.listSidePad)
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14),
+                    GridItem(.flexible(), spacing: 14),
+                ],
+                spacing: 16
+            ) {
+                ForEach(books, id: \.id) { book in
+                    Button { handleTap(book) } label: {
+                        BookCoverImage(book: book)
+                            .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, EditorialTheme.listSidePad)
+        }
+    }
+
+    // MARK: - List
 
     private enum SectionKind { case reading, unread, finished }
 

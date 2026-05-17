@@ -19,7 +19,7 @@ struct RootView: View {
         // `env.sync == nil` and the per-call `env.sync?.…` no-ops naturally.
         TabView(selection: $selectedTab) {
             HomeRootView()
-                .tabItem { Label("Home", systemImage: "house") }
+                .tabItem { Label("Read", systemImage: "book.pages") }
                 .tag(0)
             LibraryRootView()
                 .tabItem { Label("Library", systemImage: "books.vertical") }
