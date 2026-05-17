@@ -32,11 +32,17 @@ public struct KoboCredentials: Sendable, Equatable {
     }
 }
 
-/// Persists the user's sync credentials and active protocol selection.
-/// Secrets (passwords, the Kobo base URL whose path encodes an auth token)
-/// live in `KeychainStore`; preferences and non-secret caches (URLs,
-/// usernames, activeProtocol, imageURLTemplate) live in `UserDefaults`.
-/// Single-server in v1.
+/// Read-only access to per-source credentials. Adopted by `AuthStore` and
+/// `TransientAuthStore` (Task 13) so `BackendFactory.build` can accept either.
+public protocol AuthReading: Sendable {
+    func load(sourceID: UUID) throws -> ServerCredentials?
+    func loadKobo(sourceID: UUID) throws -> KoboCredentials?
+}
+
+/// Persists per-source sync credentials.
+/// Secrets (passwords, Kobo base URLs whose paths encode auth tokens) live in
+/// `KeychainStore`; non-secret config (server URLs, usernames,
+/// imageURLTemplates) lives in `UserDefaults`.
 public final class AuthStore: Sendable {
     private let keychain: KeychainStore
     // UserDefaults lacks a formal Sendable conformance in Swift 6, but its
@@ -44,13 +50,6 @@ public final class AuthStore: Sendable {
     // nonisolated(unsafe) opts this property out of actor-isolation checking
     // while keeping the class Sendable.
     private nonisolated(unsafe) let defaults: UserDefaults
-
-    private static let serverURLKey            = "Kios.serverURL"
-    private static let usernameKey             = "Kios.username"
-    private static let pwAccount               = "password"
-    private static let activeProtocolKey       = "Kios.activeProtocol"
-    private static let koboImageURLTemplateKey = "Kios.koboImageURLTemplate"
-    private static let koboBaseURLAccount      = "koboBaseURL"
 
     public init(
         keychain: KeychainStore = .init(service: "com.raphi011.kios.credentials"),
@@ -60,73 +59,72 @@ public final class AuthStore: Sendable {
         self.defaults = defaults
     }
 
-    /// Stores `serverURL`, `username`, and `password`. Replaces any existing
-    /// credential.
-    public func save(serverURL: URL, username: String, password: String) throws {
-        defaults.set(serverURL.absoluteString, forKey: Self.serverURLKey)
-        defaults.set(username, forKey: Self.usernameKey)
-        try keychain.set(password, account: Self.pwAccount)
+    // MARK: - Source-keyed API
+
+    // UserDefaults keys
+    private static func kosyncServerURLKey(for id: UUID) -> String {
+        "Kios.source.\(id.uuidString).kosync.serverURL"
+    }
+    private static func kosyncUsernameKey(for id: UUID) -> String {
+        "Kios.source.\(id.uuidString).kosync.username"
+    }
+    private static func koboImageURLTemplateKey(for id: UUID) -> String {
+        "Kios.source.\(id.uuidString).kobo.imageURLTemplate"
     }
 
-    /// Returns the stored credentials, or nil if any of `(serverURL, username,
-    /// password)` is missing.
-    public func load() throws -> ServerCredentials? {
+    // Keychain accounts
+    private static func kosyncPasswordAccount(for id: UUID) -> String {
+        "source.\(id.uuidString).kosync.password"
+    }
+    private static func koboBaseURLAccount(for id: UUID) -> String {
+        "source.\(id.uuidString).kobo.baseURL"
+    }
+
+    /// Saves kosync credentials for `sourceID`. Replaces any existing entry.
+    public func save(sourceID: UUID, credentials: ServerCredentials) throws {
+        defaults.set(credentials.serverURL.absoluteString, forKey: Self.kosyncServerURLKey(for: sourceID))
+        defaults.set(credentials.basic.username, forKey: Self.kosyncUsernameKey(for: sourceID))
+        try keychain.set(credentials.basic.password, account: Self.kosyncPasswordAccount(for: sourceID))
+    }
+
+    /// Returns kosync credentials for `sourceID`, or nil if any part is missing.
+    public func load(sourceID: UUID) throws -> ServerCredentials? {
         guard
-            let urlString = defaults.string(forKey: Self.serverURLKey),
+            let urlString = defaults.string(forKey: Self.kosyncServerURLKey(for: sourceID)),
             let url = URL(string: urlString),
-            let username = defaults.string(forKey: Self.usernameKey),
-            let password = try keychain.get(account: Self.pwAccount)
+            let username = defaults.string(forKey: Self.kosyncUsernameKey(for: sourceID)),
+            let password = try keychain.get(account: Self.kosyncPasswordAccount(for: sourceID))
         else { return nil }
-        return ServerCredentials(
-            serverURL: url,
-            basic: .init(username: username, password: password)
-        )
+        return ServerCredentials(serverURL: url, basic: .init(username: username, password: password))
     }
 
-    /// Clears all stored credentials.
-    public func clear() throws {
-        defaults.removeObject(forKey: Self.serverURLKey)
-        defaults.removeObject(forKey: Self.usernameKey)
-        defaults.removeObject(forKey: Self.activeProtocolKey)
-        defaults.removeObject(forKey: Self.koboImageURLTemplateKey)
-        try keychain.delete(account: Self.pwAccount)
-        try keychain.delete(account: Self.koboBaseURLAccount)
-    }
-
-    /// Loads the user's selected sync protocol. Returns `.kosync` if never set
-    /// (first-launch default).
-    public func loadActiveProtocol() -> SyncProtocol {
-        guard let raw = defaults.string(forKey: Self.activeProtocolKey),
-              let proto = SyncProtocol(rawValue: raw) else {
-            return .kosync
-        }
-        return proto
-    }
-
-    public func saveActiveProtocol(_ proto: SyncProtocol) {
-        defaults.set(proto.rawValue, forKey: Self.activeProtocolKey)
-    }
-
-    /// Stores Kobo credentials. The base URL goes to the Keychain (contains
-    /// the auth token); the imageURLTemplate goes to UserDefaults.
-    public func saveKobo(_ creds: KoboCredentials) throws {
-        try keychain.set(creds.baseURL.absoluteString, account: Self.koboBaseURLAccount)
-        if let tmpl = creds.imageURLTemplate {
-            defaults.set(tmpl, forKey: Self.koboImageURLTemplateKey)
+    /// Saves Kobo credentials for `sourceID`. `baseURL` goes to Keychain;
+    /// `imageURLTemplate` goes to UserDefaults.
+    public func save(sourceID: UUID, kobo: KoboCredentials) throws {
+        try keychain.set(kobo.baseURL.absoluteString, account: Self.koboBaseURLAccount(for: sourceID))
+        if let tmpl = kobo.imageURLTemplate {
+            defaults.set(tmpl, forKey: Self.koboImageURLTemplateKey(for: sourceID))
         } else {
-            defaults.removeObject(forKey: Self.koboImageURLTemplateKey)
+            defaults.removeObject(forKey: Self.koboImageURLTemplateKey(for: sourceID))
         }
     }
 
-    public func loadKobo() throws -> KoboCredentials? {
-        guard let urlString = try keychain.get(account: Self.koboBaseURLAccount),
+    /// Returns Kobo credentials for `sourceID`, or nil if baseURL is missing.
+    public func loadKobo(sourceID: UUID) throws -> KoboCredentials? {
+        guard let urlString = try keychain.get(account: Self.koboBaseURLAccount(for: sourceID)),
               let url = URL(string: urlString) else { return nil }
-        let tmpl = defaults.string(forKey: Self.koboImageURLTemplateKey)
+        let tmpl = defaults.string(forKey: Self.koboImageURLTemplateKey(for: sourceID))
         return KoboCredentials(baseURL: url, imageURLTemplate: tmpl)
     }
 
-    public func clearKobo() throws {
-        try keychain.delete(account: Self.koboBaseURLAccount)
-        defaults.removeObject(forKey: Self.koboImageURLTemplateKey)
+    /// Deletes all stored data (kosync + kobo) for `sourceID`. Idempotent.
+    public func purge(sourceID: UUID) throws {
+        defaults.removeObject(forKey: Self.kosyncServerURLKey(for: sourceID))
+        defaults.removeObject(forKey: Self.kosyncUsernameKey(for: sourceID))
+        defaults.removeObject(forKey: Self.koboImageURLTemplateKey(for: sourceID))
+        try keychain.delete(account: Self.kosyncPasswordAccount(for: sourceID))
+        try keychain.delete(account: Self.koboBaseURLAccount(for: sourceID))
     }
 }
+
+extension AuthStore: AuthReading {}

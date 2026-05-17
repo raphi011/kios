@@ -13,179 +13,101 @@ struct AuthStoreTests {
         return AuthStore(keychain: keychain, defaults: defaults)
     }
 
-    @Test func loadReturnsNilWhenEmpty() throws {
-        let store = makeStore()
-        #expect(try store.load() == nil)
-    }
+    // MARK: - Source-keyed API
 
-    @Test func saveAndLoadRoundTrip() throws {
+    @Test func authStoreSaveLoadKosyncBySource() throws {
         let store = makeStore()
-        defer { try? store.clear() }
+        let id = UUID()
 
         try store.save(
-            serverURL: URL(string: "https://cwa.example/")!,
-            username: "alice",
-            password: "hunter2"
-        )
-
-        let creds = try store.load()
-        #expect(creds?.serverURL.absoluteString == "https://cwa.example/")
-        #expect(creds?.basic.username == "alice")
-        #expect(creds?.basic.password == "hunter2")
-    }
-
-    @Test func saveOverwritesExisting() throws {
-        let store = makeStore()
-        defer { try? store.clear() }
-
-        try store.save(
-            serverURL: URL(string: "https://a/")!,
-            username: "alice",
-            password: "first"
-        )
-        try store.save(
-            serverURL: URL(string: "https://b/")!,
-            username: "bob",
-            password: "second"
-        )
-
-        let creds = try store.load()
-        #expect(creds?.serverURL.absoluteString == "https://b/")
-        #expect(creds?.basic.username == "bob")
-        #expect(creds?.basic.password == "second")
-    }
-
-    @Test func clearRemovesAllParts() throws {
-        let store = makeStore()
-        try store.save(
-            serverURL: URL(string: "https://x/")!,
-            username: "u",
-            password: "p"
-        )
-        try store.clear()
-        #expect(try store.load() == nil)
-    }
-
-    @Test func loadReturnsNilWhenPasswordMissing() throws {
-        // Build a store, save defaults+keychain, then create a NEW store with the
-        // same defaults but a fresh (empty) keychain. Result: defaults still has
-        // url+username but keychain has no password → load returns nil.
-        let suiteName = "AuthStoreTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let originalKC = KeychainStore(service: "test.\(UUID().uuidString)")
-        let original = AuthStore(keychain: originalKC, defaults: defaults)
-
-        try original.save(
-            serverURL: URL(string: "https://x/")!,
-            username: "u",
-            password: "p"
-        )
-        defer { try? original.clear() }
-
-        // Fresh keychain — empty. Same defaults, so URL+username still present.
-        let bareStore = AuthStore(
-            keychain: KeychainStore(service: "test.\(UUID().uuidString)"),
-            defaults: defaults
-        )
-        #expect(try bareStore.load() == nil)
-    }
-
-    @Test func activeProtocolDefaultsToKOSync() {
-        let store = makeStore()
-        #expect(store.loadActiveProtocol() == .kosync)
-    }
-
-    @Test func activeProtocolRoundTrip() {
-        let store = makeStore()
-        defer { try? store.clear() }
-
-        store.saveActiveProtocol(.kobo)
-        #expect(store.loadActiveProtocol() == .kobo)
-    }
-
-    @Test func loadKoboReturnsNilWhenEmpty() throws {
-        let store = makeStore()
-        #expect(try store.loadKobo() == nil)
-    }
-
-    @Test func saveAndLoadKoboRoundTrip() throws {
-        let store = makeStore()
-        defer { try? store.clear() }
-
-        try store.saveKobo(
-            KoboCredentials(
-                baseURL: URL(string: "https://cwa.example/kobo/SECRET-TOKEN/")!,
-                imageURLTemplate: "https://cdn.example/{ImageId}/{Width}/{Height}/false/image.jpg"
+            sourceID: id,
+            credentials: ServerCredentials(
+                serverURL: URL(string: "https://cwa.example/")!,
+                basic: BasicCredentials(username: "alice", password: "hunter2")
             )
         )
 
-        let loaded = try store.loadKobo()
-        #expect(loaded?.baseURL.absoluteString == "https://cwa.example/kobo/SECRET-TOKEN/")
-        #expect(loaded?.imageURLTemplate == "https://cdn.example/{ImageId}/{Width}/{Height}/false/image.jpg")
+        let loaded = try store.load(sourceID: id)
+        #expect(loaded?.serverURL.absoluteString == "https://cwa.example/")
+        #expect(loaded?.basic.username == "alice")
+        #expect(loaded?.basic.password == "hunter2")
+
+        try store.purge(sourceID: id)
     }
 
-    @Test func saveAndLoadKoboWithoutImageURLTemplate() throws {
+    @Test func authStoreSaveLoadKoboBySource() throws {
         let store = makeStore()
-        defer { try? store.clear() }
+        let id = UUID()
 
-        try store.saveKobo(
-            KoboCredentials(baseURL: URL(string: "https://cwa.example/kobo/T/")!)
+        try store.save(
+            sourceID: id,
+            kobo: KoboCredentials(
+                baseURL: URL(string: "https://cwa.example/kobo/SECRET/")!,
+                imageURLTemplate: "https://cdn.example/{ImageId}"
+            )
         )
 
-        let loaded = try store.loadKobo()
-        #expect(loaded?.baseURL.absoluteString == "https://cwa.example/kobo/T/")
-        #expect(loaded?.imageURLTemplate == nil)
+        let loaded = try store.loadKobo(sourceID: id)
+        #expect(loaded?.baseURL.absoluteString == "https://cwa.example/kobo/SECRET/")
+        #expect(loaded?.imageURLTemplate == "https://cdn.example/{ImageId}")
+
+        try store.purge(sourceID: id)
     }
 
-    @Test func saveKoboOverwritesImageURLTemplate() throws {
+    @Test func authStorePurgeRemovesBothKinds() throws {
         let store = makeStore()
-        defer { try? store.clear() }
+        let id = UUID()
 
-        try store.saveKobo(
-            KoboCredentials(
+        try store.save(
+            sourceID: id,
+            credentials: ServerCredentials(
+                serverURL: URL(string: "https://cwa.example/")!,
+                basic: BasicCredentials(username: "u", password: "p")
+            )
+        )
+        try store.save(
+            sourceID: id,
+            kobo: KoboCredentials(
                 baseURL: URL(string: "https://cwa.example/kobo/T/")!,
-                imageURLTemplate: "https://cdn.example/template1"
+                imageURLTemplate: "https://cdn.example/tmpl"
             )
         )
-        try store.saveKobo(
-            KoboCredentials(baseURL: URL(string: "https://cwa.example/kobo/T/")!)
-        )
 
-        let loaded = try store.loadKobo()
-        #expect(loaded?.imageURLTemplate == nil)
+        try store.purge(sourceID: id)
+
+        #expect(try store.load(sourceID: id) == nil)
+        #expect(try store.loadKobo(sourceID: id) == nil)
     }
 
-    @Test func clearWipesKobo() throws {
+    @Test func authStoreIsolatedBySource() throws {
         let store = makeStore()
+        let idA = UUID()
+        let idB = UUID()
 
         try store.save(
-            serverURL: URL(string: "https://cwa.example/")!,
-            username: "alice",
-            password: "hunter2"
+            sourceID: idA,
+            credentials: ServerCredentials(
+                serverURL: URL(string: "https://a.example/")!,
+                basic: BasicCredentials(username: "alice", password: "pa")
+            )
         )
-        store.saveActiveProtocol(.kobo)
-        try store.saveKobo(
-            KoboCredentials(
-                baseURL: URL(string: "https://cwa.example/kobo/T/")!,
-                imageURLTemplate: "https://cdn.example/template"
+        try store.save(
+            sourceID: idB,
+            credentials: ServerCredentials(
+                serverURL: URL(string: "https://b.example/")!,
+                basic: BasicCredentials(username: "bob", password: "pb")
             )
         )
 
-        try store.clear()
+        let a = try store.load(sourceID: idA)
+        let b = try store.load(sourceID: idB)
 
-        #expect(try store.load() == nil)
-        #expect(try store.loadKobo() == nil)
-        #expect(store.loadActiveProtocol() == .kosync)
-    }
+        #expect(a?.serverURL.absoluteString == "https://a.example/")
+        #expect(b?.serverURL.absoluteString == "https://b.example/")
+        #expect(a?.basic.username == "alice")
+        #expect(b?.basic.username == "bob")
 
-    @Test func clearWipesActiveProtocol() throws {
-        let store = makeStore()
-
-        store.saveActiveProtocol(.kobo)
-        try store.clear()
-
-        #expect(store.loadActiveProtocol() == .kosync)
+        try store.purge(sourceID: idA)
+        try store.purge(sourceID: idB)
     }
 }
