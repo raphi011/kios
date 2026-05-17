@@ -124,10 +124,10 @@ final class SyncService {
         return (chapter, progression)
     }
 
-    /// Local-only: upsert `ReadingProgress` with `pendingUpload = true` and
-    /// `pendingProtocol = activeProtocol`. Cheap; called on every page turn.
-    /// Protocol-specific encoding (kosync progress string, kobo location)
-    /// is handled by the backend at flush time, not here.
+    /// Local-only: upsert `ReadingProgress` with `pendingUpload = true`.
+    /// Cheap; called on every page turn. Protocol-specific encoding (kosync
+    /// progress string, kobo location) is handled by the backend at flush time,
+    /// not here.
     func bufferLocator(
         book: Book,
         locatorJSON: String,
@@ -142,15 +142,11 @@ final class SyncService {
     }
 
     /// Network: if the `ReadingProgress` row for `book` has
-    /// `pendingUpload == true`, push to the backend pinned by
-    /// `row.pendingProtocol`. NOT the active protocol — pinning ensures a
-    /// user switching protocols mid-buffer still flushes the buffered write
-    /// via the originally-targeted backend.
+    /// `pendingUpload == true`, push to the active backend.
     func flushPendingProgress(for book: Book) async {
         guard let row = currentLocalProgress(for: book.id),
-              row.pendingUpload,
-              let pinned = row.pendingProtocol,
-              let proto = SyncProtocol(rawValue: pinned) else { return }
+              row.pendingUpload else { return }
+        let proto = activeProtocol
         do {
             let backend = try backendForProtocol(proto)
             // The model's `canonical` carries `deviceName: ""` because it
@@ -177,11 +173,9 @@ final class SyncService {
             }
             try await backend.pushProgress(pushed, for: book.identity)
             row.pendingUpload = false
-            row.pendingProtocol = nil
             try? context.save()
         } catch {
-            // Leave pendingUpload = true and pendingProtocol pinned;
-            // next trigger retries via the SAME backend.
+            // Leave pendingUpload = true; next trigger retries.
         }
     }
 
@@ -250,17 +244,12 @@ final class SyncService {
         percentage: Double,
         pendingUpload: Bool
     ) {
-        // Pin the protocol at buffer time so a mid-flush user-driven protocol
-        // switch still flushes the buffered write via the originally-targeted
-        // backend.
-        let pendingProtocol: String? = pendingUpload ? activeProtocol.rawValue : nil
         if let existing = currentLocalProgress(for: bookID) {
             existing.locatorJSON = locatorJSON
             existing.percentage = percentage
             existing.updatedAt = .now
             existing.deviceID = deviceID
             existing.pendingUpload = pendingUpload
-            existing.pendingProtocol = pendingProtocol
             // Don't touch koSyncProgressString / koboLocationSource /
             // koboLocationValue here — those are server-side state caches
             // populated by onOpen / push results.
@@ -274,8 +263,7 @@ final class SyncService {
                 percentage: percentage,
                 updatedAt: .now,
                 deviceID: deviceID,
-                pendingUpload: pendingUpload,
-                pendingProtocol: pendingProtocol
+                pendingUpload: pendingUpload
             ))
         }
         try? context.save()

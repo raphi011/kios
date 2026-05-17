@@ -278,8 +278,7 @@ struct SyncServiceTests {
                     percentage: p,
                     updatedAt: localTimestamp,
                     deviceID: deviceID,
-                    pendingUpload: false,
-                    pendingProtocol: nil
+                    pendingUpload: false
                 ))
             }
             try context.save()
@@ -345,7 +344,6 @@ struct SyncServiceBufferFlushTests {
         ))
         #expect(rows.count == 1)
         #expect(rows[0].pendingUpload == true)
-        #expect(rows[0].pendingProtocol == "kosync")
         #expect(rows[0].percentage == 0.5)
         #expect(await backend.pushCount() == 0)
     }
@@ -364,7 +362,6 @@ struct SyncServiceBufferFlushTests {
         ))
         #expect(rows.count == 1)
         #expect(rows[0].pendingUpload == false)
-        #expect(rows[0].pendingProtocol == nil)
         let pushed = await backend.firstPush()
         #expect(await backend.pushCount() == 1)
         // SyncService fills deviceName from its identity, not from the row.
@@ -428,14 +425,14 @@ struct SyncServiceBufferFlushTests {
             locatorJSON: "{}", koSyncProgressString: nil,
             koboLocationSource: nil, koboLocationValue: nil,
             percentage: 0.3, updatedAt: .now, deviceID: "us",
-            pendingUpload: true, pendingProtocol: "kosync"
+            pendingUpload: true
         ))
         context.insert(ReadingProgress(
             bookID: book2.id,
             locatorJSON: "{}", koSyncProgressString: nil,
             koboLocationSource: nil, koboLocationValue: nil,
             percentage: 0.6, updatedAt: .now, deviceID: "us",
-            pendingUpload: true, pendingProtocol: "kosync"
+            pendingUpload: true
         ))
         try context.save()
 
@@ -444,91 +441,6 @@ struct SyncServiceBufferFlushTests {
         #expect(await backend.pushCount() == 2)
         let rows = try context.fetch(FetchDescriptor<ReadingProgress>())
         #expect(rows.allSatisfy { !$0.pendingUpload })
-    }
-
-    // MARK: - Protocol pinning
-
-    /// Load-bearing test for Phase 7.4. After buffering under kosync, the
-    /// row's `pendingProtocol` is "kosync". Even if `SyncService` is
-    /// reconfigured with an active protocol of `.kobo` (simulating a mid-
-    /// buffer protocol switch), the flush must route to the kosync backend,
-    /// not the kobo one. The closure's `proto` argument is the assertion
-    /// surface: we route per-protocol to distinct recording backends and
-    /// verify only the kosync backend received the push.
-    @Test func bufferThenSwitchProtocolStillFlushesToOriginalBackend() async throws {
-        let container = try ModelContainer(
-            for: Book.self, ReadingProgress.self, Download.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        let context = ModelContext(container)
-
-        let kosyncBackend = RecordingSyncBackend()
-        let koboBackend = RecordingSyncBackend()
-        let dispatch: @MainActor (SyncProtocol) throws -> any SyncBackend = { proto in
-            switch proto {
-            case .kosync: return kosyncBackend
-            case .kobo: return koboBackend
-            }
-        }
-
-        let book = Book(
-            serverID: "id", serverIDProtocol: "kosync",
-            title: "T", authors: [],
-            opdsHref: URL(string: "https://x")!,
-            acquisitionURL: URL(string: "https://x")!,
-            format: .epub, koboBookUUID: "uuid-1", archived: false,
-            partialMD5: "abc"
-        )
-        context.insert(book)
-        try context.save()
-
-        // 1. Buffer while active protocol is kosync — pins pendingProtocol.
-        let kosyncService = SyncService(
-            backendForProtocol: dispatch,
-            context: context,
-            activeProtocol: .kosync,
-            deviceID: "us",
-            deviceName: "iPhone"
-        )
-        kosyncService.bufferLocator(
-            book: book, locatorJSON: #"{"href":"/1"}"#, percentage: 0.5
-        )
-
-        // Sanity: pin captured.
-        let bookID = book.id
-        let row = try context.fetch(FetchDescriptor<ReadingProgress>(
-            predicate: #Predicate { $0.bookID == bookID }
-        )).first
-        #expect(row?.pendingProtocol == "kosync")
-
-        // 2. Simulate the user switching to kobo before the flush fires.
-        //    A new SyncService is constructed (mimicking AppEnvironment's
-        //    re-boot) with activeProtocol = .kobo, but the same dispatch
-        //    closure backs both protocol lookups.
-        let koboService = SyncService(
-            backendForProtocol: dispatch,
-            context: context,
-            activeProtocol: .kobo,
-            deviceID: "us",
-            deviceName: "iPhone"
-        )
-
-        // 3. Flush under the new (kobo-active) service. The pinned protocol
-        //    on the row is "kosync", so the kosync backend must receive the
-        //    push and the kobo backend must NOT.
-        await koboService.flushPendingProgress(for: book)
-
-        let kosyncPush = await kosyncBackend.firstPush()
-        #expect(await kosyncBackend.pushCount() == 1)
-        #expect(await koboBackend.pushCount() == 0)
-        #expect(kosyncPush?.progress.percentage == 0.5)
-
-        // Row is cleared.
-        let finalRow = try context.fetch(FetchDescriptor<ReadingProgress>(
-            predicate: #Predicate { $0.bookID == bookID }
-        )).first
-        #expect(finalRow?.pendingUpload == false)
-        #expect(finalRow?.pendingProtocol == nil)
     }
 
     // MARK: - Kobo span resolver injection

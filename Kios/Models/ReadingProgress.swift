@@ -15,10 +15,6 @@ final class ReadingProgress {
     var updatedAt: Date
     var deviceID: String
     var pendingUpload: Bool
-    /// Sync protocol pinned to the pending upload ("kosync" or "kobo"),
-    /// captured at buffer time so a mid-flush protocol switch still flushes
-    /// via the originally-targeted backend. Nil when `pendingUpload == false`.
-    var pendingProtocol: String?
 
     init(
         bookID: UUID,
@@ -29,8 +25,7 @@ final class ReadingProgress {
         percentage: Double,
         updatedAt: Date,
         deviceID: String,
-        pendingUpload: Bool,
-        pendingProtocol: String?
+        pendingUpload: Bool
     ) {
         self.bookID = bookID
         self.locatorJSON = locatorJSON
@@ -41,7 +36,6 @@ final class ReadingProgress {
         self.updatedAt = updatedAt
         self.deviceID = deviceID
         self.pendingUpload = pendingUpload
-        self.pendingProtocol = pendingProtocol
     }
 
     var canonical: CanonicalProgress {
