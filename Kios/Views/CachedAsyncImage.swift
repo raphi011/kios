@@ -24,6 +24,7 @@ private extension Logger {
 struct CachedAsyncImage<Placeholder: View>: View {
     let url: URL?
     let http: Core.HTTPClient?
+    let onLoad: ((UIImage) -> Void)?
     @ViewBuilder var placeholder: () -> Placeholder
 
     @State private var image: UIImage?
@@ -31,10 +32,12 @@ struct CachedAsyncImage<Placeholder: View>: View {
     init(
         url: URL?,
         http: Core.HTTPClient? = nil,
+        onLoad: ((UIImage) -> Void)? = nil,
         @ViewBuilder placeholder: @escaping () -> Placeholder
     ) {
         self.url = url
         self.http = http
+        self.onLoad = onLoad
         self.placeholder = placeholder
         let cached = url.flatMap { ImageMemoryCache.shared.image(for: $0) }
         self._image = State(initialValue: cached)
@@ -49,6 +52,12 @@ struct CachedAsyncImage<Placeholder: View>: View {
             }
         }
         .task(id: url) { await load() }
+        .onAppear {
+            // Cache-hit path: `image` is seeded in init, so the task's first
+            // run is a no-op and the onLoad callback never fires from `load`.
+            // Forward the seeded image once so matte derivation runs.
+            if let image { onLoad?(image) }
+        }
     }
 
     private func load() async {
@@ -57,7 +66,10 @@ struct CachedAsyncImage<Placeholder: View>: View {
             return
         }
         if let cached = ImageMemoryCache.shared.image(for: url) {
-            if image !== cached { image = cached }
+            if image !== cached {
+                image = cached
+                onLoad?(cached)
+            }
             return
         }
         image = nil   // entering load path — clear stale image while we wait
@@ -66,6 +78,7 @@ struct CachedAsyncImage<Placeholder: View>: View {
             guard let decoded = UIImage(data: data) else { return }
             ImageMemoryCache.shared.store(decoded, for: url)
             image = decoded
+            onLoad?(decoded)
         } catch {
             // Thumbnails fail silently in the UI (placeholder remains visible);
             // log so a developer attached to the session can diagnose 401s,

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Core
 
 /// Shared thumbnail loader. Same source-of-truth branching as `BookRow`'s
@@ -6,34 +7,68 @@ import Core
 /// rows and the hero card don't each re-implement it.
 ///
 /// - `.local`: read bytes off disk.
-/// - `.synced` + `.kosync`: OPDS thumbnail behind Basic auth.
-/// - `.synced` + `.kobo`: pre-signed CDN URL (no Authorization header).
+/// - server + `.kosync`: OPDS thumbnail behind Basic auth.
+/// - server + `.kobo`: pre-signed CDN URL (no Authorization header).
 ///
-/// Caller sets the frame; this view fills it (`scaledToFill + clipped`).
+/// Layout:
+/// - `.fill` (default): `scaledToFill` for list rows / hero where every
+///   cell is the same aspect ratio as the cover.
+/// - `.matteFit`: `scaledToFit` over a `background(matte)` derived from
+///   the cover's average color — for gallery cells where covers' native
+///   aspect ratios vary and we want uniform 2:3 cells without cropping.
 struct BookCoverImage: View {
     let book: Book
+    var style: Style = .fill
+
+    enum Style { case fill, matteFit }
 
     @Environment(AppEnvironment.self) private var env
+    @State private var matte: Color
+
+    init(book: Book, style: Style = .fill) {
+        self.book = book
+        self.style = style
+        let seed: Color = {
+            guard style == .matteFit, let url = Self.coverURL(for: book) else {
+                return EditorialTheme.bg
+            }
+            guard let cached = ImageMemoryCache.shared.color(for: url) else {
+                return EditorialTheme.bg
+            }
+            return Color(uiColor: cached)
+        }()
+        self._matte = State(initialValue: seed)
+    }
 
     var body: some View {
-        Group {
-            switch book.source {
-            case .local:
-                local
-            case .synced:
-                if book.serverIDProtocol == SyncProtocol.kosync.rawValue {
-                    kosync
-                } else {
-                    kobo
-                }
-            }
+        switch style {
+        case .fill:
+            inner.scaledToFill()
+        case .matteFit:
+            inner
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(matte)
+        }
+    }
+
+    @ViewBuilder
+    private var inner: some View {
+        if book.source.kind == .local {
+            local
+        } else if book.serverIDProtocol == SyncProtocol.kosync.rawValue {
+            kosync
+        } else {
+            kobo
         }
     }
 
     @ViewBuilder
     private var local: some View {
-        CachedAsyncImage(url: book.coverFileURL) { placeholder }
-            .scaledToFill()
+        CachedAsyncImage(
+            url: book.coverFileURL,
+            onLoad: onCoverLoaded
+        ) { placeholder }
     }
 
     @ViewBuilder
@@ -41,9 +76,9 @@ struct BookCoverImage: View {
         if let creds = try? env.authStore.load() {
             CachedAsyncImage(
                 url: book.thumbnailURL,
-                http: Core.HTTPClient(credentials: creds.basic)
+                http: Core.HTTPClient(credentials: creds.basic),
+                onLoad: onCoverLoaded
             ) { placeholder }
-                .scaledToFill()
         } else {
             placeholder
         }
@@ -51,8 +86,10 @@ struct BookCoverImage: View {
 
     @ViewBuilder
     private var kobo: some View {
-        CachedAsyncImage(url: book.thumbnailURL) { placeholder }
-            .scaledToFill()
+        CachedAsyncImage(
+            url: book.thumbnailURL,
+            onLoad: onCoverLoaded
+        ) { placeholder }
     }
 
     private var placeholder: some View {
@@ -89,5 +126,28 @@ struct BookCoverImage: View {
             return "—"
         }
         return String(surname)
+    }
+
+    private func onCoverLoaded(_ image: UIImage) {
+        guard style == .matteFit, let url = Self.coverURL(for: book) else { return }
+        if let cached = ImageMemoryCache.shared.color(for: url) {
+            let next = Color(uiColor: cached)
+            if matte != next { matte = next }
+            return
+        }
+        // Mute toward paper so a vivid cover doesn't oversaturate the wall.
+        // 0.35 keeps the cover's identity but pulls highlights into the
+        // editorial palette's range.
+        guard let raw = image.averageColor() else { return }
+        let muted = raw.blended(toward: UIColor(EditorialTheme.bg), by: 0.35)
+        ImageMemoryCache.shared.storeColor(muted, for: url)
+        matte = Color(uiColor: muted)
+    }
+
+    private static func coverURL(for book: Book) -> URL? {
+        if book.source.kind == .local {
+            return book.coverFileURL
+        }
+        return book.thumbnailURL
     }
 }

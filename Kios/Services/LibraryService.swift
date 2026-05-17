@@ -23,7 +23,15 @@ final class LibraryService {
     /// `activeProtocol` stamps `serverIDProtocol` only on newly-inserted rows.
     /// Matched books keep their original protocol — identity is merged across
     /// protocols, not flipped.
-    func refresh(using catalog: any CatalogBackend, activeProtocol: SyncProtocol) async throws {
+    ///
+    /// `source` is the catalog's `Source` row (kind != `.local`). New books are
+    /// attached to it; any local book whose identity matches a catalog entry is
+    /// promoted by re-pointing its `source` relationship.
+    func refresh(
+        using catalog: any CatalogBackend,
+        activeProtocol: SyncProtocol,
+        source: Source
+    ) async throws {
         let entries = try await catalog.listLibrary()
         let existing = try context.fetch(FetchDescriptor<Book>())
         var matchedIDs: Set<UUID> = []
@@ -37,7 +45,7 @@ final class LibraryService {
                     book.koboBookUUID = uuid
                 }
                 // Nil-fill catalog fields. Never overwrite non-nil values — the rule
-                // is "fill in what's missing"; promotion of a .local book happens
+                // is "fill in what's missing"; promotion of a local book happens
                 // entirely through this path.
                 if book.serverID == nil {
                     book.serverID = entry.serverID
@@ -48,9 +56,9 @@ final class LibraryService {
                 if book.acquisitionURL == nil {
                     book.acquisitionURL = entry.downloadURL
                 }
-                // Promote .local → .synced if we just filled in catalog identity.
-                if book.source == .local {
-                    book.source = .synced
+                // Promote local → server source if we just filled in catalog identity.
+                if book.source.kind == .local {
+                    book.source = source
                 }
                 // Un-archive on re-appearance so a book restored on the server
                 // comes back to the main shelf without manual intervention.
@@ -58,6 +66,7 @@ final class LibraryService {
                 matchedIDs.insert(book.id)
             } else {
                 let new = Book(
+                    source: source,
                     serverID: entry.serverID,
                     serverIDProtocol: activeProtocol.rawValue,
                     title: entry.title,
@@ -75,7 +84,7 @@ final class LibraryService {
             }
         }
 
-        for book in existing where !matchedIDs.contains(book.id) && book.source != .local {
+        for book in existing where !matchedIDs.contains(book.id) && book.source.kind != .local {
             book.archived = true
         }
 

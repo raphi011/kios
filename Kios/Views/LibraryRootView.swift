@@ -326,8 +326,9 @@ struct LibraryRootView: View {
             ) {
                 ForEach(books, id: \.id) { book in
                     Button { handleTap(book) } label: {
-                        BookCoverImage(book: book)
+                        BookCoverImage(book: book, style: .matteFit)
                             .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                            .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                             .contentShape(Rectangle())
                     }
@@ -461,7 +462,16 @@ struct LibraryRootView: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             do {
-                let outcome = try await env.localImporter.import(from: url)
+                // TODO: Task 11 — pass Local singleton from AppEnvironment
+                let outcome = try await env.localImporter.import(
+                    from: url,
+                    localSource: Source(
+                        displayName: "Local",
+                        kind: .local,
+                        serverURL: nil,
+                        sortOrder: .max
+                    )
+                )
                 switch outcome {
                 case .imported(let book), .existing(let book):
                     env.openReader(book.id)
@@ -479,9 +489,9 @@ struct LibraryRootView: View {
             env.openReader(book.id)
             return
         }
-        // Catalog-only synced book: kick off the download and open the reader.
+        // Catalog-only server book: kick off the download and open the reader.
         // Local books shouldn't reach this branch (they always have a filename).
-        guard book.source == .synced, book.acquisitionURL != nil else {
+        guard book.source.kind != .local, book.acquisitionURL != nil else {
             return
         }
         Task {

@@ -10,7 +10,8 @@ struct BookMaxChapterReachedTests {
     func defaultsToZero() throws {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
-        let book = Book(source: .local, id: UUID(), title: "T", authors: ["A"], format: .epub)
+        let src = testSource(into: ctx)
+        let book = Book(id: UUID(), source: src, title: "T", authors: ["A"], format: .epub)
         ctx.insert(book)
         try ctx.save()
         #expect(book.maxChapterIndexReached == 0)
@@ -21,7 +22,8 @@ struct BookMaxChapterReachedTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        let book = Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub)
+        let src = testSource(into: ctx)
+        let book = Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub)
         ctx.insert(book)
         book.maxChapterIndexReached = 7
         try ctx.save()

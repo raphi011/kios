@@ -6,35 +6,33 @@ import Core
 final class Book {
     @Attribute(.unique) var id: UUID
 
-    /// Where this book came from. `.synced` means the catalog is authoritative
-    /// for `serverID` / `serverIDProtocol` / `acquisitionURL`. `.local` means
-    /// the user imported the file directly; catalog fields are nil until
-    /// auto-promotion on a partialMD5 catalog match.
-    var source: BookSource = BookSource.synced
+    /// The source this book belongs to (one of the user's configured servers,
+    /// or the singleton Local source for imported files).
+    var source: Source
 
     /// Backend-assigned identity (OPDS atom:id for kosync, RevisionId for Kobo).
-    /// Nil for `.local` books that have not been auto-promoted to `.synced`.
+    /// Nil for local books that have not been auto-promoted to a server source.
     var serverID: String?
 
     /// Sync protocol that minted `serverID`. Currently "kosync" or "kobo".
-    /// Nil for `.local` books that have not been auto-promoted.
+    /// Nil for local books that have not been auto-promoted.
     var serverIDProtocol: String?
 
     var title: String
     var authors: [String]
 
     /// OPDS detail/entry link. Nil for Kobo books, which lack an OPDS entry,
-    /// and nil for `.local` books.
+    /// and nil for local books.
     var opdsHref: URL?
 
-    /// Direct download URL. Nil for `.local` books that have not been
+    /// Direct download URL. Nil for local books that have not been
     /// auto-promoted.
     var acquisitionURL: URL?
 
     var format: BookFormat
 
     /// Filename within `AppPaths.booksDirectory`. nil until downloaded
-    /// (synced) or imported (local).
+    /// (server) or imported (local).
     ///
     /// We persist only the filename (not an absolute URL) because iOS may
     /// regenerate the app container UUID across reinstalls/redeploys, which
@@ -48,17 +46,17 @@ final class Book {
     var koboBookUUID: String?
 
     /// OPDS thumbnail URL captured at download time so Home can render a cover
-    /// without re-fetching the catalog entry. Nil for `.local` books, which
+    /// without re-fetching the catalog entry. Nil for local books, which
     /// store their cover bytes locally via `coverFilename`.
     var thumbnailURL: URL?
 
     /// Local cover-image filename within `AppPaths.booksDirectory`. Populated
-    /// only for `.local` books, extracted by Readium at import. Format is jpg.
+    /// only for local books, extracted by Readium at import. Format is jpg.
     var coverFilename: String?
 
     var addedAt: Date
 
-    /// Soft-delete flag used by Kobo. Never set for `.local` books — they
+    /// Soft-delete flag used by Kobo. Never set for local books — they
     /// live outside the catalog's authority.
     var archived: Bool
 
@@ -88,28 +86,28 @@ final class Book {
     /// for spoiler-aware filtering in the Characters tab.
     var maxChapterIndexReached: Int = 0
 
-    /// Convenience init for synced books. Mirrors the pre-V2 signature so most
-    /// call sites compile unchanged.
     init(
         id: UUID = UUID(),
-        serverID: String,
-        serverIDProtocol: String,
+        source: Source,
+        serverID: String? = nil,
+        serverIDProtocol: String? = nil,
         title: String,
         authors: [String],
-        opdsHref: URL?,
-        acquisitionURL: URL,
+        opdsHref: URL? = nil,
+        acquisitionURL: URL? = nil,
         format: BookFormat,
-        koboBookUUID: String?,
-        archived: Bool,
+        koboBookUUID: String? = nil,
+        archived: Bool = false,
         filename: String? = nil,
         partialMD5: String? = nil,
         thumbnailURL: URL? = nil,
+        coverFilename: String? = nil,
         addedAt: Date = .now,
         finishedAt: Date? = nil,
         finishedManually: Bool = false
     ) {
         self.id = id
-        self.source = .synced
+        self.source = source
         self.serverID = serverID
         self.serverIDProtocol = serverIDProtocol
         self.title = title
@@ -117,54 +115,18 @@ final class Book {
         self.opdsHref = opdsHref
         self.acquisitionURL = acquisitionURL
         self.format = format
+        self.koboBookUUID = koboBookUUID
         self.filename = filename
         self.partialMD5 = partialMD5
-        self.koboBookUUID = koboBookUUID
         self.thumbnailURL = thumbnailURL
-        self.coverFilename = nil
+        self.coverFilename = coverFilename
         self.addedAt = addedAt
         self.archived = archived
         self.finishedAt = finishedAt
         self.finishedManually = finishedManually
         self.furthestLinearPosition = 0
         self.totalPositions = 0
-    }
-
-    /// Convenience init for locally-imported books. Catalog fields default to
-    /// nil and `archived` defaults to false. Callers populate `filename`,
-    /// `partialMD5`, and `coverFilename` after the import pipeline completes.
-    init(
-        source: BookSource,
-        id: UUID = UUID(),
-        title: String,
-        authors: [String],
-        format: BookFormat,
-        filename: String? = nil,
-        partialMD5: String? = nil,
-        coverFilename: String? = nil,
-        addedAt: Date = .now
-    ) {
-        precondition(source == .local, "use the synced initializer for catalog-sourced books")
-        self.id = id
-        self.source = source
-        self.serverID = nil
-        self.serverIDProtocol = nil
-        self.title = title
-        self.authors = authors
-        self.opdsHref = nil
-        self.acquisitionURL = nil
-        self.format = format
-        self.filename = filename
-        self.partialMD5 = partialMD5
-        self.koboBookUUID = nil
-        self.thumbnailURL = nil
-        self.coverFilename = coverFilename
-        self.addedAt = addedAt
-        self.archived = false
-        self.finishedAt = nil
-        self.finishedManually = false
-        self.furthestLinearPosition = 0
-        self.totalPositions = 0
+        self.maxChapterIndexReached = 0
     }
 
     /// Resolved absolute file URL, recomputed each access from the live

@@ -30,13 +30,16 @@ enum BookActions {
     /// Upserts a Book for (entry.serverID, chosen.format). Updates metadata if
     /// the row exists; creates it otherwise. The returned Book is always in
     /// the context (insert is implicit on creation; caller saves).
+    ///
+    /// `source` is the (kosync) `Source` the catalog belongs to. New books are
+    /// attached to it.
     static func upsertBook(entry: AcquisitionEntry, chosen: Acquisition,
-                           context: ModelContext) -> Book {
+                           source: Source, context: ModelContext) -> Book {
         if let existing = findBook(serverID: entry.serverID,
                                    format: chosen.format, context: context) {
             precondition(
-                existing.source == .synced,
-                "BookActions.upsertBook matched a .local book — should have been deduped earlier"
+                existing.source.kind != .local,
+                "BookActions.upsertBook matched a local book — should have been deduped earlier"
             )
             existing.title = entry.title
             existing.authors = entry.authors
@@ -46,6 +49,7 @@ enum BookActions {
             return existing
         }
         let book = Book(
+            source: source,
             serverID: entry.serverID,
             serverIDProtocol: "kosync",
             title: entry.title,

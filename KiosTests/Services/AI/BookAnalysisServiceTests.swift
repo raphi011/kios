@@ -13,7 +13,8 @@ struct BookAnalysisServiceBasicsTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        let book = Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub)
+        let src = testSource(into: ctx)
+        let book = Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub)
         ctx.insert(book)
         try ctx.save()
 
@@ -43,7 +44,8 @@ struct BookAnalysisServicePerChapterTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        let src = testSource(into: ctx)
+        ctx.insert(Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub))
         try ctx.save()
 
         // `complete(...)` is consumed by `runBookSummaryPass` after the
@@ -99,7 +101,8 @@ struct BookAnalysisServiceSynthesisTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        ctx.insert(Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub))
+        let src = testSource(into: ctx)
+        ctx.insert(Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub))
         try ctx.save()
 
         let mock = MockLanguageModel(responses: [

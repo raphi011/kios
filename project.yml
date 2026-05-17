@@ -113,7 +113,6 @@ targets:
       - path: Kios/App/ModelContainerFactory.swift
       - path: Kios/Models/Book.swift
       - path: Kios/Models/BookAnalysis.swift
-      - path: Kios/Models/BookSource.swift
       - path: Kios/Models/BookSummary.swift
       - path: Kios/Models/Bookmark.swift
       - path: Kios/Models/ChapterSummary.swift

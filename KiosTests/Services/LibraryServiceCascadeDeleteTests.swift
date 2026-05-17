@@ -11,7 +11,8 @@ struct LibraryServiceCascadeDeleteTests {
         let container = try ModelContainer.kiosInMemory()
         let ctx = container.mainContext
         let bookID = UUID()
-        let book = Book(source: .local, id: bookID, title: "T", authors: ["A"], format: .epub)
+        let src = testSource(into: ctx)
+        let book = Book(id: bookID, source: src, title: "T", authors: ["A"], format: .epub)
         ctx.insert(book)
         ctx.insert(BookAnalysis(bookID: bookID, engine: "gemma4_e4b", chaptersTotal: 5))
         ctx.insert(CharacterMention(

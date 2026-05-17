@@ -282,10 +282,10 @@ final class AppEnvironment {
         ImageMemoryCache.shared.removeAll()
         URLCache.shared.removeAllCachedResponses()
 
-        // Delete catalog-only synced Book rows (no local file). Leave
-        // `.local` books alone — they belong to the device, not the account.
+        // Delete catalog-only server Book rows (no local file). Leave
+        // local books alone — they belong to the device, not the account.
         if let books = try? context.fetch(FetchDescriptor<Book>()) {
-            for book in books where book.filename == nil && book.source == .synced {
+            for book in books where book.filename == nil && book.source.kind != .local {
                 context.delete(book)
             }
         }
@@ -314,7 +314,12 @@ final class AppEnvironment {
             let url = bundle.url(forResource: name, withExtension: "epub")
                 ?? bundle.url(forResource: name, withExtension: "epub", subdirectory: "SampleBooks")
             guard let url else { continue }
-            _ = try? await localImporter.import(from: url)
+            // TODO: Task 11 — pass Local singleton from AppEnvironment
+            let placeholder = Source(
+                displayName: "Local", kind: .local,
+                serverURL: nil, sortOrder: .max
+            )
+            _ = try? await localImporter.import(from: url, localSource: placeholder)
         }
         UserDefaults.standard.set(true, forKey: key)
     }
@@ -330,9 +335,19 @@ final class AppEnvironment {
             deviceID: deviceID,
             deviceName: name
         )
+        let activeProtocol = authStore.loadActiveProtocol()
+        // TODO: Task 13 — fetch the Source row for the active protocol from
+        // the source catalog instead of constructing a throwaway placeholder.
+        let placeholderSource = Source(
+            displayName: "Catalog",
+            kind: activeProtocol == .kobo ? .kobo : .kosync,
+            serverURL: nil,
+            sortOrder: 0
+        )
         try await library.refresh(
             using: catalog,
-            activeProtocol: authStore.loadActiveProtocol()
+            activeProtocol: activeProtocol,
+            source: placeholderSource
         )
     }
 
@@ -345,7 +360,7 @@ final class AppEnvironment {
     /// proceed with the stale URL and surface a real download error rather
     /// than blocking on the refresh.
     func refreshAcquisitionURL(for book: Book) async {
-        guard book.source == .synced,
+        guard book.source.kind != .local,
               let serverID = book.serverID,
               let currentURL = book.acquisitionURL else {
             return

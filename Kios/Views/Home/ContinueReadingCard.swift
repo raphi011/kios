@@ -82,22 +82,19 @@ private struct BookCoverThumb: View {
 
     var body: some View {
         Group {
-            switch book.source {
-            case .local:
+            if book.source.kind == .local {
                 CachedAsyncImage(url: book.coverFileURL) { placeholder }
                     .scaledToFill()
-            case .synced:
-                if book.serverIDProtocol == SyncProtocol.kosync.rawValue,
-                   let creds = try? env.authStore.load() {
-                    CachedAsyncImage(
-                        url: book.thumbnailURL,
-                        http: Core.HTTPClient(credentials: creds.basic)
-                    ) { placeholder }
-                        .scaledToFill()
-                } else {
-                    CachedAsyncImage(url: book.thumbnailURL) { placeholder }
-                        .scaledToFill()
-                }
+            } else if book.serverIDProtocol == SyncProtocol.kosync.rawValue,
+                      let creds = try? env.authStore.load() {
+                CachedAsyncImage(
+                    url: book.thumbnailURL,
+                    http: Core.HTTPClient(credentials: creds.basic)
+                ) { placeholder }
+                    .scaledToFill()
+            } else {
+                CachedAsyncImage(url: book.thumbnailURL) { placeholder }
+                    .scaledToFill()
             }
         }
     }

@@ -79,10 +79,14 @@ final class LocalImportService {
     }
 
     /// Imports the EPUB at `sourceURL` into the library.
-    /// - Parameter sourceURL: file:// or security-scoped URL.
+    /// - Parameters:
+    ///   - sourceURL: file:// or security-scoped URL.
+    ///   - localSource: the singleton `Source` with `kind == .local` that the
+    ///     new `Book` row will be attached to. (Task 11 will route this from
+    ///     `AppEnvironment`.)
     /// - Returns: `.imported` for new books, `.existing` for dedup hits.
     /// - Throws: `LocalImportError`.
-    func `import`(from sourceURL: URL) async throws -> LocalImportResult {
+    func `import`(from sourceURL: URL, localSource: Source) async throws -> LocalImportResult {
         // 1. Validate extension before incurring I/O cost.
         guard sourceURL.pathExtension.lowercased() == "epub" else {
             throw LocalImportError.unsupportedFormat
@@ -155,8 +159,8 @@ final class LocalImportService {
 
         // 8. Insert the Book row.
         let book = Book(
-            source: .local,
             id: bookUUID,
+            source: localSource,
             title: title,
             authors: parsed.authors,
             format: .epub,

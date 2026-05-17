@@ -387,7 +387,16 @@ struct SettingsView: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             do {
-                let outcome = try await env.localImporter.import(from: url)
+                // TODO: Task 11 — pass Local singleton from AppEnvironment
+                let outcome = try await env.localImporter.import(
+                    from: url,
+                    localSource: Source(
+                        displayName: "Local",
+                        kind: .local,
+                        serverURL: nil,
+                        sortOrder: .max
+                    )
+                )
                 switch outcome {
                 case .imported(let book), .existing(let book):
                     env.openReader(book.id)

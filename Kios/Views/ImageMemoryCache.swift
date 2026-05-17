@@ -9,9 +9,12 @@ final class ImageMemoryCache: @unchecked Sendable {
     static let shared = ImageMemoryCache()
 
     private let cache = NSCache<NSURL, UIImage>()
+    private let colorCache = NSCache<NSURL, UIColor>()
 
     init(costLimitBytes: Int = 50 * 1024 * 1024) {
         cache.totalCostLimit = costLimitBytes
+        // Colors are ~16 bytes each; 4096 entries is well under 100KB.
+        colorCache.countLimit = 4096
     }
 
     func image(for url: URL) -> UIImage? {
@@ -24,7 +27,16 @@ final class ImageMemoryCache: @unchecked Sendable {
         cache.setObject(image, forKey: url as NSURL, cost: cost)
     }
 
+    func color(for url: URL) -> UIColor? {
+        colorCache.object(forKey: url as NSURL)
+    }
+
+    func storeColor(_ color: UIColor, for url: URL) {
+        colorCache.setObject(color, forKey: url as NSURL)
+    }
+
     func removeAll() {
         cache.removeAllObjects()
+        colorCache.removeAllObjects()
     }
 }
