@@ -234,11 +234,12 @@ struct ReaderContentsView: View {
 
 // MARK: - ChapterRow
 
-/// Single chapter row in the contents list. Title (with optional "You are
-/// here" eyebrow) on the left, checkmark + page on the right. Sub-chapters
-/// indent by depth and step down a typographic size so the source TOC's
-/// hierarchy reads visually. The current chapter gets the `accentSoft`
-/// background fill and a 3pt accent-red leading bar.
+/// Single chapter row in the contents list. Title on the left,
+/// checkmark + page on the right. Sub-chapters indent by depth and
+/// step down a typographic size so the source TOC's hierarchy reads
+/// visually. The current chapter is signalled quietly: title goes
+/// semibold and the page number flips to accent — no background
+/// fill, no leading bar, no eyebrow.
 private struct ChapterRow: View {
     let chapter: ReaderContentsView.Chapter
 
@@ -249,21 +250,15 @@ private struct ChapterRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(chapter.title)
-                    .font(EditorialTheme.serif(
-                        size: isSub ? 14 : 16,
-                        weight: isCurrent ? .semibold : .medium
-                    ))
-                    .foregroundStyle(isUnread ? EditorialTheme.inkSoft : EditorialTheme.ink)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                if isCurrent {
-                    Text("You are here")
-                        .editorialEyebrow(color: EditorialTheme.accent)
-                }
-            }
-            .padding(.leading, CGFloat(chapter.depth) * 18)
+            Text(chapter.title)
+                .font(EditorialTheme.serif(
+                    size: isSub ? 14 : 16,
+                    weight: isCurrent ? .semibold : .medium
+                ))
+                .foregroundStyle(isUnread ? EditorialTheme.inkSoft : EditorialTheme.ink)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .padding(.leading, CGFloat(chapter.depth) * 18)
 
             Spacer(minLength: 8)
 
@@ -276,20 +271,12 @@ private struct ChapterRow: View {
                 Text(String(chapter.page))
                     .font(EditorialTheme.mono(size: 11))
                     .tracking(0.2)
-                    .foregroundStyle(EditorialTheme.muted)
+                    .foregroundStyle(isCurrent ? EditorialTheme.accent : EditorialTheme.muted)
             }
         }
         .padding(.horizontal, EditorialTheme.rowSidePad)
         .padding(.vertical, isSub ? 10 : 14)
         .frame(minHeight: isSub ? 44 : 56)
-        .background(isCurrent ? EditorialTheme.accentSoft : Color.clear)
-        .overlay(alignment: .leading) {
-            if isCurrent {
-                Rectangle()
-                    .fill(EditorialTheme.accent)
-                    .frame(width: 3)
-            }
-        }
         .contentShape(Rectangle())
     }
 }
