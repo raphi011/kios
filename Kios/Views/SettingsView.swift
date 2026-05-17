@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UniformTypeIdentifiers
 import Core
 
 /// Editorial settings screen. Matches the design package's `EditorialSettings`:
@@ -27,10 +26,6 @@ struct SettingsView: View {
 
     // Library & sync — toggles persist in-session only.
     @State private var syncOverCellular = false
-
-    // File importer (Import EPUB row).
-    @State private var showFileImporter = false
-    @State private var importError: String?
 
     // First-enable explainer sheet — shown the first time the master AI
     // toggle is flipped on. Subsequent toggles are silent.
@@ -62,24 +57,6 @@ struct SettingsView: View {
         }
         .background(EditorialTheme.bg)
         .navigationBarHidden(true)
-        .fileImporter(
-            isPresented: $showFileImporter,
-            allowedContentTypes: [.epub],
-            allowsMultipleSelection: false
-        ) { result in
-            Task { await handleImport(result) }
-        }
-        .alert(
-            "Import failed",
-            isPresented: Binding(
-                get: { importError != nil },
-                set: { if !$0 { importError = nil } }
-            )
-        ) {
-            Button("OK") { importError = nil }
-        } message: {
-            Text(importError ?? "")
-        }
         .sheet(isPresented: $showFirstEnableSheet) {
             AIFirstEnableSheet(
                 availability: AIAvailability.resolve(
@@ -122,16 +99,6 @@ struct SettingsView: View {
             "Library & sync",
             footer: "Sources sync your library from CWA / calibre-web / public OPDS catalogs. Add as many as you like."
         ) {
-            Button { showFileImporter = true } label: {
-                EditorialRow(
-                    label: "Import EPUB",
-                    detail: "From Files, iCloud, AirDrop…",
-                    chevron: true
-                )
-            }
-            .buttonStyle(.plain)
-            EditorialHairline()
-
             SourcesList()
             EditorialHairline()
 
@@ -306,26 +273,6 @@ struct SettingsView: View {
         return "Kios · v\(v) · build \(b)"
     }
 
-    private func handleImport(_ result: Result<[URL], Error>) async {
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            do {
-                let outcome = try await env.localImporter.import(
-                    from: url,
-                    localSource: env.localSource
-                )
-                switch outcome {
-                case .imported(let book), .existing(let book):
-                    env.openReader(book.id)
-                }
-            } catch {
-                importError = error.localizedDescription
-            }
-        case .failure(let error):
-            importError = error.localizedDescription
-        }
-    }
 }
 
 // MARK: - Sources list
