@@ -93,7 +93,7 @@ struct HomeRootView: View {
                                         progress: progressByBookID[hero.id] ?? 0,
                                         sessions: sessions
                                     ) {
-                                        env.openReader(hero.id)
+                                        env.router.openReader(hero.id)
                                     }
                                 }
                             }
@@ -106,7 +106,7 @@ struct HomeRootView: View {
                                     ForEach(libraryPreview.indices, id: \.self) { i in
                                         let book = libraryPreview[i]
                                         Button {
-                                            env.openReader(book.id)
+                                            env.router.openReader(book.id)
                                         } label: {
                                             EditorialBookRow(
                                                 title: book.title,

@@ -6,8 +6,8 @@ import Core
 import ReadiumShared
 
 /// Composes the app's services. Created once at launch by `KiosApp`.
-/// Per-source runtime services live in `sourceContexts`, built lazily via
-/// `makeContext(for:)` and torn down by `removeSource`.
+/// Per-source runtime contexts live on `sources`; reader presentation lives
+/// on `router`. This env is the composition root + workflows that span both.
 @MainActor
 @Observable
 final class AppEnvironment {
@@ -28,30 +28,20 @@ final class AppEnvironment {
     /// construct it eagerly at init.
     let localImporter: LocalImportService
 
-    /// Runtime contexts, keyed by `Source.id` (UUID). Built lazily by
-    /// `makeContext(for:)`; tear-down via `tearDown(sourceID:)` /
-    /// `removeSource(id:)`. The `local` source is materialised eagerly in
-    /// `init` so it's always present.
-    private(set) var sourceContexts: [UUID: SourceContext] = [:]
+    /// Per-source runtime context lifecycle (sync, downloads, catalog).
+    let sources: SourceRegistry
 
-    /// The Local source singleton. Seeded on first launch by
-    /// `seedLocalSourceIfNeeded()`. Force-unwrapped because the seed runs
-    /// before any caller can observe `self`.
-    private(set) var localSource: Source!
+    /// Reader presentation: `router.activeReader` drives the app-wide
+    /// `.fullScreenCover` in `RootView`. Views call `router.openReader(_:)`.
+    let router: ReaderRouter
 
-    /// Set when a reader is open. Drives the app-wide `.fullScreenCover` in
-    /// `RootView`. Hoisted above `TabView` so both Home and Browse can present
-    /// without double-stacking modals.
-    var activeReader: ReaderRoute?
+    /// The Local source singleton. Seeded on first launch and reused
+    /// thereafter — see `Self.loadOrSeedLocalSource(in:)`. Always present.
+    let localSource: Source
 
     /// Exposed (not `private`) so views can build backends for one-off
     /// operations like the Settings library refresh after a protocol switch.
     let deviceID: String
-
-    /// Shared across `SyncService` rebuilds (e.g. on credential save) so the
-    /// per-chapter koboSpan cache survives — chapters don't change without a
-    /// fresh download.
-    private let spanResolver = KEPUBSpanResolver()
 
     init() throws {
         self.modelContainer = try ModelContainer.kios()
@@ -90,20 +80,33 @@ final class AppEnvironment {
 
         // Seed the Local Source singleton before anything that depends on
         // having a Source row (sample import, eager Local context, etc.).
-        seedLocalSourceIfNeeded()
+        self.localSource = Self.loadOrSeedLocalSource(in: self.modelContext)
+
+        // Compose registry + router. Registry holds the spanResolver so
+        // per-chapter caches survive SyncService rebuilds (e.g. on credential
+        // save) — chapters don't change without a fresh download.
+        self.sources = SourceRegistry(
+            modelContext: self.modelContext,
+            authStore: self.authStore,
+            deviceID: self.deviceID,
+            deviceName: UIDevice.current.name,
+            spanResolver: KEPUBSpanResolver()
+        )
+        self.router = ReaderRouter()
+
         // Eagerly materialise Local — has no credentials and no network.
-        _ = try? self.makeContext(for: self.localSource)
+        _ = try? self.sources.makeContext(for: self.localSource)
     }
 
-    /// Inserts the Local Source row on first launch and assigns
-    /// `self.localSource`. On subsequent launches, reuses the existing row.
-    private func seedLocalSourceIfNeeded() {
+    /// Returns the existing Local Source row, or inserts and returns a fresh
+    /// one if none exists. Idempotent. Static so it can run during `init`
+    /// before `self` is fully initialised.
+    private static func loadOrSeedLocalSource(in context: ModelContext) -> Source {
         // Predicate-on-enum-rawValue trips the SwiftData macro in some
         // configurations; fetch all + filter is the portable fallback.
-        let all = (try? modelContext.fetch(FetchDescriptor<Source>())) ?? []
+        let all = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         if let existing = all.first(where: { $0.kind == .local }) {
-            self.localSource = existing
-            return
+            return existing
         }
         let local = Source(
             displayName: NSLocalizedString(
@@ -115,67 +118,9 @@ final class AppEnvironment {
             serverURL: nil,
             sortOrder: .max
         )
-        modelContext.insert(local)
-        try? modelContext.save()
-        self.localSource = local
-    }
-
-    /// Returns an already-materialised context, or nil.
-    func context(for sourceID: UUID) -> SourceContext? {
-        sourceContexts[sourceID]
-    }
-
-    /// Lazily builds the runtime context for a source. Idempotent.
-    /// Synchronous — probe runs only in `addSource`.
-    @discardableResult
-    func makeContext(for source: Source) throws -> SourceContext {
-        if let cached = sourceContexts[source.id] { return cached }
-        let (syncBackend, catalog) = try BackendFactory.build(
-            source: source,
-            auth: authStore,
-            deviceID: deviceID,
-            deviceName: UIDevice.current.name
-        )
-        let sync = syncBackend.map { backend in
-            SyncService(
-                backend: backend,
-                context: modelContext,
-                deviceID: deviceID,
-                deviceName: UIDevice.current.name,
-                spanResolver: spanResolver
-            )
-        }
-        let downloads: DownloadService? = {
-            switch source.kind {
-            case .local:
-                return nil
-            case .opdsReadOnly:
-                return DownloadService(context: modelContext, credentials: nil)
-            case .kosync:
-                let creds = try? authStore.load(sourceID: source.id)
-                return DownloadService(
-                    context: modelContext, credentials: creds?.basic
-                )
-            case .kobo:
-                // Kobo serves pre-signed CDN URLs — no auth header.
-                return DownloadService(context: modelContext, credentials: nil)
-            }
-        }()
-        let ctx = SourceContext(
-            source: source,
-            sync: sync,
-            downloads: downloads,
-            catalog: catalog
-        )
-        sourceContexts[source.id] = ctx
-        return ctx
-    }
-
-    /// Releases a source's runtime context. Does not delete the SwiftData row.
-    func tearDown(sourceID: UUID) {
-        sourceContexts.removeValue(forKey: sourceID)
-        // SyncService / DownloadService don't currently have explicit cancel
-        // hooks; references drop here, in-flight tasks complete naturally.
+        context.insert(local)
+        try? context.save()
+        return local
     }
 
     /// Probe + persist + initial refresh. Throws on probe failure with no
@@ -224,7 +169,7 @@ final class AppEnvironment {
         // Build context + initial refresh. Failure here is non-fatal —
         // flag needsAttention so Settings can surface it.
         do {
-            let ctx = try makeContext(for: transient)
+            let ctx = try sources.makeContext(for: transient)
             try await library.refresh(using: ctx.catalog, source: transient)
         } catch {
             transient.needsAttention = true
@@ -245,7 +190,7 @@ final class AppEnvironment {
             assertionFailure("Local source cannot be deleted")
             return
         }
-        tearDown(sourceID: id)
+        sources.tearDown(sourceID: id)
         try authStore.purge(sourceID: id)
         modelContext.delete(source)
         try modelContext.save()
@@ -282,12 +227,6 @@ final class AppEnvironment {
         // No-op. Per-source removal is the new flow.
     }
 
-    /// Opens the reader for `bookID`. No-op when a reader is already open.
-    func openReader(_ bookID: UUID) {
-        guard activeReader == nil else { return }
-        activeReader = ReaderRoute(id: bookID)
-    }
-
     /// On first launch, import any bundled Gutenberg sample EPUBs into the
     /// library so the user has something to read before configuring a sync
     /// backend. Idempotent — gated by a UserDefaults flag so the seed runs
@@ -313,7 +252,7 @@ final class AppEnvironment {
     /// Book store. Throws if credentials/network fails. Called by
     /// LibraryRootView's pull-to-refresh and by SettingsView after a save.
     func refreshLibrary(source: Source) async throws {
-        let ctx = try makeContext(for: source)
+        let ctx = try sources.makeContext(for: source)
         try await library.refresh(using: ctx.catalog, source: source)
     }
 
@@ -330,7 +269,7 @@ final class AppEnvironment {
             return
         }
         do {
-            let ctx = try makeContext(for: book.source)
+            let ctx = try sources.makeContext(for: book.source)
             let entry = CatalogEntry(
                 serverID: serverID,
                 title: book.title,

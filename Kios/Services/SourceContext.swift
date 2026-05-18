@@ -2,8 +2,8 @@ import Foundation
 import Core
 
 /// Per-source runtime aggregate. Built lazily by
-/// `AppEnvironment.makeContext(for:)` and stored in
-/// `AppEnvironment.sourceContexts[source.id]`. Bundles the per-source
+/// `SourceRegistry.makeContext(for:)` and stored in
+/// `SourceRegistry.contexts[source.id]`. Bundles the per-source
 /// services so callers can route via `book.source.id` and get the right
 /// backend without touching credentials or factory wiring directly.
 ///

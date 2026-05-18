@@ -7,7 +7,7 @@ import SwiftData
 ///
 /// `openAppWhenRun: true` foregrounds Kios. The intent writes the target
 /// book ID into `BookOpenCoordinator.shared`; `RootView` observes that
-/// and routes through `AppEnvironment.openReader`.
+/// and routes through `ReaderRouter.openReader`.
 struct OpenMostRecentBookIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Most Recent Book"
     static let description = IntentDescription(

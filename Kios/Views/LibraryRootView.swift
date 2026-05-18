@@ -488,7 +488,7 @@ struct LibraryRootView: View {
                 )
                 switch outcome {
                 case .imported(let book), .existing(let book):
-                    env.openReader(book.id)
+                    env.router.openReader(book.id)
                 }
             } catch {
                 importError = error.localizedDescription
@@ -500,7 +500,7 @@ struct LibraryRootView: View {
 
     private func handleTap(_ book: Book) {
         if book.filename != nil {
-            env.openReader(book.id)
+            env.router.openReader(book.id)
             return
         }
         // Catalog-only server book: kick off the download and open the reader.
@@ -512,8 +512,8 @@ struct LibraryRootView: View {
             if book.serverIDProtocol == SyncProtocol.kobo.rawValue {
                 await env.refreshAcquisitionURL(for: book)
             }
-            _ = try? await env.context(for: book.source.id)?.downloads?.download(book: book)
+            _ = try? await env.sources.context(for: book.source.id)?.downloads?.download(book: book)
         }
-        env.openReader(book.id)
+        env.router.openReader(book.id)
     }
 }

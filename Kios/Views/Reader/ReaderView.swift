@@ -7,6 +7,10 @@ import UIKit
 import Core
 
 /// Immersive reader. Presented as a `fullScreenCover` from `RootView`.
+///
+/// Engine state (publication, locator, scrub, TOC, prompts) lives on
+/// `ReaderViewModel`. The view itself holds `@Query`, `@AppStorage`, and
+/// pure UI bookkeeping (chrome visibility, HUD percents, selection probe).
 struct ReaderView: View {
     let bookID: UUID
 
@@ -31,22 +35,10 @@ struct ReaderView: View {
     /// the toggle gates only linear chapter transitions.
     @AppStorage("reader.hapticChapterEnabled") private var hapticChapterEnabled: Bool = true
 
-    @State private var publication: Publication?
-    @State private var initialLocator: Locator?
-    @State private var loadError: String?
-    @State private var pendingPrompt: PromptInfo?
+    @State private var vm = ReaderViewModel()
 
-    /// Drops the navigator's first `locationDidChange` after mount. That
-    /// emission is a load artifact ("I've finished initial layout at
-    /// `initialLocator`") and carries no new user intent — buffering it
-    /// races `resolveOpen` and could push the stale local position over a
-    /// peer's newer write on the server.
-    @State private var initialEmissionSeen: Bool = false
-    /// Set on the first real (post-initial-load) emission. Suppresses any
-    /// late-arriving `.applyServer` / `.promptUser` resolution that would
-    /// yank the user out of the position they're already reading at.
-    @State private var userHasNavigated: Bool = false
-
+    // UI-only state. Engine state (publication, currentLocator, scrub, etc.)
+    // lives on `vm`.
     @State private var uiVisible: Bool = false
     /// Set true by the `⊟` button in the reader top bar to present the
     /// Contents / Bookmarks / Notes modal. Setting back to false dismisses.
@@ -56,41 +48,6 @@ struct ReaderView: View {
     /// `onBrightnessUpdate` callback from `ReaderInputHandlers`' UIKit pan
     /// recognizer. `nil` hides the HUD.
     @State private var brightnessHUD: Int? = nil
-    @State private var currentLocator: Locator?
-    /// Set when the user accepts a cross-device progress prompt. Handed to
-    /// `ReaderHost`; the container dedupes by `Locator.jsonString`, so we
-    /// don't need to clear it after navigating.
-    @State private var pendingJump: Locator?
-    /// Source tag for the next programmatic `pendingJump`. `pushLocator`
-    /// consumes it on the next locator change; nil means the change came
-    /// from a natural user swipe/tap.
-    @State private var pendingJumpSource: AdvanceSource?
-    /// Whole-book progression (0–1) the user is dragging toward, or — after
-    /// release — the position the bar should hold until the navigator confirms
-    /// the jump. Drives both the bar's preview and the scrub HUD overlay.
-    /// Cleared on cancel, or on the next locator update following commit.
-    @State private var scrubProgress: Double?
-    /// True between `commitScrub` and the resulting `locationDidChange`. Keeps
-    /// `scrubProgress` pinned at the release position so the bar doesn't flash
-    /// back to the current locator before the async jump lands.
-    @State private var scrubCommitPending: Bool = false
-    /// Flat list of every Readium position, cached after publication opens.
-    /// Used to translate scrub progression → Locator without going through
-    /// the publication service on every drag sample.
-    @State private var positions: [Locator] = []
-    /// TOC entries flattened depth-first and tagged with their starting
-    /// totalProgression. Sorted ascending; binary-searched to resolve the
-    /// chapter heading for a scrub position.
-    @State private var tocProgressions: [(progression: Double, title: String, depth: Int)] = []
-    /// Resource path (anchor stripped) → chapter title. Built alongside
-    /// `tocProgressions` so the cross-device prompt can name the chapter
-    /// a peer is on without re-walking the TOC.
-    @State private var tocTitlesByHref: [String: String] = [:]
-    /// 1-based chapter index of the last locator emission we processed.
-    /// Compared against the incoming locator's chapter to detect forward
-    /// transitions for the haptic. Nil until the first emission lands or
-    /// until the TOC has loaded.
-    @State private var lastSeenChapterIndex: Int?
     /// Synchronous bridge to the underlying container's selection state.
     /// Consulted by `swipeDownDismissGesture` so a multi-line text-selection
     /// drag doesn't trigger a dismiss. Stable for the lifetime of this view.
@@ -108,14 +65,9 @@ struct ReaderView: View {
     private var book: Book? { books.first }
     private var download: Download? { downloads.first }
 
-    struct PromptInfo: Identifiable {
-        let id = "continue-prompt"
-        let local: Double
-        let server: CanonicalProgress
-        let serverHref: String?
-    }
-
     var body: some View {
+        @Bindable var vm = vm
+
         ZStack {
             // EPUB content stretches edge-to-edge horizontally and behind the
             // Dynamic Island. Bottom safe area (home indicator) is respected
@@ -137,119 +89,103 @@ struct ReaderView: View {
         .background(Color.white.ignoresSafeArea())
         .simultaneousGesture(swipeDownDismissGesture())
         .task(id: book?.fileURL) {
-            async let p: Void = loadPublicationIfReady()
-            async let r: Void = resolveOpen()
-            _ = await (p, r)
-            // Stats: open a session once the publication is loaded.
-            // Position = current locator's index in the positions list,
-            // or 0 if no current locator yet.
-            let initialPosition: Int
-            if let locator = currentLocator,
-               let idx = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
-                initialPosition = idx
-            } else if let initial = initialLocator,
-                      let idx = positions.firstIndex(where: { $0.href.isEquivalentTo(initial.href) }) {
-                initialPosition = idx
-            } else {
-                initialPosition = 0
-            }
-            if !positions.isEmpty {
-                if let book, book.totalPositions != positions.count {
-                    book.totalPositions = positions.count
-                    try? context.save()
-                }
-                env.stats.sessionDidOpen(
-                    bookID: bookID,
-                    initialPosition: initialPosition,
-                    totalPositions: positions.count
-                )
-            }
+            await loadAndResolve()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
                 Task { await flush() }
             }
         }
-        .onChange(of: currentLocator?.locations.totalProgression) { _, _ in
-            // Navigator caught up — drop the post-commit hold so the bar tracks
-            // the real locator again.
-            if scrubCommitPending {
-                scrubCommitPending = false
-                scrubProgress = nil
-            }
+        .onChange(of: vm.currentLocator?.locations.totalProgression) { _, _ in
+            vm.navigatorCaughtUpDuringScrub()
         }
         .onDisappear {
             Task { await flush() }
             env.stats.sessionDidClose(reason: .closed)
-            env.activeReader = nil
+            env.router.activeReader = nil
         }
         .fullScreenCover(isPresented: $showContents) {
-            // Chapter and bookmark taps both dispatch via `.tocJump` so the
-            // recovery pill surfaces and the user can land back where they
-            // were. One closure shared between the two so the source tag
-            // can't drift. Same-position taps short-circuit: the navigator
-            // would not emit for an in-place seek, leaving `pendingJumpSource`
-            // stale to be consumed by the next real advance and spuriously
-            // raising the recovery pill.
-            let jump: (Locator) -> Void = { locator in
-                if let target = positionIndex(for: locator),
-                   let current = currentPositionIndex,
-                   target == current {
-                    showContents = false
-                    return
-                }
-                pendingJumpSource = .tocJump
-                pendingJump = locator
-                showContents = false
+            contentsModal
+        }
+    }
+
+    // MARK: - Load + resolve
+
+    /// Runs the publication open + cross-device resolve concurrently, then
+    /// opens a stats session once positions are known.
+    private func loadAndResolve() async {
+        let persistedJSON: String? = {
+            let id = bookID
+            return try? context.fetch(
+                FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
+            ).first?.locatorJSON
+        }()
+        async let load: Void = vm.loadPublication(
+            at: book?.fileURL,
+            persistedLocatorJSON: persistedJSON
+        )
+        async let resolve: Void = {
+            if let book {
+                let sync = env.sources.context(for: book.source.id)?.sync
+                await vm.resolveOpen(book: book, sync: sync)
             }
-            ReaderContentsView(
-                bookTitle: book?.title ?? "",
-                chapters: chapterEntries,
-                bookmarks: bookmarkEntries,
-                onJump: jump,
-                onJumpToBookmark: jump,
-                onDeleteBookmark: { id in deleteBookmark(id: id) },
-                onDismiss: { showContents = false }
+        }()
+        _ = await (load, resolve)
+
+        // Stats: open a session once positions are known. Initial position
+        // is the current locator's index, falling back to the initial
+        // locator, then 0.
+        let initialPosition: Int
+        if let locator = vm.currentLocator,
+           let idx = vm.positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
+            initialPosition = idx
+        } else if let initial = vm.initialLocator,
+                  let idx = vm.positions.firstIndex(where: { $0.href.isEquivalentTo(initial.href) }) {
+            initialPosition = idx
+        } else {
+            initialPosition = 0
+        }
+        if !vm.positions.isEmpty {
+            if let book, book.totalPositions != vm.positions.count {
+                book.totalPositions = vm.positions.count
+                try? context.save()
+            }
+            env.stats.sessionDidOpen(
+                bookID: bookID,
+                initialPosition: initialPosition,
+                totalPositions: vm.positions.count
             )
         }
     }
 
     // MARK: - Contents/Bookmarks/Notes data
 
-    /// Builds the chapter list shown in the Contents tab. Pairs each TOC
-    /// entry with its starting position (for the jump target + page number)
-    /// and labels each chapter as read / current / unread.
-    private var chapterEntries: [ReaderContentsView.Chapter] {
-        guard !tocProgressions.isEmpty, !positions.isEmpty else { return [] }
-        let watermark = maxReadProgression
-        let currentIdx0 = (currentChapterIndex ?? 0) - 1   // back to 0-based; -1 = none
-        var out: [ReaderContentsView.Chapter] = []
-        for (i, entry) in tocProgressions.enumerated() {
-            guard let positionIdx = positions.firstIndex(where: {
-                ($0.locations.totalProgression ?? 0) >= entry.progression
-            }) else { continue }
-            let nextProg: Double = (i + 1 < tocProgressions.count)
-                ? tocProgressions[i + 1].progression
-                : 1.0
-            let status: ReaderContentsView.Status
-            if i == currentIdx0 {
-                status = .current
-            } else if nextProg <= watermark {
-                status = .read
-            } else {
-                status = .unread
+    /// Builds the contents-modal closure once so the chapter and bookmark
+    /// taps share identical jump semantics. Same-position taps short-circuit
+    /// to avoid the stale `pendingJumpSource` problem (no locator emission
+    /// for an in-place seek).
+    @ViewBuilder
+    private var contentsModal: some View {
+        let jump: (Locator) -> Void = { locator in
+            if let target = vm.positionIndex(for: locator),
+               let current = vm.currentPositionIndex,
+               target == current {
+                showContents = false
+                return
             }
-            out.append(.init(
-                index: i + 1,
-                roman: romanNumeral(i + 1),
-                title: entry.title,
-                depth: entry.depth,
-                page: positionIdx + 1,
-                status: status,
-                locator: positions[positionIdx]
-            ))
+            vm.pendingJumpSource = .tocJump
+            vm.pendingJump = locator
+            showContents = false
         }
-        return out
+        ReaderContentsView(
+            bookTitle: book?.title ?? "",
+            chapters: vm.chapterEntries(for: book),
+            bookmarks: bookmarkEntries,
+            onJump: jump,
+            onJumpToBookmark: jump,
+            onDeleteBookmark: { id in deleteBookmark(id: id) },
+            onDismiss: { showContents = false }
+        )
     }
 
     /// Maps the persisted Bookmark rows into the view-facing struct.
@@ -260,7 +196,7 @@ struct ReaderView: View {
         bookmarksForBook
             .sorted { $0.position < $1.position }
             .compactMap { b in
-                guard let loc = parseLocator(b.locatorJSON) else { return nil }
+                guard let loc = ReaderViewModel.parseLocator(b.locatorJSON) else { return nil }
                 return ReaderContentsView.Bookmark(
                     id: b.id,
                     page: b.position,
@@ -279,50 +215,19 @@ struct ReaderView: View {
         try? context.save()
     }
 
-    /// Highest progression reached for this book — drives the "read" check
-    /// next to chapters the user has already passed. Backed by the
-    /// per-book linear-read watermark, which Task 5's source-tagged
-    /// advances will start writing. Returns 0 until then (same observable
-    /// behaviour as a fresh install).
-    private var maxReadProgression: Double {
-        guard let book, positions.count > 1 else { return 0 }
-        return Double(book.furthestLinearPosition) / Double(positions.count - 1)
-    }
-
-    /// 1-based Readium position index for the locator on screen. Prefer
-    /// the locator's own `position` (set by the publication's positions
-    /// service); fall back to the largest position whose totalProgression
-    /// is ≤ the current one — same lookup style as `chapterEntries`.
-    private var currentPositionIndex: Int? {
-        currentLocator.flatMap(positionIndex(for:))
-    }
-
-    /// Same 1-based Readium position lookup as `currentPositionIndex`, but
-    /// applied to an arbitrary locator. Used to detect no-op TOC/bookmark
-    /// taps that target the current page — those must not set
-    /// `pendingJump`/`pendingJumpSource`, because the navigator won't emit a
-    /// locator change for an in-place seek and the stale source tag would
-    /// later be consumed by the next real advance.
-    private func positionIndex(for locator: Locator) -> Int? {
-        if let pos = locator.locations.position { return pos }
-        guard let prog = locator.locations.totalProgression,
-              !positions.isEmpty else { return nil }
-        let idx = positions.lastIndex { ($0.locations.totalProgression ?? 0) <= prog }
-        return idx.map { $0 + 1 }
-    }
-
     /// True when a bookmark exists for the current page. `bookmarksForBook`
-    /// is already filtered by `bookID` in the `@Query` predicate, so no
-    /// second book-scope check here.
+    /// is already filtered by `bookID` in the `@Query` predicate.
     private var isCurrentPageBookmarked: Bool {
-        guard let position = currentPositionIndex else { return false }
+        guard let position = vm.currentPositionIndex else { return false }
         return bookmarksForBook.contains { $0.position == position }
     }
+
+    // MARK: - Content
 
     @ViewBuilder
     private var content: some View {
         if let book {
-            if book.fileURL != nil, let publication {
+            if book.fileURL != nil, let publication = vm.publication {
                 let id = book.id
                 // Snapshot href→index outside the @Sendable closure so we
                 // don't capture the non-Sendable `Publication`. The reading
@@ -332,25 +237,14 @@ struct ReaderView: View {
                 )
                 ReaderHost(
                     publication: publication,
-                    initialLocator: initialLocator,
-                    pendingJump: pendingJump,
+                    initialLocator: vm.initialLocator,
+                    pendingJump: vm.pendingJump,
                     fontSizePct: fontSizePct,
                     fontFamilyRaw: fontFamilyRaw,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in
-                            currentLocator = locator
-                            await pushLocator(bookID: id, locator: locator)
-                            // Track furthest chapter the user has reached.
-                            // Drives "analyze up to here" gating on the
-                            // Characters tab so spoilers are clipped to the
-                            // user's read horizon. Re-fetch the book row
-                            // from the @Query result instead of capturing
-                            // the non-Sendable `Book` instance.
-                            let idx = chapterIndexByHref[locator.href.string] ?? 0
-                            if let book = books.first, idx > book.maxChapterIndexReached {
-                                book.maxChapterIndexReached = idx
-                                try? context.save()
-                            }
+                            vm.currentLocator = locator
+                            handleLocatorChange(locator, chapterIndexByHref: chapterIndexByHref)
                         }
                     },
                     onCenterTap: { withAnimation(.easeOut(duration: 0.2)) { uiVisible.toggle() } },
@@ -375,22 +269,19 @@ struct ReaderView: View {
                     onDismissRequested: { dismiss() },
                     selectionProbe: selectionProbe
                 )
-                .alert(item: $pendingPrompt) { info in
+                .alert(item: $vm.pendingPrompt) { info in
                     Alert(
-                        title: Text(promptTitle(for: info)),
+                        title: Text(vm.promptTitle(for: info)),
                         message: Text(relativeReadMessage(for: info.server)),
                         primaryButton: .default(Text("Continue")) {
-                            if let locator = parseLocator(info.server.locatorJSON) {
-                                pendingJumpSource = .resumeFromSync
-                                pendingJump = locator
-                            }
+                            vm.acceptPrompt(info)
                         },
                         secondaryButton: .cancel(Text("Stay here"))
                     )
                 }
             } else if book.fileURL == nil {
                 DownloadingView(book: book, download: download)
-            } else if let loadError {
+            } else if let loadError = vm.loadError {
                 Text(loadError).foregroundStyle(.orange).padding()
             } else {
                 ProgressView("Opening…").tint(.white)
@@ -399,6 +290,38 @@ struct ReaderView: View {
             Text("Book not found").foregroundStyle(.secondary)
         }
     }
+
+    /// Wires a fresh locator emission into sync + stats + the
+    /// chapter-watermark side effect. Called on the main actor from the
+    /// `@Sendable` `onLocatorChange` after VM state is updated.
+    private func handleLocatorChange(_ locator: Locator, chapterIndexByHref: [String: Int]) {
+        if let outcome = vm.consumeLocatorChange(locator), let book = books.first {
+            if hapticChapterEnabled && outcome.didCrossForwardChapter {
+                HapticFeedback.chapterChanged()
+            }
+            env.sources.context(for: book.source.id)?.sync?.bufferLocator(
+                book: book, locatorJSON: outcome.locatorJSON, percentage: outcome.totalProgression
+            )
+            if let posIdx = outcome.positionIndex {
+                env.stats.sessionDidAdvance(
+                    position: posIdx,
+                    totalPositions: vm.positions.count,
+                    source: outcome.advanceSource,
+                    bookID: book.id
+                )
+            }
+        }
+        // Track furthest chapter the user has reached. Drives "analyze up to
+        // here" gating on the Characters tab so spoilers are clipped to the
+        // user's read horizon.
+        let idx = chapterIndexByHref[locator.href.string] ?? 0
+        if let book = books.first, idx > book.maxChapterIndexReached {
+            book.maxChapterIndexReached = idx
+            try? context.save()
+        }
+    }
+
+    // MARK: - Chrome
 
     @ViewBuilder
     private var chromeOverlay: some View {
@@ -416,24 +339,16 @@ struct ReaderView: View {
                 Spacer()
 
                 EditorialReaderBottomBar(
-                    chapterTitle: chapterTitleForCurrent,
-                    pageLabel: pageLabel,
+                    chapterTitle: vm.chapterTitleForCurrent,
+                    pageLabel: vm.pageLabel,
                     timeLeftLabel: timeLeftLabel,
-                    locator: currentLocator,
-                    scrubProgress: scrubProgress,
-                    tocProgressions: tocProgressions.map(\.progression),
-                    resolveChapterTitle: chapterTitle(at:),
-                    onScrubUpdate: { progress in
-                        // A fresh drag overrides any post-commit hold from a
-                        // previous scrub — the user is steering again.
-                        scrubCommitPending = false
-                        scrubProgress = progress
-                    },
-                    onScrubCommit: { progress in commitScrub(to: progress) },
-                    onScrubCancel: {
-                        scrubCommitPending = false
-                        scrubProgress = nil
-                    },
+                    locator: vm.currentLocator,
+                    scrubProgress: vm.scrubProgress,
+                    tocProgressions: vm.tocProgressions.map(\.progression),
+                    resolveChapterTitle: vm.chapterTitle(at:),
+                    onScrubUpdate: { progress in vm.setScrubProgress(progress) },
+                    onScrubCommit: { progress in vm.commitScrub(to: progress) },
+                    onScrubCancel: { vm.cancelScrub() },
                     onContents: { showContents = true }
                 )
                 .padding(.horizontal, 12)
@@ -443,82 +358,15 @@ struct ReaderView: View {
         }
     }
 
-    // MARK: - Chrome string helpers
-
-    /// 1-based index of the TOC entry whose progression is the largest still
-    /// `<=` the current whole-book progression. nil when the TOC isn't loaded
-    /// or the locator's progression precedes the first entry.
-    private var currentChapterIndex: Int? {
-        currentLocator?.locations.totalProgression.flatMap(chapterIndex(at:))
-    }
-
-    /// 1-based chapter index for an arbitrary whole-book progression. Shared
-    /// between the chrome eyebrow and the haptic detector so both agree on
-    /// what counts as "the current chapter."
-    private func chapterIndex(at progression: Double) -> Int? {
-        var idx: Int?
-        for (i, entry) in tocProgressions.enumerated() {
-            if entry.progression <= progression {
-                idx = i
-            } else {
-                break
-            }
-        }
-        return idx.map { $0 + 1 }   // 1-based
-    }
-
-    /// Chapter title (from TOC) for the current progression, or "—" when
-    /// the TOC hasn't loaded yet.
-    private var chapterTitleForCurrent: String {
-        chapterTitle(at: currentLocator?.locations.totalProgression ?? 0)
-    }
-
-    /// "p. 142" — 1-based index of the current locator within the flat
-    /// positions list. The total is implicit in the progress percent shown
-    /// alongside it in the chrome's meta line. Falls back to "—" before
-    /// positions are loaded.
-    private var pageLabel: String {
-        guard !positions.isEmpty else { return "—" }
-        return "p. \(currentPageIndex + 1)"
-    }
-
-    private var currentPageIndex: Int {
-        guard let locator = currentLocator,
-              let idx = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) else {
-            return 0
-        }
-        return idx
-    }
-
     /// "3h 12m left" — extrapolated from time-so-far × (1 − progress) / progress.
     /// Hidden (nil) until at least one session has landed and the locator is
     /// past 0.1% (the early-extrapolation singularity).
     private var timeLeftLabel: String? {
         let total = sessionsForBook.reduce(0) { $0 + $1.durationSeconds }
-        let progress = currentLocator?.locations.totalProgression ?? 0
+        let progress = vm.currentLocator?.locations.totalProgression ?? 0
         guard total > 0, progress > 0.001, progress < 1.0 else { return nil }
         let remaining = Int(Double(total) * (1.0 - progress) / progress)
         return StatsFormatters.time(seconds: remaining) + " left"
-    }
-
-    /// Roman numeral 1...3999. Past that, returns the arabic numeral — Romans
-    /// run out of letters and books with that many chapters are not a thing.
-    private func romanNumeral(_ n: Int) -> String {
-        guard n > 0, n < 4000 else { return String(n) }
-        let pairs: [(Int, String)] = [
-            (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
-            (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
-            (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
-        ]
-        var n = n
-        var out = ""
-        for (v, sym) in pairs {
-            while n >= v {
-                out += sym
-                n -= v
-            }
-        }
-        return out
     }
 
     /// Persistent pill overlay — visible regardless of `uiVisible` so the
@@ -552,13 +400,13 @@ struct ReaderView: View {
         } else if let pct = brightnessHUD {
             ReaderBrightnessHUD(pct: pct)
                 .transition(.opacity)
-        } else if let progress = scrubProgress, !scrubCommitPending {
+        } else if let progress = vm.scrubProgress, !vm.scrubCommitPending {
             // HUD belongs to the active drag only. `scrubProgress` is also held
             // post-release to pin the bar at the target position until the
             // navigator emits — but the HUD itself should vanish the moment
             // the finger lifts so the reader isn't left staring at an
             // overlay during the navigator's seek.
-            let ctx = chapterContext(at: progress)
+            let ctx = vm.chapterContext(at: progress)
             ReaderScrubHUD(
                 progress: progress,
                 previousChapter2: ctx.previous2,
@@ -571,6 +419,7 @@ struct ReaderView: View {
         }
     }
 
+    // MARK: - Gestures
 
     private func swipeDownDismissGesture() -> some Gesture {
         DragGesture(minimumDistance: 20)
@@ -598,285 +447,36 @@ struct ReaderView: View {
             }
     }
 
-    private func loadPublicationIfReady() async {
-        guard let book, let fileURL = book.fileURL else { return }
-        let id = bookID
-        if let progress = try? context.fetch(
-            FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
-        ).first {
-            initialLocator = parseLocator(progress.locatorJSON)
-        }
-        do {
-            let pub = try await openPublication(at: fileURL)
-            publication = pub
-            await loadScrubMetadata(for: pub)
-        } catch {
-            let diagnostics = fileDiagnostics(at: fileURL)
-            loadError = "Failed to open:\n\((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)\n\n\(diagnostics)"
-        }
+    // MARK: - Bookmark + jump-pill side effects
+
+    /// Toggles a bookmark at the current page. Snapshots the locator JSON
+    /// and chapter title at the moment of bookmark so the row survives a
+    /// later TOC reload. Plays a selection haptic. No-op when we don't
+    /// have a current locator yet.
+    private func toggleBookmark() {
+        guard let position = vm.currentPositionIndex,
+              let locator = vm.currentLocator,
+              let json = try? locator.jsonString() else { return }
+        BookmarkToggle.toggle(
+            in: context,
+            bookID: bookID,
+            position: position,
+            locatorJSON: json,
+            chapterTitle: vm.chapterTitleForCurrent
+        )
+        HapticFeedback.bookmarkToggled()
     }
 
-    /// Caches the positions list and TOC→progression map so scrubbing can
-    /// resolve progress → Locator and progress → chapter heading without
-    /// hitting the publication service on every drag sample. Failures here
-    /// degrade gracefully: scrubbing still works (jumps via `positions`) and
-    /// the chapter label falls back to an em-dash when TOC is unavailable.
-    private func loadScrubMetadata(for publication: Publication) async {
-        positions = (try? await publication.positions().get()) ?? []
-        let toc = (try? await publication.tableOfContents().get()) ?? []
-        let built = buildTOCProgressions(toc: toc, positions: positions)
-        tocProgressions = built.progressions
-        tocTitlesByHref = built.titlesByHref
+    /// Pill "Back to p. X" handler: ask the VM to issue a programmatic
+    /// return, then dismiss the pill. The VM returns `false` for out-of-
+    /// range targets (positions may have changed between pill creation and
+    /// tap) — in that case we still need to clear the pill.
+    private func handleBackToPage(_ target: ReadingStatsService.JumpReturnTarget) {
+        _ = vm.handleBackToPage(target)
+        env.stats.dismissJumpPill(commitStay: false)
     }
 
-    /// Walks the TOC depth-first, mapping each entry to its starting
-    /// totalProgression by matching against the first reading-order position
-    /// that lives in the same resource. Entries whose href doesn't appear in
-    /// the reading order are dropped. Result is sorted ascending so a
-    /// linear scan (or future binary search) can find "current chapter" for
-    /// a given progression.
-    private func buildTOCProgressions(
-        toc: [ReadiumShared.Link],
-        positions: [Locator]
-    ) -> (progressions: [(progression: Double, title: String, depth: Int)], titlesByHref: [String: String]) {
-        var flat: [(href: String, title: String, depth: Int)] = []
-        func walk(_ links: [ReadiumShared.Link], depth: Int) {
-            for link in links {
-                let title = link.title ?? ""
-                if !title.isEmpty {
-                    flat.append((href: link.href, title: title, depth: depth))
-                }
-                walk(link.children, depth: depth + 1)
-            }
-        }
-        walk(toc, depth: 0)
-
-        var mapped: [(progression: Double, title: String, depth: Int)] = []
-        var titlesByHref: [String: String] = [:]
-        for entry in flat {
-            // TOC hrefs often include #anchor; positions key on the resource
-            // path. Compare resource-only — anchor granularity is not enough
-            // to distinguish TOC entries in the typical EPUB.
-            let entryResource = entry.href.components(separatedBy: "#").first ?? entry.href
-            if titlesByHref[entryResource] == nil {
-                titlesByHref[entryResource] = entry.title
-            }
-            guard let pos = positions.first(where: { $0.href.string.hasSuffix(entryResource) || entryResource.hasSuffix($0.href.string) }),
-                  let progression = pos.locations.totalProgression else { continue }
-            mapped.append((progression: progression, title: entry.title, depth: entry.depth))
-        }
-        return (mapped.sorted { $0.progression < $1.progression }, titlesByHref)
-    }
-
-    /// Best-effort chapter title for a Kobo `Location.Source` or Readium
-    /// `locator.href`. Tolerates the same prefix/suffix ambiguity as
-    /// `buildTOCProgressions`, since locator hrefs may be relative to the
-    /// EPUB root while TOC entries are relative to wherever the OPF lives.
-    private func chapterTitle(forHref href: String?) -> String? {
-        guard let href else { return nil }
-        let resource = href.components(separatedBy: "#").first ?? href
-        if let exact = tocTitlesByHref[resource] { return exact }
-        for (tocHref, title) in tocTitlesByHref where resource.hasSuffix(tocHref) || tocHref.hasSuffix(resource) {
-            return title
-        }
-        return nil
-    }
-
-    /// Returns the title of the TOC entry that *starts at or before* the
-    /// given whole-book progression. Falls back to an em-dash when the TOC
-    /// wasn't loaded or the progression precedes the first mapped entry.
-    private func chapterTitle(at progression: Double) -> String {
-        chapterContext(at: progression).current
-    }
-
-    /// Five-up chapter window for the scrub HUD:
-    /// previous2 · previous1 · current · next1 · next2 at the given
-    /// whole-book progression. `current` matches `chapterTitle(at:)`;
-    /// outer slots are nil near book edges or when the TOC is empty.
-    private func chapterContext(
-        at progression: Double
-    ) -> (previous2: String?, previous1: String?, current: String, next1: String?, next2: String?) {
-        guard !tocProgressions.isEmpty else { return (nil, nil, "—", nil, nil) }
-        var idx = 0
-        for (i, entry) in tocProgressions.enumerated() {
-            if entry.progression <= progression {
-                idx = i
-            } else {
-                break
-            }
-        }
-        func at(_ offset: Int) -> String? {
-            let target = idx + offset
-            guard target >= 0, target < tocProgressions.count else { return nil }
-            return tocProgressions[target].title
-        }
-        return (at(-2), at(-1), tocProgressions[idx].title, at(1), at(2))
-    }
-
-    /// Translates a whole-book progression into a Readium `Locator` via the
-    /// cached positions list and hands it to the navigator through
-    /// `pendingJump`. Keeps `scrubProgress` pinned at the release position so
-    /// the bar holds steady until the navigator emits the new locator (cleared
-    /// in `onChange(of: currentLocator…)`). No-ops if positions aren't loaded.
-    private func commitScrub(to progression: Double) {
-        guard !positions.isEmpty else {
-            scrubProgress = nil
-            return
-        }
-        let idx = max(0, min(positions.count - 1, Int(round(Double(positions.count - 1) * progression))))
-        let target = positions[idx]
-
-        // Release landed on the same position the navigator is already showing.
-        // `applyPendingJump` would dedupe and never emit `locationDidChange`,
-        // which would leave the bar pinned at the preview forever — clear now.
-        if let currentProg = currentLocator?.locations.totalProgression,
-           let targetProg = target.locations.totalProgression,
-           abs(targetProg - currentProg) < 0.0001 {
-            scrubProgress = nil
-            return
-        }
-
-        scrubCommitPending = true
-        pendingJumpSource = .scrubCommit
-        pendingJump = target
-
-        // Safety net for any other case where the jump produces no locator
-        // emission (e.g. container dedupe against a stale `lastAppliedJumpJSON`).
-        // The bar would otherwise stay stuck on the preview indefinitely.
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(1500))
-            if scrubCommitPending {
-                scrubCommitPending = false
-                scrubProgress = nil
-            }
-        }
-    }
-
-    private func fileDiagnostics(at url: URL) -> String {
-        var lines: [String] = []
-        lines.append("URL: \(url.absoluteString)")
-        lines.append("Scheme: \(url.scheme ?? "<none>")")
-        lines.append("Path: \(url.path)")
-        let fm = FileManager.default
-        let exists = fm.fileExists(atPath: url.path)
-        lines.append("Exists: \(exists)")
-        if exists {
-            if let attrs = try? fm.attributesOfItem(atPath: url.path),
-               let size = attrs[.size] as? Int {
-                lines.append("Size: \(size) bytes")
-            }
-            if let handle = try? FileHandle(forReadingFrom: url) {
-                defer { try? handle.close() }
-                let head = handle.readData(ofLength: 4)
-                lines.append("Head: \(head.map { String(format: "%02x", $0) }.joined())")
-            } else {
-                lines.append("Head: <unreadable>")
-            }
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    private func openPublication(at url: URL) async throws -> Publication {
-        let httpClient = DefaultHTTPClient()
-        let assetRetriever = AssetRetriever(httpClient: httpClient)
-
-        guard let fileURL = FileURL(url: url) else {
-            throw OpenError.invalidFileURL(url)
-        }
-
-        let asset = try await assetRetriever.retrieve(url: fileURL)
-            .mapError { OpenError.asset($0) }
-            .get()
-
-        let parser = CompositePublicationParser(EPUBParser())
-        let opener = PublicationOpener(parser: parser)
-
-        return try await opener.open(asset: asset, allowUserInteraction: false)
-            .mapError { OpenError.publication($0) }
-            .get()
-    }
-
-    private enum OpenError: LocalizedError {
-        case invalidFileURL(URL)
-        case asset(AssetRetrieveURLError)
-        case publication(PublicationOpenError)
-
-        var errorDescription: String? {
-            switch self {
-            case .invalidFileURL(let url):
-                return "Readium rejected the file URL: \(url.absoluteString)"
-            case .asset(let inner):
-                return "Asset retrieval failed: \(Self.describe(inner))"
-            case .publication(let inner):
-                return "Publication open failed: \(inner.localizedDescription)"
-            }
-        }
-
-        private static func describe(_ error: AssetRetrieveURLError) -> String {
-            switch error {
-            case .schemeNotSupported(let scheme):
-                return "scheme '\(scheme.rawValue)' not supported"
-            case .formatNotSupported:
-                return "format not recognized (sniffer found no specifications — wrong extension / corrupted file / missing file)"
-            case .reading(let inner):
-                return "read error: \(inner.localizedDescription)"
-            }
-        }
-    }
-
-    /// Runs in parallel with publication-loading. Network-bound, so the reader
-    /// is already on screen by the time this returns. Late-arriving prompts /
-    /// silent jumps are suppressed once `userHasNavigated` is true so they
-    /// can't yank a user mid-read.
-    private func promptTitle(for info: PromptInfo) -> String {
-        if let title = chapterTitle(forHref: info.serverHref) {
-            return "Another device is in '\(title)' — switch?"
-        }
-        return "Continue from another device?"
-    }
-
-    private func parseHref(_ json: String?) -> String? {
-        guard let json,
-              let data = json.data(using: .utf8),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
-        return dict["href"] as? String
-    }
-
-    /// Decodes a Readium locator JSON string via the modern `JSONValue` →
-    /// `Locator(json:)` path. Used wherever we have a stored or pushed
-    /// locator JSON string and need a `Locator` instance.
-    private func parseLocator(_ json: String?) -> Locator? {
-        guard let json,
-              let jsonValue = try? JSONValue(jsonString: json),
-              let locator = try? Locator(json: jsonValue, warnings: nil)
-        else { return nil }
-        return locator
-    }
-
-    private func resolveOpen() async {
-        guard let book, let sync = env.context(for: book.source.id)?.sync else { return }
-        do {
-            switch try await sync.onOpen(book: book) {
-            case .useLocal:
-                break
-            case .applyServer(let progress):
-                guard !userHasNavigated,
-                      let locator = parseLocator(progress.locatorJSON) else { return }
-                pendingJumpSource = .resumeFromSync
-                pendingJump = locator
-            case .promptUser(let local, let server):
-                guard !userHasNavigated else { return }
-                pendingPrompt = PromptInfo(
-                    local: local,
-                    server: server,
-                    serverHref: parseHref(server.locatorJSON)
-                )
-            }
-        } catch {
-            // Best-effort; ignore failures.
-        }
-    }
+    // MARK: - Sync flush + cross-device prompt formatting
 
     private func currentBook() -> Book? {
         let id = bookID
@@ -887,7 +487,7 @@ struct ReaderView: View {
 
     private func flush() async {
         guard let book = currentBook(),
-              let sync = env.context(for: book.source.id)?.sync else { return }
+              let sync = env.sources.context(for: book.source.id)?.sync else { return }
         await sync.flushPendingProgress(for: book)
     }
 
@@ -903,77 +503,5 @@ struct ReaderView: View {
         formatter.unitsStyle = .full
         let when = formatter.localizedString(for: progress.timestamp, relativeTo: .now)
         return "Last read \(when) on \(device)"
-    }
-
-    /// Pill "Back to p. X" handler: issue a programmatic return to the
-    /// stored back-position, tagged so the service ignores it for stats.
-    private func handleBackToPage(_ target: ReadingStatsService.JumpReturnTarget) {
-        guard target.fromPosition >= 0,
-              target.fromPosition < positions.count else {
-            env.stats.dismissJumpPill(commitStay: false)
-            return
-        }
-        pendingJumpSource = .programmaticReturn
-        pendingJump = positions[target.fromPosition]
-        env.stats.dismissJumpPill(commitStay: false)
-    }
-
-    /// Toggles a bookmark at the current page. Snapshots the locator JSON
-    /// and chapter title at the moment of bookmark so the row survives a
-    /// later TOC reload. Plays a selection haptic. No-op when we don't
-    /// have a current locator yet.
-    private func toggleBookmark() {
-        guard let position = currentPositionIndex,
-              let locator = currentLocator,
-              let json = try? locator.jsonString() else { return }
-        BookmarkToggle.toggle(
-            in: context,
-            bookID: bookID,
-            position: position,
-            locatorJSON: json,
-            chapterTitle: chapterTitleForCurrent
-        )
-        HapticFeedback.bookmarkToggled()
-    }
-
-    private func pushLocator(bookID: UUID, locator: Locator) async {
-        let newChapterIdx = chapterIndex(at: locator.locations.totalProgression ?? 0)
-        // Seed the baseline on the first (load-artifact) emission so the very
-        // next user advance has something to compare against. No haptic fires
-        // here because we return before the source/transition check.
-        if !initialEmissionSeen {
-            initialEmissionSeen = true
-            lastSeenChapterIndex = newChapterIdx
-            return
-        }
-        userHasNavigated = true
-        guard let book = currentBook() else { return }
-        let total = locator.locations.totalProgression ?? 0
-        guard let json = try? locator.jsonString() else { return }
-        env.context(for: book.source.id)?.sync?.bufferLocator(
-            book: book, locatorJSON: json, percentage: total
-        )
-        // Stats: piggy-back on the same locator callback.
-        let source = pendingJumpSource ?? .swipe
-        pendingJumpSource = nil
-        // Haptic: only on linear (swipe/tap) forward chapter crossings.
-        // Non-linear sources (TOC, scrub, AI jump, resume) just refresh the
-        // baseline silently so the next linear advance compares correctly.
-        if hapticChapterEnabled,
-           source.isLinear,
-           let prev = lastSeenChapterIndex,
-           let new = newChapterIdx,
-           new > prev {
-            HapticFeedback.chapterChanged()
-        }
-        lastSeenChapterIndex = newChapterIdx
-        if let positionIndex = positions.firstIndex(where: { $0.href.isEquivalentTo(locator.href) }) {
-            env.stats.sessionDidAdvance(
-                position: positionIndex,
-                totalPositions: positions.count,
-                source: source,
-                bookID: book.id
-            )
-        }
     }
 }

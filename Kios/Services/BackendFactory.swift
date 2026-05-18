@@ -5,7 +5,7 @@ enum BackendFactory {
     /// Returns the (sync, catalog) pair for the given source. `sync` is `nil`
     /// when the source kind has no sync protocol (`.local`, `.opdsReadOnly`).
     /// Throws when a server kind has no credentials in `auth`.
-    /// `auth` is a protocol so `AppEnvironment.addSource` can probe with a
+    /// `auth` is a protocol so `addSource` can probe with a
     /// `TransientAuthStore` before the source is persisted to SwiftData.
     static func build(
         source: Source,

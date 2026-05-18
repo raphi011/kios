@@ -11,11 +11,11 @@ struct RootView: View {
     @State private var coordinator = BookOpenCoordinator.shared
 
     var body: some View {
-        @Bindable var env = env
+        @Bindable var router = env.router
 
         // No first-run gate: the app ships with seeded books and supports
         // local EPUB imports, so it's usable without sync. Users who want
-        // sync configure it via Settings; until then, sourceContexts has no
+        // sync configure it via Settings; until then, sources.contexts has no
         // entries with a sync service and the flush loop is a no-op.
         TabView(selection: $selectedTab) {
             HomeRootView()
@@ -33,7 +33,7 @@ struct RootView: View {
             if newPhase == .active {
                 Task {
                     await withTaskGroup(of: Void.self) { group in
-                        for ctx in env.sourceContexts.values {
+                        for ctx in env.sources.contexts.values {
                             guard let sync = ctx.sync else { continue }
                             group.addTask { await sync.flushAllPending() }
                         }
@@ -46,12 +46,12 @@ struct RootView: View {
         }
         // After the user configures a server source in Settings, jump them to
         // Library — that's where the freshly refreshed catalog lives.
-        .onChange(of: env.sourceContexts.contains(where: { $0.value.sync != nil })) { _, hasSync in
+        .onChange(of: env.sources.contexts.contains(where: { $0.value.sync != nil })) { _, hasSync in
             if hasSync { selectedTab = 1 }
         }
         .onChange(of: coordinator.pendingBookID) { _, newValue in
             guard newValue != nil, let id = coordinator.consume() else { return }
-            env.openReader(id)
+            env.router.openReader(id)
         }
         .task {
             await env.seedSampleBooksIfNeeded()
@@ -60,10 +60,10 @@ struct RootView: View {
             // Cold launch: the intent may have set `pendingBookID` before
             // RootView mounted. Consume it on first appear.
             if let id = coordinator.consume() {
-                env.openReader(id)
+                env.router.openReader(id)
             }
         }
-        .fullScreenCover(item: $env.activeReader) { route in
+        .fullScreenCover(item: $router.activeReader) { route in
             ReaderView(bookID: route.id)
         }
         .onOpenURL { url in
@@ -80,7 +80,7 @@ struct RootView: View {
             )
             switch outcome {
             case .imported(let book), .existing(let book):
-                env.openReader(book.id)
+                env.router.openReader(book.id)
             }
         } catch {
             // .onOpenURL has no UI to alert from. Swallow — file is left
