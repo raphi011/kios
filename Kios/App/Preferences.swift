@@ -44,6 +44,25 @@ extension Preference where Value == Bool {
     static let libraryGalleryMode = Preference(key: "library.galleryMode", defaultValue: false)
 }
 
+// MARK: - Appearance
+
+extension Preference where Value == AppearancePreference {
+    /// User's app-wide theme choice. `.system` follows iOS; `.light`/`.dark`
+    /// override. Drives `.preferredColorScheme(_:)` at the WindowGroup root
+    /// and is also resolved per-render into a Readium `Theme` for EPUB
+    /// content.
+    static let appearance = Preference(key: "app.appearance", defaultValue: AppearancePreference.system)
+}
+
+extension AppStorage where Value == AppearancePreference {
+    /// Convenience init that accepts a `Preference<AppearancePreference>`.
+    /// `AppearancePreference` conforms to `RawRepresentable where RawValue == String`,
+    /// so this routes through SwiftUI's RawRepresentable AppStorage init.
+    init(_ pref: Preference<AppearancePreference>) {
+        self.init(wrappedValue: pref.defaultValue, pref.key)
+    }
+}
+
 // MARK: - AppStorage convenience inits
 
 extension AppStorage where Value == Int {
