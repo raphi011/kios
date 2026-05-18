@@ -8,7 +8,7 @@ import SwiftUI
 ///      WindowGroup root (`KiosApp`). Propagates `@Environment(\.colorScheme)`
 ///      down to every Editorial view.
 ///   2. EPUB content rendering inside Readium via
-///      `resolveReaderTheme(appearance:colorScheme:)` (defined in
+///      `ReaderThemeResolution.resolve(appearance:colorScheme:)` (defined in
 ///      `Kios/Views/Reader/ReaderThemeResolution.swift`), which maps to
 ///      `ReadiumNavigator.Theme`.
 ///

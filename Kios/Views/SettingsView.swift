@@ -30,7 +30,7 @@ struct SettingsView: View {
 
     /// User's theme choice. Mirrors the AppStorage key the app root reads
     /// to apply `.preferredColorScheme(_:)`. Same value drives the EPUB
-    /// page theme via `resolveReaderTheme(...)`.
+    /// page theme via `ReaderThemeResolution.resolve(...)`.
     @AppStorage(.appearance) private var appearance: AppearancePreference
 
     // Library & sync — toggles persist in-session only.
