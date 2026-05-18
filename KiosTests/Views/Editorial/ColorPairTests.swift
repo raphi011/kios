@@ -33,11 +33,16 @@ struct ColorPairTests {
 
     /// CGColor equality is component-exact; compare RGBA floats with a tiny
     /// tolerance to absorb the SwiftUI→UIColor round-trip's float noise.
+    /// `getRed` returns `false` for color-space-incompatible colors; bail in
+    /// that case so the comparison can't silently succeed against
+    /// zero-initialized out-params.
     private func approximatelyEqual(_ lhs: UIColor, _ rhs: UIColor) -> Bool {
         var lr: CGFloat = 0, lg: CGFloat = 0, lb: CGFloat = 0, la: CGFloat = 0
         var rr: CGFloat = 0, rg: CGFloat = 0, rb: CGFloat = 0, ra: CGFloat = 0
-        lhs.getRed(&lr, green: &lg, blue: &lb, alpha: &la)
-        rhs.getRed(&rr, green: &rg, blue: &rb, alpha: &ra)
+        guard lhs.getRed(&lr, green: &lg, blue: &lb, alpha: &la),
+              rhs.getRed(&rr, green: &rg, blue: &rb, alpha: &ra) else {
+            return false
+        }
         let eps: CGFloat = 0.001
         return abs(lr - rr) < eps && abs(lg - rg) < eps && abs(lb - rb) < eps && abs(la - ra) < eps
     }
