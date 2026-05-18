@@ -360,24 +360,46 @@ A few things people often add that wouldn't help here:
 | 1 | Split `AppEnvironment` into env + `SourceRegistry` + `ReaderRouter` | M | H — cleanest single refactor | ✅ done |
 | 2 | Introduce `ReaderViewModel` for `ReaderView`'s 33-state mess | M | H — biggest single readability win | ✅ done |
 | 3 | Remove `localSource: Source!` IUO | S | M — type-safety, no IUO crashes | ✅ done |
-| 4 | Extract `LibraryRootView` subviews + view model | M | M — 519 LOC → 5 files of ~100 | open |
+| 4 | Extract `LibraryRootView` subviews + view model | M | M — 519 LOC → 5 files of ~100 | ✅ done |
 | 5 | Document `KiosTests/Fixtures/` + grow `Helpers/` factories | S | M — faster new tests | open |
-| 6 | Drop `@preconcurrency` when Readium catches up | S | L — future-proofing | open |
+| 6 | Drop `@preconcurrency` when Readium catches up | S | L — future-proofing | blocked on upstream |
 | 7 | Extract `KiosUI` SPM module | M | L — only if you grow a second consumer | open |
 | 8 | Split `Core/` into sub-targets | L | L — only at ~50+ files | open |
 
-### What landed (recs 1–3)
+### Post-audit additions (numbering continues)
 
-- `Kios/App/SourceRegistry.swift` (95 LOC) — owns per-source `SourceContext` lifecycle.
-- `Kios/App/ReaderRouter.swift` (21 LOC) — owns `activeReader` + `openReader`.
-- `Kios/App/AppEnvironment.swift` — shrank 444 → 383 LOC, now a thin composition root + workflows (addSource, removeSource, refreshLibrary, sample seeding).
-- `Kios/App/AppEnvironment.swift` — `localSource: Source!` → `let localSource: Source` via static `loadOrSeedLocalSource(in:)`.
-- `Kios/Views/Reader/ReaderViewModel.swift` (601 LOC) — engine state (publication, locator, scrub, TOC, prompts) + the heavy methods. Takes resolved dependencies as parameters; no `env` reference, so it's testable in isolation.
-- `Kios/Views/Reader/ReaderView.swift` — shrank 979 → 507 LOC. `@State` dropped 16 → 6 (only UI bookkeeping: `vm`, `uiVisible`, `showContents`, `fontHUD`, `brightnessHUD`, `selectionProbe`).
+| # | Change | Effort | Payoff | Status |
+|---|--------|--------|--------|--------|
+| 9 | Reorganize networking by feature (`Net/Sync/Catalog/Auth` + `Kios/Catalog/OPDS/`) | S | M — folder names self-document | ✅ done |
+| 10 | Extract migrations into `Kios/App/Migrations.swift` | S | M — `AppEnvironment` becomes pure composition | ✅ done |
+| 11 | `Preference<T>` namespace for `@AppStorage` keys | S | M — typo-proof, defaults centralized | ✅ done |
+| 12 | Narrow `CatalogBackend.resolveDownload` → `URL?` | S | M — removes a `fatalError` stub | ✅ done |
+| 13 | `KEPUBSpanResolver` → `actor` (was `@MainActor`) | S | M — ZIP I/O off main on first read | ✅ done |
+| 14 | `os.Logger` infrastructure + 4 key catch sites | S | H — production debugging unblocked | ✅ done |
+| 15 | Tests for `SourceRegistry`, `ReaderRouter`, `ReaderViewModel`, `LibraryClassifier`, `ToastCenter` | M | H — lock in extractions | ✅ done |
+| 16 | `ToastCenter` + top-banner UX | M | M — error surface for `.onOpenURL` and future call sites | ✅ done |
 
-Call-site sweep: `env.sourceContexts` → `env.sources.contexts`; `env.context(for:)` → `env.sources.context(for:)`; `env.openReader(id)` → `env.router.openReader(id)`; `$env.activeReader` → `@Bindable var router = env.router; $router.activeReader`.
+### Snapshot before vs after
 
-Start the remaining work with #4 — `LibraryRootView` is the next-largest file and benefits from the same VM treatment.
+| | Before | After |
+|---|---|---|
+| `AppEnvironment.swift` | 444 LOC | 383 LOC |
+| `ReaderView.swift` | 979 LOC | 507 LOC |
+| `ReaderView` `@State` count | 16 | 6 |
+| `LibraryRootView.swift` | 519 LOC | 385 LOC |
+| iOS test count | 178 | 227 |
+| Networking layout | asymmetric (`Kios/Networking/` = OPDS only) | feature-folder symmetric on both sides |
+| Force-unwrapped IUOs in production | 1 (`localSource: Source!`) | 0 |
+| Structured logging | none | per-subsystem `os.Logger` extensions |
+| `@AppStorage` key typos | possible | compile-checked via `Preference<T>` |
+| Migration code on `AppEnvironment` | 55 LOC scattered | extracted to `Migrations.swift` |
+| Error surface for swallowed errors | none | `ToastCenter` (top banner) |
+
+### Still open
+
+- **#5** — KiosTests fixtures README + factory helpers. Low effort, defer until a new contributor needs orientation.
+- **#6** — drop `@preconcurrency` from Readium imports. Blocked: Readium 3.9 isn't fully `Sendable`-clean (verified by attempting the removal — `sending 'publication'` warnings on `publication.positions()` and `opener.open(asset:)`). Retry on next Readium toolkit version.
+- **#7 / #8** — premature today. Revisit when a second consumer of the design system appears (#7) or when `Core/` crosses ~50 files (#8).
 
 ## What to read next
 
