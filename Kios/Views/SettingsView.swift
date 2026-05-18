@@ -28,6 +28,11 @@ struct SettingsView: View {
     /// in.
     @AppStorage(.readerHapticChapterEnabled) private var hapticChapterEnabled: Bool
 
+    /// User's theme choice. Mirrors the AppStorage key the app root reads
+    /// to apply `.preferredColorScheme(_:)`. Same value drives the EPUB
+    /// page theme via `resolveReaderTheme(...)`.
+    @AppStorage(.appearance) private var appearance: AppearancePreference
+
     // Library & sync — toggles persist in-session only.
     @State private var syncOverCellular = false
 
@@ -36,6 +41,7 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 EditorialNavBar(title: "Settings")
 
+                appearanceSection           // new
                 readingSection
                 librarySyncSection
 
@@ -49,6 +55,32 @@ struct SettingsView: View {
         }
         .background(EditorialTheme.bg)
         .navigationBarHidden(true)
+    }
+
+    // MARK: - Appearance
+
+    /// Top-level theme switch. Coupled — flips both the app chrome and the
+    /// EPUB page theme. Segmented because there are exactly three options;
+    /// if Sepia is ever added, promote to a NavigationLink → detail view.
+    private var appearanceSection: some View {
+        EditorialList("Appearance") {
+            HStack(spacing: 12) {
+                Text("Theme")
+                    .font(EditorialTheme.sans(size: 17))
+                    .foregroundStyle(EditorialTheme.ink)
+                Spacer(minLength: 8)
+                Picker("", selection: $appearance) {
+                    Text("System").tag(AppearancePreference.system)
+                    Text("Light").tag(AppearancePreference.light)
+                    Text("Dark").tag(AppearancePreference.dark)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 220)
+            }
+            .padding(.horizontal, EditorialTheme.rowSidePad)
+            .padding(.vertical, 8)
+            .frame(minHeight: EditorialTheme.cellMin)
+        }
     }
 
     // MARK: - Reading
