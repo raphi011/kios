@@ -272,9 +272,12 @@ final class AppEnvironment {
                 format: book.format,
                 thumbnailURL: book.thumbnailURL
             )
-            let fresh = try await ctx.catalog.resolveDownload(for: entry)
-            book.acquisitionURL = fresh
-            try? modelContext.save()
+            // `nil` from the backend means "no refresh available" (e.g. a
+            // local catalog) — preserve the existing URL rather than nil it.
+            if let fresh = try await ctx.catalog.resolveDownload(for: entry) {
+                book.acquisitionURL = fresh
+                try? modelContext.save()
+            }
         } catch {
             // Stale URL — let the download attempt anyway.
         }

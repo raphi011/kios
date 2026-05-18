@@ -13,7 +13,7 @@ struct MockCatalogBackend: CatalogBackend {
 
     func listLibrary() async throws -> [CatalogEntry] { entries }
 
-    func resolveDownload(for entry: CatalogEntry) async throws -> URL {
+    func resolveDownload(for entry: CatalogEntry) async throws -> URL? {
         entry.downloadURL
     }
 

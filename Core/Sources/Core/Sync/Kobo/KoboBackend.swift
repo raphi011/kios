@@ -154,7 +154,7 @@ public actor KoboBackend: SyncBackend, CatalogBackend {
         return entries
     }
 
-    public func resolveDownload(for entry: CatalogEntry) async throws -> URL {
+    public func resolveDownload(for entry: CatalogEntry) async throws -> URL? {
         // CWA's download URLs are direct GETs; nothing to resolve.
         entry.downloadURL
     }

@@ -57,7 +57,7 @@ struct OPDSCatalogAdapter: CatalogBackend {
 
     /// OPDS has no token-refresh or pre-signed URL flow — the acquisition
     /// URL captured at listLibrary time IS the download URL.
-    func resolveDownload(for entry: CatalogEntry) async throws -> URL {
+    func resolveDownload(for entry: CatalogEntry) async throws -> URL? {
         entry.downloadURL
     }
 

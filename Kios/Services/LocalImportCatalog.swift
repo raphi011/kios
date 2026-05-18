@@ -12,10 +12,9 @@ public struct LocalImportCatalog: CatalogBackend {
         []
     }
 
-    public func resolveDownload(for entry: CatalogEntry) async throws -> URL {
+    public func resolveDownload(for entry: CatalogEntry) async throws -> URL? {
         // Local books are never "downloaded" — their file is the import.
-        // Hitting this is a logic error in the calling code.
-        fatalError("LocalImportCatalog.resolveDownload should never be called")
+        nil
     }
 
     public func probe() async throws {

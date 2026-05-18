@@ -33,5 +33,8 @@ public protocol CatalogBackend: Sendable {
     /// Used by `AppEnvironment.addSource` before persisting any state.
     func probe() async throws
     func listLibrary() async throws -> [CatalogEntry]
-    func resolveDownload(for entry: CatalogEntry) async throws -> URL
+    /// Returns a fresh download URL for `entry`. `nil` means this backend
+    /// has no remote download — e.g. local-import catalogs whose books
+    /// already live on disk. Throws on transient resolve failures.
+    func resolveDownload(for entry: CatalogEntry) async throws -> URL?
 }
