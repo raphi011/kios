@@ -10,14 +10,11 @@ import Core
 /// - Three grouped-inset card sections: Reading · Unread · Finished
 /// - "Add a book" action sheet on the plus button (Files / URL / Sync now)
 ///
-/// Search is stubbed; "Add from URL" surfaces a "coming soon" alert until the
-/// URL importer lands.
+/// Subviews live in `Kios/Views/Library/`:
+/// - `LibrarySearchBar`, `LibraryGallerySection`, `LibraryListSection`,
+///   `LibraryEmptyState`, `LibraryFilteredEmptyState`, `LibrarySearchEmptyState`
+/// - `LibraryFilter` enum + `LibraryClassifier` for the pure filter logic.
 struct LibraryRootView: View {
-
-    /// Library tab filter (also used by the segmented control).
-    private enum Filter: Hashable {
-        case all, reading, unread, finished
-    }
 
     @Query(filter: #Predicate<Book> { !$0.archived },
            sort: \Book.title)
@@ -31,7 +28,7 @@ struct LibraryRootView: View {
 
     @AppStorage("library.selectedSourceID") private var selectedSourceIDString: String?
 
-    @State private var filter: Filter = .all
+    @State private var filter: LibraryFilter = .all
     @State private var isRefreshing: Bool = false
     @State private var showFileImporter: Bool = false
     @State private var showAddSheet: Bool = false
@@ -45,6 +42,8 @@ struct LibraryRootView: View {
     @State private var searchActive: Bool = false
     @State private var searchQuery: String = ""
     @FocusState private var searchFocused: Bool
+
+    // MARK: - Derived state
 
     private var selectedSource: Source? {
         if let id = selectedSourceIDString.flatMap(UUID.init(uuidString:)),
@@ -65,9 +64,7 @@ struct LibraryRootView: View {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
-    /// Books matching the active query in title or any author. Empty when
-    /// the query is empty; in that case the body falls back to the normal
-    /// grouped view rather than rendering "Results · 0".
+    /// Books matching the active query in title or any author.
     private var searchResults: [Book] {
         let q = normalizedQuery
         guard !q.isEmpty else { return [] }
@@ -84,34 +81,36 @@ struct LibraryRootView: View {
     }
 
     private var readingBooks: [Book] {
-        booksInSelectedSource.filter { book in
-            let p = progressByBookID[book.id] ?? 0
-            return book.finishedAt == nil && book.filename != nil && p > 0 && p < 1
-        }
+        LibraryClassifier.reading(booksInSelectedSource, progressByBookID: progressByBookID)
     }
-
     private var unreadBooks: [Book] {
-        // Includes both freshly-downloaded books (progress 0) and catalog-only
-        // books (filename == nil) so the user can see what's available to read.
-        booksInSelectedSource.filter { book in
-            let p = progressByBookID[book.id] ?? 0
-            return book.finishedAt == nil && p == 0
-        }
+        LibraryClassifier.unread(booksInSelectedSource, progressByBookID: progressByBookID)
+    }
+    private var finishedBooks: [Book] {
+        LibraryClassifier.finished(booksInSelectedSource)
     }
 
-    private var finishedBooks: [Book] {
-        booksInSelectedSource.filter { $0.finishedAt != nil }
+    /// True when the currently-selected filter produces no rows.
+    private var isFilteredEmpty: Bool {
+        switch filter {
+        case .all:      return readingBooks.isEmpty && unreadBooks.isEmpty && finishedBooks.isEmpty
+        case .reading:  return readingBooks.isEmpty
+        case .unread:   return unreadBooks.isEmpty
+        case .finished: return finishedBooks.isEmpty
+        }
     }
 
     /// Footer for the last section — surfaces sync recency. Hidden until the
     /// sync layer exposes a timestamp.
     private var lastSyncedFooter: LocalizedStringKey? { nil }
 
+    // MARK: - Body
+
     var body: some View {
         NavigationStack {
             Group {
                 if booksInSelectedSource.isEmpty {
-                    emptyState
+                    LibraryEmptyState { showAddSheet = true }
                 } else {
                     libraryScroll
                 }
@@ -168,78 +167,32 @@ struct LibraryRootView: View {
         }
     }
 
+    // MARK: - Library scroll
+
     private var libraryScroll: some View {
         ScrollView {
             VStack(spacing: 0) {
-                EditorialNavBar(titleContent: { SourcePickerHeader() }) {
-                    EditorialNavIconButton(
-                        systemName: galleryMode ? "list.bullet" : "square.grid.2x2",
-                        accessibilityLabel: galleryMode ? "List view" : "Gallery view"
-                    ) {
-                        galleryMode.toggle()
-                    }
-                    EditorialNavIconButton(
-                        systemName: "magnifyingglass",
-                        accessibilityLabel: "Search"
-                    ) {
-                        toggleSearch()
-                    }
-                    EditorialNavIconButton(
-                        systemName: isRefreshing ? "arrow.triangle.2.circlepath" : "plus",
-                        accessibilityLabel: "Add book"
-                    ) {
-                        showAddSheet = true
-                    }
-                }
-
+                navBar
                 if searchActive {
-                    searchBar
+                    LibrarySearchBar(
+                        query: $searchQuery,
+                        focused: $searchFocused,
+                        onCancel: closeSearch
+                    )
                 }
-
                 if !searchActive {
                     EditorialSegmented(
                         items: [
-                            ("All", Filter.all),
-                            ("Reading", Filter.reading),
-                            ("Unread", Filter.unread),
-                            ("Finished", Filter.finished),
+                            ("All", LibraryFilter.all),
+                            ("Reading", LibraryFilter.reading),
+                            ("Unread", LibraryFilter.unread),
+                            ("Finished", LibraryFilter.finished),
                         ],
                         selection: $filter
                     )
                     .padding(.horizontal, EditorialTheme.listSidePad)
                 }
-
-                if isSearching {
-                    if searchResults.isEmpty {
-                        searchEmptyState
-                    } else if galleryMode {
-                        gallerySection("Results", books: searchResults)
-                            .padding(.top, 8)
-                    } else {
-                        section("Results", books: searchResults, kind: .reading)
-                    }
-                } else if searchActive {
-                    // Search bar shown but query is empty — leave space.
-                    Spacer().frame(height: 40)
-                } else if isFilteredEmpty {
-                    filteredEmptyState
-                } else if galleryMode {
-                    galleryBody
-                } else {
-                    if filter == .all || filter == .reading, !readingBooks.isEmpty {
-                        section("Reading", books: readingBooks, kind: .reading)
-                    }
-                    if filter == .all || filter == .unread, !unreadBooks.isEmpty {
-                        section("Unread", books: unreadBooks, kind: .unread)
-                    }
-                    if filter == .all || filter == .finished, !finishedBooks.isEmpty {
-                        section("Finished",
-                                books: finishedBooks,
-                                kind: .finished,
-                                footer: lastSyncedFooter)
-                    }
-                }
-
+                contentSections
                 Color.clear.frame(height: 110)   // tab-bar breathing
             }
         }
@@ -249,45 +202,108 @@ struct LibraryRootView: View {
         }
     }
 
-    // MARK: - Search
-
-    private var searchBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(EditorialTheme.muted)
-            TextField("Search title or author", text: $searchQuery)
-                .focused($searchFocused)
-                .submitLabel(.search)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .foregroundStyle(EditorialTheme.ink)
-            if !searchQuery.isEmpty {
-                Button {
-                    searchQuery = ""
-                    searchFocused = true
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(EditorialTheme.muted)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Clear search")
+    private var navBar: some View {
+        EditorialNavBar(titleContent: { SourcePickerHeader() }) {
+            EditorialNavIconButton(
+                systemName: galleryMode ? "list.bullet" : "square.grid.2x2",
+                accessibilityLabel: galleryMode ? "List view" : "Gallery view"
+            ) {
+                galleryMode.toggle()
             }
-            Button("Cancel", action: closeSearch)
-                .foregroundStyle(EditorialTheme.accent)
+            EditorialNavIconButton(
+                systemName: "magnifyingglass",
+                accessibilityLabel: "Search"
+            ) {
+                toggleSearch()
+            }
+            EditorialNavIconButton(
+                systemName: isRefreshing ? "arrow.triangle.2.circlepath" : "plus",
+                accessibilityLabel: "Add book"
+            ) {
+                showAddSheet = true
+            }
         }
-        .padding(.horizontal, EditorialTheme.listSidePad)
-        .padding(.vertical, 8)
     }
 
-    private var searchEmptyState: some View {
-        ContentUnavailableView(
-            "No matches",
-            systemImage: "magnifyingglass",
-            description: Text("Nothing in your library matches \u{201C}\(searchQuery)\u{201D}.")
-        )
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
+    @ViewBuilder
+    private var contentSections: some View {
+        if isSearching {
+            if searchResults.isEmpty {
+                LibrarySearchEmptyState(query: searchQuery)
+            } else if galleryMode {
+                LibraryGallerySection(
+                    title: "Results", books: searchResults, onTap: handleTap
+                )
+                .padding(.top, 8)
+            } else {
+                LibraryListSection(
+                    title: "Results",
+                    books: searchResults,
+                    kind: .reading,
+                    progressByBookID: progressByBookID,
+                    metaForBook: bookMeta,
+                    finishedLabelForBook: finishedLabel,
+                    onTap: handleTap
+                )
+            }
+        } else if searchActive {
+            // Search bar shown but query is empty — leave space.
+            Spacer().frame(height: 40)
+        } else if isFilteredEmpty {
+            LibraryFilteredEmptyState(filter: filter)
+        } else if galleryMode {
+            galleryBody
+        } else {
+            listBody
+        }
     }
+
+    @ViewBuilder
+    private var galleryBody: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            if filter == .all || filter == .reading, !readingBooks.isEmpty {
+                LibraryGallerySection(title: "Reading", books: readingBooks, onTap: handleTap)
+            }
+            if filter == .all || filter == .unread, !unreadBooks.isEmpty {
+                LibraryGallerySection(title: "Unread", books: unreadBooks, onTap: handleTap)
+            }
+            if filter == .all || filter == .finished, !finishedBooks.isEmpty {
+                LibraryGallerySection(title: "Finished", books: finishedBooks, onTap: handleTap)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private var listBody: some View {
+        if filter == .all || filter == .reading, !readingBooks.isEmpty {
+            LibraryListSection(
+                title: "Reading", books: readingBooks, kind: .reading,
+                progressByBookID: progressByBookID,
+                metaForBook: bookMeta, finishedLabelForBook: finishedLabel,
+                onTap: handleTap
+            )
+        }
+        if filter == .all || filter == .unread, !unreadBooks.isEmpty {
+            LibraryListSection(
+                title: "Unread", books: unreadBooks, kind: .unread,
+                progressByBookID: progressByBookID,
+                metaForBook: bookMeta, finishedLabelForBook: finishedLabel,
+                onTap: handleTap
+            )
+        }
+        if filter == .all || filter == .finished, !finishedBooks.isEmpty {
+            LibraryListSection(
+                title: "Finished", books: finishedBooks, kind: .finished,
+                footer: lastSyncedFooter,
+                progressByBookID: progressByBookID,
+                metaForBook: bookMeta, finishedLabelForBook: finishedLabel,
+                onTap: handleTap
+            )
+        }
+    }
+
+    // MARK: - Search controls
 
     private func toggleSearch() {
         if searchActive {
@@ -305,159 +321,7 @@ struct LibraryRootView: View {
         searchFocused = false
     }
 
-    // MARK: - Gallery
-
-    /// Three-column grid of just the cover art. Reuses the same filter-aware
-    /// section split as the list view (Reading / Unread / Finished) so the
-    /// header counts and grouping stay consistent across modes.
-    @ViewBuilder
-    private var galleryBody: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            if filter == .all || filter == .reading, !readingBooks.isEmpty {
-                gallerySection("Reading", books: readingBooks)
-            }
-            if filter == .all || filter == .unread, !unreadBooks.isEmpty {
-                gallerySection("Unread", books: unreadBooks)
-            }
-            if filter == .all || filter == .finished, !finishedBooks.isEmpty {
-                gallerySection("Finished", books: finishedBooks)
-            }
-        }
-        .padding(.top, 8)
-    }
-
-    private func gallerySection(
-        _ name: String.LocalizationValue,
-        books: [Book]
-    ) -> some View {
-        let localizedName = String(localized: name)
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("\(localizedName) · \(books.count)")
-                .editorialEyebrow()
-                .padding(.horizontal, EditorialTheme.listSidePad)
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 14),
-                    GridItem(.flexible(), spacing: 14),
-                    GridItem(.flexible(), spacing: 14),
-                ],
-                spacing: 16
-            ) {
-                ForEach(books, id: \.id) { book in
-                    Button { handleTap(book) } label: {
-                        BookCoverImage(book: book, style: .matteFit)
-                            .aspectRatio(2.0 / 3.0, contentMode: .fit)
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, EditorialTheme.listSidePad)
-        }
-    }
-
-    // MARK: - List
-
-    private enum SectionKind { case reading, unread, finished }
-
-    private func section(
-        _ name: String.LocalizationValue,
-        books: [Book],
-        kind: SectionKind,
-        footer: LocalizedStringKey? = nil
-    ) -> some View {
-        let localizedName = String(localized: name)
-        return EditorialList("\(localizedName) · \(books.count)", footer: footer) {
-            ForEach(books.indices, id: \.self) { i in
-                let book = books[i]
-                Button { handleTap(book) } label: {
-                    EditorialBookRow(
-                        title: book.title,
-                        author: book.authors.joined(separator: ", "),
-                        progress: progressByBookID[book.id] ?? 0,
-                        meta: kind == .unread ? bookMeta(book) : nil,
-                        finishedLabel: kind == .finished ? finishedLabel(book) : nil
-                    ) {
-                        AnyView(BookCoverImage(book: book))
-                    }
-                }
-                .buttonStyle(.plain)
-                if i < books.count - 1 {
-                    EditorialHairline()
-                }
-            }
-        }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 0) {
-            EditorialNavBar(titleContent: { SourcePickerHeader() }) {
-                EditorialNavIconButton(
-                    systemName: "plus",
-                    accessibilityLabel: "Add book"
-                ) {
-                    showAddSheet = true
-                }
-            }
-            Spacer()
-            ContentUnavailableView(
-                "Your library is empty",
-                systemImage: "books.vertical",
-                description: Text("Tap + to import an EPUB, or pull to refresh.")
-            )
-            Spacer()
-        }
-    }
-
-    /// True when the currently-selected filter produces no rows. The `.all`
-    /// branch covers the degenerate case where every book is catalog-only
-    /// with mid-read progress (and therefore matches none of the three
-    /// section predicates) — `books.isEmpty` is handled separately above.
-    private var isFilteredEmpty: Bool {
-        switch filter {
-        case .all:      return readingBooks.isEmpty && unreadBooks.isEmpty && finishedBooks.isEmpty
-        case .reading:  return readingBooks.isEmpty
-        case .unread:   return unreadBooks.isEmpty
-        case .finished: return finishedBooks.isEmpty
-        }
-    }
-
-    @ViewBuilder
-    private var filteredEmptyState: some View {
-        let (title, description, symbol) = filteredEmptyContent
-        ContentUnavailableView(
-            title,
-            systemImage: symbol,
-            description: Text(description)
-        )
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
-        .padding(.bottom, 80)
-    }
-
-    private var filteredEmptyContent: (title: LocalizedStringKey, description: LocalizedStringKey, symbol: String) {
-        switch filter {
-        case .all:
-            return ("Your library is empty",
-                    "Tap + to import an EPUB, or pull to refresh.",
-                    "books.vertical")
-        case .reading:
-            return ("Nothing in progress",
-                    "Books you start reading will appear here.",
-                    "book.pages")
-        case .unread:
-            return ("No unread books",
-                    "Books you haven't started will appear here.",
-                    "book.closed")
-        case .finished:
-            return ("No finished books",
-                    "Books you finish reading will appear here.",
-                    "checkmark.circle")
-        }
-    }
+    // MARK: - Row metadata
 
     private func bookMeta(_ book: Book) -> String? {
         let format = book.format.rawValue.uppercased()
@@ -476,6 +340,8 @@ struct LibraryRootView: View {
         guard let finishedAt = book.finishedAt else { return nil }
         return finishedAt.formatted(.dateTime.day().month(.abbreviated))
     }
+
+    // MARK: - Actions
 
     private func handleImport(_ result: Result<[URL], Error>) async {
         switch result {
