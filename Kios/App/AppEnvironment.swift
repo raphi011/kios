@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftUI
 import SwiftData
 import UIKit
@@ -172,6 +173,9 @@ final class AppEnvironment {
             let ctx = try sources.makeContext(for: transient)
             try await library.refresh(using: ctx.catalog, source: transient)
         } catch {
+            Logger.app.error(
+                "initial refresh failed for new source \(transient.id, privacy: .public) (\(String(describing: kind), privacy: .public)): \(error.localizedDescription, privacy: .public)"
+            )
             transient.needsAttention = true
             try? modelContext.save()
         }
@@ -279,6 +283,9 @@ final class AppEnvironment {
                 try? modelContext.save()
             }
         } catch {
+            Logger.catalog.notice(
+                "refreshAcquisitionURL failed for book \(book.id, privacy: .public): \(error.localizedDescription, privacy: .public) — using stale URL"
+            )
             // Stale URL — let the download attempt anyway.
         }
     }

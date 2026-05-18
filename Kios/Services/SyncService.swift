@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 import Core
 
@@ -163,6 +164,9 @@ final class SyncService {
             row.pendingUpload = false
             try? context.save()
         } catch {
+            Logger.sync.error(
+                "flush failed for book \(book.id, privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
             // Leave pendingUpload = true; next trigger retries.
         }
     }

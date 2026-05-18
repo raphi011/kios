@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 struct RootView: View {
     @Environment(AppEnvironment.self) private var env
@@ -83,6 +84,9 @@ struct RootView: View {
                 env.router.openReader(book.id)
             }
         } catch {
+            Logger.importFlow.error(
+                "openURL import failed: \(error.localizedDescription, privacy: .public)"
+            )
             // .onOpenURL has no UI to alert from. Swallow — file is left
             // alone, no row inserted. Future improvement: bridge errors
             // back to a toast surface.
