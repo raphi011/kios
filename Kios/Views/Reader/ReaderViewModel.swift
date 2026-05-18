@@ -134,6 +134,23 @@ final class ReaderViewModel {
     // MARK: - Loading
 
     /// Loads the persisted ReadingProgress (if any), opens the publication,
+    /// Runs `loadPublication` then `resolveOpen` for the open flow.
+    /// Sequential rather than parallel — both methods are `@MainActor`, so
+    /// parallelism would only overlap during inner `await` points, and the
+    /// `async let` form trips Sendable checks on `Book`. Total cold-open
+    /// time is dominated by `loadPublication`'s WKWebView spin-up anyway.
+    func loadAndResolve(
+        fileURL: URL?,
+        persistedLocatorJSON: String?,
+        book: Book?,
+        sync: SyncService?
+    ) async {
+        await loadPublication(at: fileURL, persistedLocatorJSON: persistedLocatorJSON)
+        if let book {
+            await resolveOpen(book: book, sync: sync)
+        }
+    }
+
     /// and caches scrub metadata. Idempotent on `fileURL` — the view drives
     /// this through a `.task(id: book?.fileURL)`.
     func loadPublication(at fileURL: URL?, persistedLocatorJSON: String?) async {

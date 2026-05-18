@@ -112,7 +112,8 @@ struct ReaderView: View {
     // MARK: - Load + resolve
 
     /// Runs the publication open + cross-device resolve concurrently, then
-    /// opens a stats session once positions are known.
+    /// opens a stats session once positions are known. Orchestration lives
+    /// on the VM so the parallel-task closures stay main-actor-isolated.
     private func loadAndResolve() async {
         let persistedJSON: String? = {
             let id = bookID
@@ -120,17 +121,13 @@ struct ReaderView: View {
                 FetchDescriptor<ReadingProgress>(predicate: #Predicate { $0.bookID == id })
             ).first?.locatorJSON
         }()
-        async let load: Void = vm.loadPublication(
-            at: book?.fileURL,
-            persistedLocatorJSON: persistedJSON
+        let sync = book.flatMap { env.sources.context(for: $0.source.id)?.sync }
+        await vm.loadAndResolve(
+            fileURL: book?.fileURL,
+            persistedLocatorJSON: persistedJSON,
+            book: book,
+            sync: sync
         )
-        async let resolve: Void = {
-            if let book {
-                let sync = env.sources.context(for: book.source.id)?.sync
-                await vm.resolveOpen(book: book, sync: sync)
-            }
-        }()
-        _ = await (load, resolve)
 
         // Stats: open a session once positions are known. Initial position
         // is the current locator's index, falling back to the initial
@@ -228,7 +225,6 @@ struct ReaderView: View {
     private var content: some View {
         if let book {
             if book.fileURL != nil, let publication = vm.publication {
-                let id = book.id
                 // Snapshot href→index outside the @Sendable closure so we
                 // don't capture the non-Sendable `Publication`. The reading
                 // order is static for the duration of the reader session.

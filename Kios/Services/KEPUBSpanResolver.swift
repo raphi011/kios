@@ -3,13 +3,19 @@ import os
 import Core
 import ReadiumZIPFoundation
 
-@MainActor
-protocol KoboSpanResolving: AnyObject {
+/// Resolves a Kobo span ID for a given progression inside a chapter.
+/// Implementations may cache per-chapter parses, so the protocol is
+/// `Sendable` rather than `@MainActor` — actor and non-actor conformers
+/// both work, and callers `await` the resolve already.
+protocol KoboSpanResolving: AnyObject, Sendable {
     func resolve(bookFileURL: URL, chapterHref: String, progression: Double) async -> String?
 }
 
-@MainActor
-final class KEPUBSpanResolver: KoboSpanResolving {
+/// Actor-isolated so first-read ZIP I/O runs off the main thread. Cache
+/// hits async-hop to the actor but are cheap; cache misses do real work
+/// inside the nonisolated static `readSpans` (so the actor isn't held
+/// during the parse).
+actor KEPUBSpanResolver: KoboSpanResolving {
     private struct Key: Hashable {
         let bookFile: URL
         let chapterHref: String
@@ -29,7 +35,7 @@ final class KEPUBSpanResolver: KoboSpanResolving {
         return KoboSpanParser.span(at: progression, in: spans)
     }
 
-    private nonisolated static func readSpans(
+    private static func readSpans(
         bookFileURL: URL,
         chapterHref: String
     ) async -> [String]? {
@@ -56,7 +62,7 @@ final class KEPUBSpanResolver: KoboSpanResolving {
         }
     }
 
-    private nonisolated static func entryMatches(_ path: String, chapterHref: String) -> Bool {
+    private static func entryMatches(_ path: String, chapterHref: String) -> Bool {
         path == chapterHref || path.hasSuffix("/" + chapterHref)
     }
 }

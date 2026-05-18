@@ -12,7 +12,7 @@ import SwiftUI
 ///
 /// `AppStorage` initialises with the preference's default the first time the
 /// key is touched on disk.
-struct Preference<Value> {
+struct Preference<Value: Sendable>: Sendable {
     let key: String
     let defaultValue: Value
 }
