@@ -30,6 +30,11 @@ struct ReaderHost: UIViewControllerRepresentable {
     /// default (no override); non-empty = CSS family name (`Iowan Old
     /// Style`, `Georgia`, …).
     let fontFamilyRaw: String
+    /// Resolved Readium theme (`.light` or `.dark`). Resolved upstream in
+    /// `ReaderView` so the host never has to consult
+    /// `@Environment(\.colorScheme)` from inside the
+    /// `UIViewControllerRepresentable` bridge.
+    let theme: ReadiumNavigator.Theme
     var onLocatorChange: @Sendable (Locator) -> Void
     var onCenterTap: () -> Void
     var onPageTurn: () -> Void
@@ -50,7 +55,7 @@ struct ReaderHost: UIViewControllerRepresentable {
                 publication: publication,
                 initialLocator: initialLocator
             )
-            vc.update(fontSizePct: fontSizePct, fontFamilyRaw: fontFamilyRaw)
+            vc.update(fontSizePct: fontSizePct, fontFamilyRaw: fontFamilyRaw, theme: theme)
             vc.onLocatorChange = { locator in onLocatorChange(locator) }
             vc.onCenterTap = onCenterTap
             vc.onPageTurn = onPageTurn
@@ -70,7 +75,7 @@ struct ReaderHost: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
         guard let container = uiViewController as? ReaderContainerVC else { return }
-        container.update(fontSizePct: fontSizePct, fontFamilyRaw: fontFamilyRaw)
+        container.update(fontSizePct: fontSizePct, fontFamilyRaw: fontFamilyRaw, theme: theme)
         // Re-bind callbacks each update — SwiftUI may have re-created closures.
         container.onLocatorChange = { locator in onLocatorChange(locator) }
         container.onCenterTap = onCenterTap

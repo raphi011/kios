@@ -16,6 +16,7 @@ struct ReaderView: View {
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.modelContext) private var context
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
 
@@ -34,6 +35,7 @@ struct ReaderView: View {
     /// into a new chapter. Silent for TOC jumps, scrubs, and sync-resume —
     /// the toggle gates only linear chapter transitions.
     @AppStorage(.readerHapticChapterEnabled) private var hapticChapterEnabled: Bool
+    @AppStorage(.appearance) private var appearance: AppearancePreference
 
     @State private var vm = ReaderViewModel()
 
@@ -219,6 +221,13 @@ struct ReaderView: View {
         return bookmarksForBook.contains { $0.position == position }
     }
 
+    /// Resolves the user's appearance choice + current colorScheme to a
+    /// concrete Readium theme. `.system` resolves here on the SwiftUI side
+    /// so the UIKit container receives `.light`/`.dark` only.
+    private var resolvedReaderTheme: ReadiumNavigator.Theme {
+        ReaderThemeResolution.resolve(appearance: appearance, colorScheme: colorScheme)
+    }
+
     // MARK: - Content
 
     @ViewBuilder
@@ -237,6 +246,7 @@ struct ReaderView: View {
                     pendingJump: vm.pendingJump,
                     fontSizePct: fontSizePct,
                     fontFamilyRaw: fontFamilyRaw,
+                    theme: resolvedReaderTheme,
                     onLocatorChange: { @Sendable locator in
                         Task { @MainActor in
                             vm.currentLocator = locator

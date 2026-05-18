@@ -30,6 +30,12 @@ final class ReaderContainerVC: UIViewController {
     /// face when one matches, otherwise the system honours the CSS
     /// family name verbatim.
     private(set) var fontFamilyRaw: String = ""
+    /// Resolved Readium theme submitted with every `EPUBPreferences`
+    /// payload. Default `.light` matches Readium's own pre-2024 behaviour
+    /// for un-themed publications; the real value lands on the first
+    /// `update(...)` call from `ReaderHost` before the navigator renders
+    /// content the user can see.
+    private(set) var theme: ReadiumNavigator.Theme = .light
 
     // MARK: - Internals
 
@@ -80,12 +86,14 @@ final class ReaderContainerVC: UIViewController {
     /// Submits a fresh `EPUBPreferences` if either input changed — Readium
     /// dedupes idempotent submissions, but cheap to avoid the WKWebView
     /// CSS bridge round-trip on no-op updates.
-    func update(fontSizePct: Int, fontFamilyRaw: String) {
+    func update(fontSizePct: Int, fontFamilyRaw: String, theme: ReadiumNavigator.Theme) {
         let sizeChanged = self.fontSizePct != fontSizePct
         let familyChanged = self.fontFamilyRaw != fontFamilyRaw
-        if sizeChanged { self.fontSizePct = fontSizePct }
+        let themeChanged = self.theme != theme
+        if sizeChanged   { self.fontSizePct   = fontSizePct }
         if familyChanged { self.fontFamilyRaw = fontFamilyRaw }
-        if sizeChanged || familyChanged { applyPreferences() }
+        if themeChanged  { self.theme         = theme }
+        if sizeChanged || familyChanged || themeChanged { applyPreferences() }
     }
 
     /// Navigates to `locator` if it differs from the last jump applied. Pass
@@ -218,7 +226,8 @@ final class ReaderContainerVC: UIViewController {
             : FontFamily(rawValue: fontFamilyRaw)
         return EPUBPreferences(
             fontFamily: family,
-            fontSize: Double(fontSizePct) / 100.0
+            fontSize: Double(fontSizePct) / 100.0,
+            theme: theme
         )
     }
 
