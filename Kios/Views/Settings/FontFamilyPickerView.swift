@@ -7,7 +7,7 @@ import SwiftUI
 /// and dismisses; `ReaderView` reads the same key and forwards into
 /// Readium's preferences.
 struct FontFamilyPickerView: View {
-    @AppStorage("reader.fontFamily") private var fontFamily: String = ""
+    @AppStorage(.readerFontFamily) private var fontFamily: String
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

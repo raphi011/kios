@@ -40,7 +40,7 @@ struct LibraryRootView: View {
 
     /// Persists the user's preferred presentation across launches.
     /// `false` = the editorial row list; `true` = a covers-only grid.
-    @AppStorage("library.galleryMode") private var galleryMode: Bool = false
+    @AppStorage(.libraryGalleryMode) private var galleryMode: Bool
 
     @State private var searchActive: Bool = false
     @State private var searchQuery: String = ""

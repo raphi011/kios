@@ -15,18 +15,18 @@ struct SettingsView: View {
     /// Mirrors the AppStorage key the reader reads to override Readium's
     /// `EPUBPreferences.fontFamily`. Empty string = "Publisher default"
     /// (no override). Selection happens on `FontFamilyPickerView`.
-    @AppStorage("reader.fontFamily") private var fontFamily: String = ""
+    @AppStorage(.readerFontFamily) private var fontFamily: String
 
     /// Same AppStorage key the reader's pinch gesture writes — this is
     /// the second entry point onto the same value, exposed for users
     /// who don't discover pinch. Steps in 10% increments to stay aligned
     /// with `FontSizeStep` so pinch and stepper never disagree.
-    @AppStorage("reader.fontSizePct") private var fontSizePct: Int = 100
+    @AppStorage(.readerFontSizePct) private var fontSizePct: Int
 
     /// Mirrors the AppStorage flag read by ReaderView. Default-on so first
     /// launch matches the reader's behaviour without the user having to opt
     /// in.
-    @AppStorage("reader.hapticChapterEnabled") private var hapticChapterEnabled: Bool = true
+    @AppStorage(.readerHapticChapterEnabled) private var hapticChapterEnabled: Bool
 
     // Library & sync — toggles persist in-session only.
     @State private var syncOverCellular = false
