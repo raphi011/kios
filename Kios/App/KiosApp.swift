@@ -19,12 +19,15 @@ struct KiosApp: App {
         }
     }
 
+    @AppStorage(.appearance) private var appearance: AppearancePreference
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(environment)
                 .modelContainer(environment.modelContainer)
                 .environment(\.modelContext, environment.modelContext)
+                .preferredColorScheme(appearance.swiftUIScheme)
         }
     }
 }
