@@ -54,15 +54,6 @@ extension Preference where Value == AppearancePreference {
     static let appearance = Preference(key: "app.appearance", defaultValue: AppearancePreference.system)
 }
 
-extension AppStorage where Value == AppearancePreference {
-    /// Convenience init that accepts a `Preference<AppearancePreference>`.
-    /// `AppearancePreference` conforms to `RawRepresentable where RawValue == String`,
-    /// so this routes through SwiftUI's RawRepresentable AppStorage init.
-    init(_ pref: Preference<AppearancePreference>) {
-        self.init(wrappedValue: pref.defaultValue, pref.key)
-    }
-}
-
 // MARK: - AppStorage convenience inits
 
 extension AppStorage where Value == Int {
@@ -79,6 +70,15 @@ extension AppStorage where Value == String {
 
 extension AppStorage where Value == Bool {
     init(_ pref: Preference<Bool>) {
+        self.init(wrappedValue: pref.defaultValue, pref.key)
+    }
+}
+
+extension AppStorage where Value == AppearancePreference {
+    /// Convenience init that accepts a `Preference<AppearancePreference>`.
+    /// `AppearancePreference` conforms to `RawRepresentable where RawValue == String`,
+    /// so this routes through SwiftUI's RawRepresentable AppStorage init.
+    init(_ pref: Preference<AppearancePreference>) {
         self.init(wrappedValue: pref.defaultValue, pref.key)
     }
 }
