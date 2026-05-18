@@ -82,13 +82,11 @@ struct ReaderView: View {
             pillOverlay
             hudOverlay
         }
-        // Pin to white instead of `Color(.systemBackground)`: in dark mode the
-        // system background is black, but Readium renders the EPUB on a white
-        // page. The mismatch shows up as a black bar in the home-indicator
-        // safe area where the navigator stops painting. Revisit when we ship
-        // a dark EPUB theme — at that point this needs to track the active
-        // Readium theme's body background.
-        .background(Color.white.ignoresSafeArea())
+        // Track Readium's body color so the home-indicator safe-area gutter
+        // matches the EPUB page. Not routed through `EditorialTheme.bg`
+        // because in light mode that's cream (`#FAF8F4`), but Readium's day
+        // body is pure white — they would visibly seam at the gutter.
+        .background(readerPageBackground.ignoresSafeArea())
         .simultaneousGesture(swipeDownDismissGesture())
         .task(id: book?.fileURL) {
             await loadAndResolve()
@@ -226,6 +224,15 @@ struct ReaderView: View {
     /// so the UIKit container receives `.light`/`.dark` only.
     private var resolvedReaderTheme: ReadiumNavigator.Theme {
         ReaderThemeResolution.resolve(appearance: appearance, colorScheme: colorScheme)
+    }
+
+    /// SwiftUI background that matches Readium's body color for the
+    /// resolved reader theme. Anchors the home-indicator safe-area gutter
+    /// against the EPUB page so they read as one surface.
+    private var readerPageBackground: SwiftUI.Color {
+        resolvedReaderTheme == .dark
+            ? SwiftUI.Color(red: 0.102, green: 0.090, blue: 0.078)   // matches Readium night body bg
+            : SwiftUI.Color.white                                     // matches Readium day body bg
     }
 
     // MARK: - Content
