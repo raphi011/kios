@@ -36,6 +36,11 @@ final class AppEnvironment {
     /// `.fullScreenCover` in `RootView`. Views call `router.openReader(_:)`.
     let router: ReaderRouter
 
+    /// Single-source-of-truth for user-facing transient messages. Views
+    /// render via `.toastOverlay(env.toasts)`; call sites report errors
+    /// via `env.toasts.report(error)`.
+    let toasts: ToastCenter
+
     /// The Local source singleton. Seeded on first launch and reused
     /// thereafter — see `Self.loadOrSeedLocalSource(in:)`. Always present.
     let localSource: Source
@@ -94,6 +99,7 @@ final class AppEnvironment {
             spanResolver: KEPUBSpanResolver()
         )
         self.router = ReaderRouter()
+        self.toasts = ToastCenter()
 
         // Eagerly materialise Local — has no credentials and no network.
         _ = try? self.sources.makeContext(for: self.localSource)

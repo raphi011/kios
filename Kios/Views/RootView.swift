@@ -71,6 +71,7 @@ struct RootView: View {
             guard url.pathExtension.lowercased() == "epub" else { return }
             Task { await handleOpenURL(url) }
         }
+        .toastOverlay(env.toasts)
     }
 
     private func handleOpenURL(_ url: URL) async {
@@ -87,9 +88,7 @@ struct RootView: View {
             Logger.importFlow.error(
                 "openURL import failed: \(error.localizedDescription, privacy: .public)"
             )
-            // .onOpenURL has no UI to alert from. Swallow — file is left
-            // alone, no row inserted. Future improvement: bridge errors
-            // back to a toast surface.
+            env.toasts.report(error)
         }
     }
 }
