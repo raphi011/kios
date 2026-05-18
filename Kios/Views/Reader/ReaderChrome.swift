@@ -21,7 +21,6 @@ struct EditorialReaderTopBar: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var dark: Bool { colorScheme == .dark }
-    private var ink: Color { dark ? EditorialTheme.bg : EditorialTheme.ink }
     private var muted: Color { dark ? EditorialTheme.muted.opacity(0.8) : EditorialTheme.muted }
 
     var body: some View {
@@ -44,7 +43,7 @@ struct EditorialReaderTopBar: View {
 
             Text(title)
                 .font(EditorialTheme.serif(size: 17, weight: .medium))
-                .foregroundStyle(ink)
+                .foregroundStyle(EditorialTheme.ink)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: 200)
@@ -54,7 +53,7 @@ struct EditorialReaderTopBar: View {
             Button(action: onToggleBookmark) {
                 Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(isBookmarked ? EditorialTheme.accent : ink)
+                    .foregroundStyle(isBookmarked ? EditorialTheme.accent : EditorialTheme.ink)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -107,7 +106,6 @@ struct EditorialReaderBottomBar: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var dark: Bool { colorScheme == .dark }
-    private var ink: Color { dark ? EditorialTheme.bg : EditorialTheme.ink }
     private var muted: Color { dark ? EditorialTheme.muted.opacity(0.85) : EditorialTheme.muted }
     private var trackOff: Color { dark ? Color.white.opacity(0.18) : Color.black.opacity(0.18) }
     private var tickColor: Color { dark ? Color.white.opacity(0.35) : Color.black.opacity(0.30) }
@@ -164,7 +162,7 @@ struct EditorialReaderBottomBar: View {
             VStack(alignment: .leading, spacing: Self.rowSpacing) {
                 Text(displayChapterTitle)
                     .font(EditorialTheme.serif(size: 20, weight: .semibold))
-                    .foregroundStyle(ink)
+                    .foregroundStyle(EditorialTheme.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Text(metaLine)
@@ -234,7 +232,7 @@ struct EditorialReaderBottomBar: View {
                     .frame(height: 2)
 
                 Capsule()
-                    .fill(ink)
+                    .fill(EditorialTheme.ink)
                     .frame(width: max(0, width * CGFloat(displayProgress)), height: 2)
 
                 ForEach(tocProgressions.indices, id: \.self) { i in
@@ -246,7 +244,7 @@ struct EditorialReaderBottomBar: View {
                 }
 
                 Circle()
-                    .fill(Color.white)
+                    .fill(EditorialTheme.ink)
                     .frame(width: 18, height: 18)
                     .shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 1)
                     .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 2)
