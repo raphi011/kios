@@ -46,7 +46,7 @@ enum EditorialTheme {
         dark:  Color(red: 0.980, green: 0.972, blue: 0.957)   // FAF8F4
     )
 
-    // MARK: - Accent (ink red, used sparingly).
+    // MARK: - Accent (ink red, used sparingly)
     // Lifted in dark (B53F32 → D85A4A) because saturated reds appear muddy
     // on dark backgrounds — the perceived hue should match across themes.
     static let accent = Color(
@@ -60,11 +60,11 @@ enum EditorialTheme {
 
     // MARK: - Status
     static let ok = Color(
-        light: Color(red: 0.180, green: 0.490, blue: 0.357),
+        light: Color(red: 0.180, green: 0.490, blue: 0.357),  // 2E7D5B
         dark:  Color(red: 0.357, green: 0.753, blue: 0.541)   // 5BC08A
     )
     static let danger = Color(
-        light: Color(red: 0.769, green: 0.180, blue: 0.122),
+        light: Color(red: 0.769, green: 0.180, blue: 0.122),  // C42E1F
         dark:  Color(red: 0.902, green: 0.420, blue: 0.373)   // E66B5F
     )
 
