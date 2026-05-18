@@ -33,6 +33,9 @@ Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 - **No installed users yet — no SwiftData migrations needed.** The app has not shipped or been installed anywhere outside this dev machine. Schema changes (adding/removing fields, changing optionality, renaming) can land as direct edits to the `@Model` classes; do not introduce `VersionedSchema` / `SchemaMigrationPlan` / migration tests. When the app ships, revisit this and add migrations from that point forward.
 - **`ReaderView` chrome below `ReaderHost`** — use `.ignoresSafeArea(edges: [.top, .horizontal])` + `.safeAreaInset(edge: .bottom) { … }`. Blanket `.ignoresSafeArea()` lets EPUB body text bleed under the bottom strip/floating bar.
 - **`git mv` only survives in history if you don't later add a new file at the old path** — if you rename `A.swift → B.swift` then create a fresh `A.swift`, git stages it as delete-old + add-two-new and the rename arrow is lost.
+- **`async let` closures are implicitly `@Sendable`** — capturing `@Model` instances (`Book?`) across them is a Swift 6 error. Move parallel orchestration into a `@MainActor` type's method where both ends share the actor, or run sequentially. The `loadPublication` + `resolveOpen` flow in `ReaderViewModel` shows the pattern.
+- **`@preconcurrency` on Readium imports stays for now** — Readium 3.9 isn't fully `Sendable`-clean (`Publication`, `Asset` trigger `sending` warnings on `publication.positions()` and `opener.open(asset:)`). Verified empirically; retry on next toolkit version.
+- **`import os` covers both `Logger` AND `OSAllocatedUnfairLock`** — `KEPUBSpanResolver` imports `os` for the unfair lock, not for `Logger`. Don't remove the import based on a `Logger` grep alone.
 
 ## Code Style
 
@@ -40,6 +43,9 @@ Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 - SwiftUI for views, SwiftData for persistence
 - `@Observable` view models where needed
 - Protocols for sync backends (`SyncBackend`) to keep kosync/Kobo interchangeable
+- `@AppStorage` via typed keys in `Kios/App/Preferences.swift`: `@AppStorage(.readerFontSizePct) private var x: Int` — add new keys to the same file
+- Log via `Logger.<category>` from `Kios/App/Logger+Kios.swift` (`Logger.sync`, `.download`, `.importFlow`, etc.) — add a category when introducing a new subsystem; log at every `catch` that would otherwise swallow
+- User-facing errors via `env.toasts.report(error)` — top-banner `ToastCenter` on `AppEnvironment`
 
 ## Testing
 
@@ -53,3 +59,7 @@ Rule of thumb: if it doesn't need SwiftData/UIKit/Readium, it belongs in Core.
 - App bundle: `~/Library/Developer/Xcode/DerivedData/Kios-*/Build/Products/Debug-iphonesimulator/Kios.app`
 - Cycle: `xcodebuild … build && xcrun simctl terminate $SIM …kios; xcrun simctl install $SIM <app> && xcrun simctl launch $SIM com.raphi011.kios`
 - No CLI tap/scroll exists; AppleScript needs Accessibility — to view non-default tabs/states, temporarily flip `@State` defaults (e.g. `selectedTab`, `uiVisible`) and revert before committing
+
+## Reference docs
+
+`docs/*.md` — best-practices references for Swift concurrency, SwiftUI/HIG, SwiftData, Readium toolkit, testing, App Intents/Controls, localization, networking, plus `architecture.md` (audit + open work).
