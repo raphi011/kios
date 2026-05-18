@@ -75,6 +75,7 @@ struct SettingsView: View {
                     Text("Dark").tag(AppearancePreference.dark)
                 }
                 .pickerStyle(.segmented)
+                .accessibilityLabel("Theme")
                 .frame(maxWidth: 220)
             }
             .padding(.horizontal, EditorialTheme.rowSidePad)
