@@ -276,7 +276,7 @@ For the current scale (a download every few minutes, hashing a single MD5) this 
 ```
 KiosTests/App/         → Kios/App/
 KiosTests/Services/    → Kios/Services/   (2051 LOC of tests — well covered)
-KiosTests/Networking/  → Kios/Networking/ (579 LOC of tests)
+KiosTests/Catalog/OPDS/ → Kios/Catalog/OPDS/ (579 LOC of tests)
 KiosTests/Models/      → Kios/Models/
 KiosTests/Views/       → Kios/Views/      (only 180 LOC of tests — see #4)
 KiosTests/Helpers/     → shared test utilities

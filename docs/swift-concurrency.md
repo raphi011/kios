@@ -23,7 +23,7 @@ A type is `Sendable` if it's safe to share/copy across actors. Defaults:
 - Closures captured across actors → must be `@Sendable` (or `sending`).
 
 ```swift
-// Core/Sources/Core/HTTPClient.swift
+// Core/Sources/Core/Net/HTTPClient.swift
 public struct BasicCredentials: Sendable, Equatable {
     public let username: String
     public let password: String

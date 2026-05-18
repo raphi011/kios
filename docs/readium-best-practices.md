@@ -264,7 +264,7 @@ for publication in feed.publications {
 }
 ```
 
-This codebase wraps OPDS calls in `Kios/Networking/OPDSClient.swift` and exposes a higher-level `CatalogBackend` protocol.
+This codebase wraps OPDS calls in `Kios/Catalog/OPDS/OPDSClient.swift` and exposes a higher-level `CatalogBackend` protocol.
 
 ## Common gotchas
 

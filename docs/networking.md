@@ -1,13 +1,13 @@
 # Networking best practices
 
-Reference for HTTP networking in this codebase. The shared client is `Core/Sources/Core/HTTPClient.swift`, the test seam is `Core/Sources/Core/MockURLProtocol.swift`. Strict-concurrency clean.
+Reference for HTTP networking in this codebase. The shared client is `Core/Sources/Core/Net/HTTPClient.swift`, the test seam is `Core/Sources/Core/Net/MockURLProtocol.swift`. Strict-concurrency clean.
 
 ## Foundational types
 
 All networking goes through `URLSession`. There's no third-party HTTP library here — and there shouldn't be. URLSession does everything this app needs.
 
 ```swift
-// Core/Sources/Core/HTTPClient.swift
+// Core/Sources/Core/Net/HTTPClient.swift
 public struct HTTPClient: Sendable {
     private let session: URLSession
     private let credentials: BasicCredentials?
@@ -81,7 +81,7 @@ let session = URLSession(configuration: config)
 Compute the header yourself; URLSession's challenge mechanism is overkill for a value passed on every request.
 
 ```swift
-// Core/Sources/Core/HTTPClient.swift
+// Core/Sources/Core/Net/HTTPClient.swift
 public struct BasicCredentials: Sendable, Equatable {
     public let username: String
     public let password: String
@@ -102,7 +102,7 @@ req.setValue(credentials.authorizationHeader, forHTTPHeaderField: "Authorization
 
 ### Bearer tokens
 
-Same pattern — attach `Authorization: Bearer <token>` per request. Store the token in Keychain, not UserDefaults. See `Core/Sources/Core/KeychainStore.swift`.
+Same pattern — attach `Authorization: Bearer <token>` per request. Store the token in Keychain, not UserDefaults. See `Core/Sources/Core/Auth/KeychainStore.swift`.
 
 ### URLSessionDelegate (server trust, client certs)
 
@@ -128,7 +128,7 @@ This codebase doesn't need it yet — every server uses plain HTTPS + Basic auth
 The pattern this codebase uses, repeated across every test file:
 
 ```swift
-// Core/Sources/Core/MockURLProtocol.swift
+// Core/Sources/Core/Net/MockURLProtocol.swift
 public final class MockURLProtocol: URLProtocol {
     public static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
 
@@ -199,7 +199,7 @@ And `Makefile` runs `swift test --no-parallel` (`CLAUDE.md` records this). See [
 URLProtocol delivers request bodies via `httpBodyStream`, not `httpBody`. Drain it:
 
 ```swift
-// Core/Sources/Core/MockURLProtocol.swift
+// Core/Sources/Core/Net/MockURLProtocol.swift
 public extension URLRequest {
     func readBodyStream() -> Data {
         guard let stream = httpBodyStream else { return Data() }
@@ -222,7 +222,7 @@ public extension URLRequest {
 One error enum, mapped at the HTTP boundary:
 
 ```swift
-// Core/Sources/Core/HTTPError.swift
+// Core/Sources/Core/Net/HTTPError.swift
 public enum HTTPError: Error, Equatable {
     case malformedResponse
     case unauthorized
@@ -362,7 +362,7 @@ Each layer has a clear job. Tests can mock at any layer by injecting a different
 ### Protocol-based backends
 
 ```swift
-// Core/Sources/Core/SyncBackend.swift
+// Core/Sources/Core/Sync/SyncBackend.swift
 public protocol SyncBackend: Sendable {
     func fetchProgress(for identity: BookIdentity) async throws -> CanonicalProgress?
     func pushProgress(_ canonical: CanonicalProgress, for identity: BookIdentity) async throws
@@ -375,5 +375,5 @@ public protocol SyncBackend: Sendable {
 
 - [`testing.md`](testing.md) — `MockURLProtocol`, `@Suite(.serialized)`.
 - [`swift-concurrency.md`](swift-concurrency.md) — `Sendable` for clients, `actor` for stateful workers.
-- `Core/Sources/Core/HTTPClient.swift` — the canonical client.
-- `Core/Sources/Core/MockURLProtocol.swift` — the canonical test seam.
+- `Core/Sources/Core/Net/HTTPClient.swift` — the canonical client.
+- `Core/Sources/Core/Net/MockURLProtocol.swift` — the canonical test seam.
